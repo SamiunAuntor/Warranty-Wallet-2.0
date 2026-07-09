@@ -1,19 +1,19 @@
 const express = require("express");
-const cors = require("cors");
 const helmet = require("helmet");
-const morgan = require("morgan");
+const cors = require("cors");
 const compression = require("compression");
 const cookieParser = require("cookie-parser");
+const morgan = require("morgan");
+
+const routes = require("./routes");
+
+const notFound = require("./middlewares/notFound.middleware");
+const errorHandler = require("./middlewares/error.middleware");
 
 const app = express();
 
-// Security
 app.use(helmet());
 
-// Compression
-app.use(compression());
-
-// CORS
 app.use(
     cors({
         origin: process.env.CLIENT_URL,
@@ -21,24 +21,27 @@ app.use(
     })
 );
 
-// Logger
+app.use(compression());
+
 app.use(morgan("dev"));
 
-// Body Parser
 app.use(express.json());
 
 app.use(express.urlencoded({ extended: true }));
 
-// Cookies
 app.use(cookieParser());
 
-// Health Check
-
 app.get("/health", (req, res) => {
-    res.status(200).json({
+    res.json({
         success: true,
-        message: "WarrantyWallet API is running",
+        message: "Server Running",
     });
 });
+
+app.use("/api/v1", routes);
+
+app.use(notFound);
+
+app.use(errorHandler);
 
 module.exports = app;
