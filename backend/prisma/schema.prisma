@@ -1,0 +1,250 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+//
+// ENUMS
+//
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum UserPlan {
+  FREE
+  PREMIUM
+}
+
+enum WarrantyStatus {
+  ACTIVE
+  EXPIRING_SOON
+  EXPIRED
+}
+
+enum WarrantyType {
+  MANUFACTURER
+  EXTENDED
+}
+
+enum NotificationType {
+  REMINDER
+  PAYMENT
+  SUBSCRIPTION
+  SYSTEM
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+}
+
+enum PaymentStatus {
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+//
+// MODELS
+//
+
+model User {
+  id          String  @id @default(cuid())
+  firebaseUid String  @unique
+  name        String
+  email       String  @unique
+  phone       String?
+  photo       String?
+
+  role   UserRole   @default(USER)
+  status UserStatus @default(ACTIVE)
+  plan   UserPlan   @default(FREE)
+
+  emailVerified Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products      Product[]
+  notifications Notification[]
+  subscriptions Subscription[]
+  payments      Payment[]
+  activityLogs  ActivityLog[]
+}
+
+model Category {
+  id   String  @id @default(cuid())
+  name String  @unique
+  icon String?
+
+  createdAt DateTime @default(now())
+
+  products Product[]
+}
+
+model Product {
+  id String @id @default(cuid())
+
+  userId     String
+  categoryId String
+
+  name         String
+  brand        String
+  model        String?
+  serialNumber String?
+
+  purchasePrice Float
+
+  purchaseDate DateTime
+
+  warrantyDuration Int
+
+  warrantyType WarrantyType
+
+  expiryDate DateTime
+
+  status WarrantyStatus
+
+  sellerName    String?
+  sellerPhone   String?
+  sellerAddress String?
+
+  productImage String?
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  deletedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  category Category @relation(fields: [categoryId], references: [id])
+
+  invoices Invoice[]
+
+  @@index([userId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([expiryDate])
+}
+
+model Invoice {
+  id String @id @default(cuid())
+
+  productId String
+
+  fileUrl String
+
+  fileName String
+
+  fileType String
+
+  provider String
+
+  invoiceNumber String?
+
+  ocrProcessed Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id String @id @default(cuid())
+
+  userId String
+
+  title String
+
+  message String
+
+  type NotificationType
+
+  isRead Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Subscription {
+  id String @id @default(cuid())
+
+  userId String
+
+  stripeCustomerId String?
+
+  stripeSessionId String?
+
+  plan UserPlan
+
+  status SubscriptionStatus
+
+  startDate DateTime
+
+  endDate DateTime
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id String @id @default(cuid())
+
+  userId String
+
+  subscriptionId String?
+
+  amount Float
+
+  currency String
+
+  paymentMethod String
+
+  stripePaymentIntent String?
+
+  status PaymentStatus
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ActivityLog {
+  id String @id @default(cuid())
+
+  userId String
+
+  action String
+
+  entity String
+
+  entityId String
+
+  description String?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
