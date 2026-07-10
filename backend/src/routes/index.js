@@ -10,6 +10,7 @@ const aiRoutes = require("../modules/ai/ai.route");
 const notificationRoutes = require("../modules/notification/notification.route");
 const activityRoutes = require("../modules/activity/activity.route");
 const paymentRoutes = require("../modules/payment/payment.route");
+const dashboardRoutes = require("../modules/dashboard/dashboard.route");
 
 router.use("/users", userRoutes);
 
@@ -26,5 +27,7 @@ router.use("/notifications", notificationRoutes);
 router.use("/activities", activityRoutes);
 
 router.use("/payments", paymentRoutes);
+
+router.use("/dashboard", dashboardRoutes);
 
 module.exports = router;
