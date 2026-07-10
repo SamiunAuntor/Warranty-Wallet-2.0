@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 //
@@ -86,13 +85,21 @@ model User {
 }
 
 model Category {
-  id   String  @id @default(cuid())
-  name String  @unique
-  icon String?
+  id          String    @id @default(cuid())
 
-  createdAt DateTime @default(now())
+  name        String    @unique
+  slug        String    @unique
 
-  products Product[]
+  icon        String?
+
+  description String?
+
+  isActive    Boolean   @default(true)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products    Product[]
 }
 
 model Product {
