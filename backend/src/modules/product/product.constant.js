@@ -1,18 +1,15 @@
-const PRODUCT_STATUS = {
+const PRODUCT_LIMIT = {
+    FREE: 10,
+    PREMIUM: Infinity,
+};
+
+const WARRANTY_STATUS = {
     ACTIVE: "ACTIVE",
     EXPIRING_SOON: "EXPIRING_SOON",
     EXPIRED: "EXPIRED",
 };
 
-const WARRANTY_TYPE = {
-    MANUFACTURER: "MANUFACTURER",
-    EXTENDED: "EXTENDED",
-};
-
-const FREE_PLAN_LIMIT = 10;
-
 module.exports = {
-    PRODUCT_STATUS,
-    WARRANTY_TYPE,
-    FREE_PLAN_LIMIT,
+    PRODUCT_LIMIT,
+    WARRANTY_STATUS,
 };
