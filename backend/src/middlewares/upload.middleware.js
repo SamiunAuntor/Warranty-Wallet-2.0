@@ -1,46 +1,43 @@
 const multer = require("multer");
 
+const {
+    MAX_FILE_SIZE,
+    ALLOWED_FILE_TYPES,
+    MAX_FILES_PER_UPLOAD,
+} = require("../modules/document/document.constant");
+
 const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
-
-    const allowedTypes = [
-
-        "image/jpeg",
-
-        "image/png",
-
-        "image/webp",
-
-        "application/pdf",
-
-    ];
-
-    if (!allowedTypes.includes(file.mimetype)) {
-
+    if (
+        !ALLOWED_FILE_TYPES.includes(
+            file.mimetype
+        )
+    ) {
         return cb(
             new Error("Unsupported file type"),
             false
         );
-
     }
 
     cb(null, true);
-
 };
 
 const upload = multer({
-
     storage,
 
     limits: {
-
-        fileSize: 5 * 1024 * 1024,
-
+        fileSize: MAX_FILE_SIZE,
     },
 
     fileFilter,
-
 });
 
-module.exports = upload;
+module.exports = {
+    single: upload.single("file"),
+
+    multiple: upload.array(
+        "files",
+        MAX_FILES_PER_UPLOAD
+    ),
+};
