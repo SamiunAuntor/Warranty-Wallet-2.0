@@ -6,10 +6,6 @@ datasource db {
   provider = "postgresql"
 }
 
-//
-// ENUMS
-//
-
 enum UserRole {
   USER
   ADMIN
@@ -17,7 +13,7 @@ enum UserRole {
 
 enum UserStatus {
   ACTIVE
-  SUSPENDED
+  BLOCKED
   DELETED
 }
 
@@ -46,129 +42,218 @@ enum NotificationType {
 
 enum SubscriptionStatus {
   ACTIVE
-  CANCELLED
   EXPIRED
+  CANCELLED
 }
 
 enum PaymentStatus {
+  PENDING
   SUCCESS
   FAILED
   REFUNDED
 }
 
-//
-// MODELS
-//
+enum ActivityType {
+  LOGIN
+  REGISTER
+  PROFILE_UPDATED
+
+  PRODUCT_CREATED
+  PRODUCT_UPDATED
+  PRODUCT_DELETED
+
+  DOCUMENT_UPLOADED
+  DOCUMENT_DELETED
+
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+
+  SUBSCRIPTION_CREATED
+  SUBSCRIPTION_EXPIRED
+
+  USER_BLOCKED
+  USER_UNBLOCKED
+  USER_DELETED
+
+  ADMIN_PRODUCT_DELETED
+  ADMIN_BROADCAST
+}
 
 model User {
-  id          String  @id @default(cuid())
-  firebaseUid String  @unique
-  name        String
-  email       String  @unique
-  phone       String?
-  photo       String?
+  id String @id @default(cuid())
 
-  role   UserRole   @default(USER)
-  status UserStatus @default(ACTIVE)
-  plan   UserPlan   @default(FREE)
+  firebaseUid String @unique
+
+  name String
+
+  email String @unique
+
+  phone String?
+
+  photoURL String?
 
   emailVerified Boolean @default(false)
 
+  role UserRole @default(USER)
+
+  status UserStatus @default(ACTIVE)
+
+  plan UserPlan @default(FREE)
+
+  lastLoginAt DateTime?
+
   createdAt DateTime @default(now())
+
   updatedAt DateTime @updatedAt
 
-  products      Product[]
+  products Product[]
+
+  documents Document[]
+
   notifications Notification[]
-  subscriptions Subscription[]
-  payments      Payment[]
-  activityLogs  ActivityLog[]
+
+  activityLogs ActivityLog[]
+
+  payments Payment[]
+
+  subscription Subscription?
+
+  @@index([role])
+  @@index([status])
+  @@index([plan])
+  @@index([createdAt])
 }
 
 model Category {
-  id          String    @id @default(cuid())
+  id String @id @default(cuid())
 
-  name        String    @unique
-  slug        String    @unique
+  name String @unique
 
-  icon        String?
+  slug String @unique
+
+  icon String?
 
   description String?
 
-  isActive    Boolean   @default(true)
+  isActive Boolean @default(true)
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt DateTime @default(now())
 
-  products    Product[]
+  updatedAt DateTime @updatedAt
+
+  products Product[]
 }
 
 model Product {
-  id               String           @id @default(cuid())
+  id String @id @default(cuid())
 
-  userId           String
-  categoryId       String
+  userId String
 
-  name             String
-  brand            String
-  model            String?
-  serialNumber     String?
+  categoryId String
 
-  purchasePrice    Decimal          @db.Decimal(10,2)
+  name String
 
-  purchaseDate     DateTime
+  brand String
+
+  model String?
+
+  serialNumber String?
+
+  barcode String?
+
+  purchasePrice Decimal @db.Decimal(10, 2)
+
+  purchaseDate DateTime
 
   warrantyDuration Int
 
-  warrantyType     WarrantyType
+  warrantyType WarrantyType
 
-  expiryDate       DateTime
+  expiryDate DateTime
 
-  status           WarrantyStatus   @default(ACTIVE)
+  status WarrantyStatus @default(ACTIVE)
 
-  sellerName       String?
-  sellerPhone      String?
-  sellerAddress    String?
+  sellerName String?
 
-  productImage     String?
+  sellerPhone String?
 
-  notes            String?
+  sellerEmail String?
 
-  isDeleted        Boolean          @default(false)
+  sellerAddress String?
 
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  productImageUrl String?
 
-  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category         Category         @relation(fields: [categoryId], references: [id])
+  productImagePublicId String?
 
-  invoices         Invoice[]
+  notes String?
+
+  approvedById String?
+
+  approvedAt DateTime?
+
+  isDeleted Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  category Category @relation(fields: [categoryId], references: [id])
+
+  documents Document[]
 
   @@index([userId])
   @@index([categoryId])
   @@index([status])
   @@index([expiryDate])
+  @@index([purchaseDate])
+  @@index([createdAt])
   @@index([isDeleted])
+  @@index([userId, status])
 }
-model Invoice {
+
+model Document {
   id String @id @default(cuid())
 
-  productId String
+  userId String
 
-  fileUrl String
+  productId String
 
   fileName String
 
   fileType String
 
+  fileSize Int?
+
+  fileUrl String
+
+  publicId String
+
   provider String
 
   invoiceNumber String?
 
+  vendorName String?
+
   ocrProcessed Boolean @default(false)
+
+  ocrConfidence Float?
+
+  ocrRaw Json?
 
   createdAt DateTime @default(now())
 
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([productId])
+  @@index([ocrProcessed])
+  @@index([createdAt])
 }
 
 model Notification {
@@ -186,31 +271,44 @@ model Notification {
 
   createdAt DateTime @default(now())
 
+  updatedAt DateTime @updatedAt
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([createdAt])
+  @@index([userId, isRead])
 }
 
 model Subscription {
   id String @id @default(cuid())
 
-  userId String
+  userId String @unique
+
+  latestPaymentId String? @unique
 
   stripeCustomerId String?
 
-  stripeSessionId String?
-
   plan UserPlan
 
-  status SubscriptionStatus
+  status SubscriptionStatus @default(ACTIVE)
 
-  startDate DateTime
+  startsAt DateTime
 
-  endDate DateTime
+  expiresAt DateTime
+
+  isActive Boolean @default(true)
 
   createdAt DateTime @default(now())
 
+  updatedAt DateTime @updatedAt
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  latestPayment Payment? @relation("LatestSubscriptionPayment", fields: [latestPaymentId], references: [id])
+
+  @@index([status])
+  @@index([expiresAt])
 }
 
 model Payment {
@@ -218,21 +316,30 @@ model Payment {
 
   userId String
 
-  subscriptionId String?
+  stripeSessionId String @unique
 
-  amount Float
+  stripePaymentIntent String?
+
+  amount Decimal @db.Decimal(10, 2)
 
   currency String
 
   paymentMethod String
 
-  stripePaymentIntent String?
-
-  status PaymentStatus
+  status PaymentStatus @default(PENDING)
 
   createdAt DateTime @default(now())
 
+  updatedAt DateTime @updatedAt
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  latestSubscription Subscription? @relation("LatestSubscriptionPayment")
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([userId, status])
 }
 
 model ActivityLog {
@@ -240,17 +347,47 @@ model ActivityLog {
 
   userId String
 
-  action String
+  type ActivityType
 
   entity String
 
-  entityId String
+  entityId String?
+
+  title String
 
   description String?
+
+  metadata Json?
+
+  ipAddress String?
+
+  userAgent String?
 
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([entity])
+  @@index([type])
+  @@index([createdAt])
+  @@index([userId, createdAt])
+}
+
+model WebhookEvent {
+  id String @id @default(cuid())
+
+  stripeEventId String @unique
+
+  eventType String
+
+  processed Boolean @default(false)
+
+  payload Json
+
+  processedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([processed])
 }
