@@ -116,10 +116,7 @@ const broadcastNotificationSchema = z.object({
 
         type: z.enum([
             "SYSTEM",
-            "ADMIN",
         ]),
-
-        metadata: z.record(z.any()).optional(),
 
     }),
 });

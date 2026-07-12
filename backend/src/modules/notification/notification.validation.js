@@ -7,15 +7,11 @@ const createNotificationSchema = z.object({
         message: z.string().min(2),
 
         type: z.enum([
-            "WARRANTY_REMINDER",
-            "WARRANTY_EXPIRED",
-            "PAYMENT_SUCCESS",
+            "REMINDER",
+            "PAYMENT",
             "SUBSCRIPTION",
             "SYSTEM",
-            "ADMIN",
         ]),
-
-        metadata: z.any().optional(),
     }),
 });
 

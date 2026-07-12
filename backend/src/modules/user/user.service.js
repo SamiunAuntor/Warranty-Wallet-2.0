@@ -1,14 +1,21 @@
 const repository = require("./user.repository");
 
-const syncUser = async (payload) => {
-    let user = await repository.findByFirebaseUid(payload.firebaseUid);
+const syncUser = async (firebaseUser, payload) => {
+    let user = await repository.findByFirebaseUid(firebaseUser.uid);
 
     if (!user) {
-        user = await repository.createUser(payload);
+        user = await repository.createUser({
+            firebaseUid: firebaseUser.uid,
+            email: firebaseUser.email,
+            emailVerified: Boolean(firebaseUser.email_verified),
+            name: payload.name,
+            photoURL: payload.photoURL,
+        });
     } else {
         user = await repository.updateUser(user.id, {
             name: payload.name,
-            photo: payload.photo,
+            photoURL: payload.photoURL,
+            emailVerified: Boolean(firebaseUser.email_verified),
         });
     }
 

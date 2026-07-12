@@ -45,23 +45,36 @@ COMMIT;
 ALTER TABLE "Invoice" DROP CONSTRAINT "Invoice_productId_fkey";
 
 -- AlterTable
+-- NOTE: title/type are backfilled with a placeholder default so this migration
+-- does not fail against a populated table, then the default is dropped so the
+-- columns match the Prisma schema (required, no default) going forward.
 ALTER TABLE "ActivityLog" DROP COLUMN "action",
 ADD COLUMN     "ipAddress" TEXT,
 ADD COLUMN     "metadata" JSONB,
-ADD COLUMN     "title" TEXT NOT NULL,
-ADD COLUMN     "type" "ActivityType" NOT NULL,
+ADD COLUMN     "title" TEXT NOT NULL DEFAULT 'Activity',
+ADD COLUMN     "type" "ActivityType" NOT NULL DEFAULT 'PROFILE_UPDATED',
 ADD COLUMN     "userAgent" TEXT,
 ALTER COLUMN "entityId" DROP NOT NULL;
 
--- AlterTable
-ALTER TABLE "Notification" ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL;
+ALTER TABLE "ActivityLog" ALTER COLUMN "title" DROP DEFAULT;
+ALTER TABLE "ActivityLog" ALTER COLUMN "type" DROP DEFAULT;
 
 -- AlterTable
+ALTER TABLE "Notification" ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Notification" ALTER COLUMN "updatedAt" DROP DEFAULT;
+
+-- AlterTable
+-- stripeSessionId is unique, so existing rows are backfilled with a random
+-- placeholder per-row (not a constant) to avoid violating the unique index
+-- created below.
 ALTER TABLE "Payment" DROP COLUMN "subscriptionId",
-ADD COLUMN     "stripeSessionId" TEXT NOT NULL,
-ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL,
+ADD COLUMN     "stripeSessionId" TEXT NOT NULL DEFAULT ('legacy_' || md5(random()::text || clock_timestamp()::text)),
+ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 ALTER COLUMN "amount" SET DATA TYPE DECIMAL(10,2),
 ALTER COLUMN "status" SET DEFAULT 'PENDING';
+
+ALTER TABLE "Payment" ALTER COLUMN "stripeSessionId" DROP DEFAULT;
+ALTER TABLE "Payment" ALTER COLUMN "updatedAt" DROP DEFAULT;
 
 -- AlterTable
 ALTER TABLE "Product" DROP COLUMN "productImage",
@@ -76,12 +89,16 @@ ADD COLUMN     "sellerEmail" TEXT;
 ALTER TABLE "Subscription" DROP COLUMN "endDate",
 DROP COLUMN "startDate",
 DROP COLUMN "stripeSessionId",
-ADD COLUMN     "expiresAt" TIMESTAMP(3) NOT NULL,
+ADD COLUMN     "expiresAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 ADD COLUMN     "isActive" BOOLEAN NOT NULL DEFAULT true,
 ADD COLUMN     "latestPaymentId" TEXT,
-ADD COLUMN     "startsAt" TIMESTAMP(3) NOT NULL,
-ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL,
+ADD COLUMN     "startsAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 ALTER COLUMN "status" SET DEFAULT 'ACTIVE';
+
+ALTER TABLE "Subscription" ALTER COLUMN "expiresAt" DROP DEFAULT;
+ALTER TABLE "Subscription" ALTER COLUMN "startsAt" DROP DEFAULT;
+ALTER TABLE "Subscription" ALTER COLUMN "updatedAt" DROP DEFAULT;
 
 -- AlterTable
 ALTER TABLE "User" DROP COLUMN "photo",

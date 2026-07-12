@@ -156,7 +156,7 @@ const handleWebhook = async (session) => {
                 await paymentRepository.updateSubscription(
                     payment.userId,
                     {
-                        paymentId:
+                        latestPaymentId:
                             payment.id,
 
                         plan:
@@ -181,7 +181,7 @@ const handleWebhook = async (session) => {
                         userId:
                             payment.userId,
 
-                        paymentId:
+                        latestPaymentId:
                             payment.id,
 
                         plan:

@@ -4,8 +4,11 @@ const notificationService = require("../modules/notification/notification.servic
 
 const activityService = require("../modules/activity/activity.service");
 
-const run = async () => {
+const emailService = require("../services/email.service");
 
+const warrantyReminderTemplate = require("../templates/warrantyReminder.template");
+
+const processExpiringSoon = async () => {
     const today = new Date();
 
     const next30Days = new Date();
@@ -14,44 +17,130 @@ const run = async () => {
 
     const products =
         await productRepository.findExpiringProducts(
+            today,
             next30Days
         );
 
     for (const product of products) {
 
-        await productRepository.updateStatus(
-            product.id,
-            "EXPIRING_SOON"
-        );
+        try {
 
-        await notificationService.notifyWarrantyExpiry({
+            await productRepository.updateStatus(
+                product.id,
+                "EXPIRING_SOON"
+            );
 
-            userId: product.userId,
+            await notificationService.notifyWarrantyExpiry({
 
-            productId: product.id,
+                userId: product.userId,
 
-            productName: product.name,
+                productId: product.id,
 
-        });
+                productName: product.name,
 
-        await activityService.logActivity({
+            });
 
-            userId: product.userId,
+            await activityService.logActivity({
 
-            type: "SYSTEM",
+                userId: product.userId,
 
-            entity: "PRODUCT",
+                type: "PRODUCT_UPDATED",
 
-            entityId: product.id,
+                entity: "PRODUCT",
 
-            title: "Warranty Reminder",
+                entityId: product.id,
 
-            description: `Warranty for "${product.name}" will expire soon.`,
+                title: "Warranty Reminder",
 
-        });
+                description: `Warranty for "${product.name}" will expire soon.`,
+
+            });
+
+            if (product.user) {
+
+                await emailService.sendEmail({
+
+                    to: product.user.email,
+
+                    subject: "Your warranty is expiring soon",
+
+                    html: warrantyReminderTemplate({
+
+                        userName: product.user.name,
+
+                        productName: product.name,
+
+                        expiryDate: product.expiryDate.toDateString(),
+
+                    }),
+
+                });
+
+            }
+
+        } catch (error) {
+
+            console.error(
+                `Warranty reminder failed for product ${product.id}:`,
+                error
+            );
+
+        }
 
     }
 
+};
+
+const processExpired = async () => {
+    const today = new Date();
+
+    const products =
+        await productRepository.findExpiredProducts(
+            today
+        );
+
+    for (const product of products) {
+
+        try {
+
+            await productRepository.updateStatus(
+                product.id,
+                "EXPIRED"
+            );
+
+            await activityService.logActivity({
+
+                userId: product.userId,
+
+                type: "PRODUCT_UPDATED",
+
+                entity: "PRODUCT",
+
+                entityId: product.id,
+
+                title: "Warranty Expired",
+
+                description: `Warranty for "${product.name}" has expired.`,
+
+            });
+
+        } catch (error) {
+
+            console.error(
+                `Warranty expiry update failed for product ${product.id}:`,
+                error
+            );
+
+        }
+
+    }
+
+};
+
+const run = async () => {
+    await processExpiringSoon();
+
+    await processExpired();
 };
 
 module.exports = {

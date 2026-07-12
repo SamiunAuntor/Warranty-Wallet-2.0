@@ -22,6 +22,9 @@ const findPaymentBySessionId = (stripeSessionId) => {
         where: {
             stripeSessionId,
         },
+        include: {
+            user: true,
+        },
     });
 };
 
@@ -61,7 +64,7 @@ const findSubscription = (userId) => {
             userId,
         },
         include: {
-            payment: true,
+            latestPayment: true,
         },
     });
 };

@@ -125,7 +125,7 @@ const deleteNotification = async (id, user) => {
 
 };
 
-const broadcastNotification = async ({ title, message, type, metadata, }) => {
+const broadcastNotification = async ({ title, message, type, }) => {
     const users = await userRepository.findAll();
 
     const notifications = users.map((user) => ({
@@ -133,7 +133,6 @@ const broadcastNotification = async ({ title, message, type, metadata, }) => {
         title,
         message,
         type,
-        metadata,
     }));
 
     await Promise.all(
@@ -161,11 +160,7 @@ const notifyWarrantyExpiry = async ({ userId, productId, productName, }) => {
             `Your warranty for "${productName}" is expiring soon.`,
 
         type:
-            "WARRANTY_REMINDER",
-
-        metadata: {
-            productId,
-        },
+            "REMINDER",
 
     });
 
@@ -184,11 +179,7 @@ const notifyPaymentSuccess = async ({ userId, amount, }) => {
             `Your Premium subscription payment of $${amount} was successful.`,
 
         type:
-            "PAYMENT_SUCCESS",
-
-        metadata: {
-            amount,
-        },
+            "PAYMENT",
 
     });
 

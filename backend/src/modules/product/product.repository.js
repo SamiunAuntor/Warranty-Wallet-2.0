@@ -133,14 +133,31 @@ const latestProducts = (userId, limit = 5) => {
     });
 };
 
-const findExpiringProducts = (date) => {
+const findExpiringProducts = (fromDate, toDate) => {
     return prisma.product.findMany({
         where: {
             expiryDate: {
-                lte: date,
-
+                gte: fromDate,
+                lte: toDate,
             },
             status: "ACTIVE",
+            isDeleted: false,
+        },
+        include: {
+            user: true,
+        },
+    });
+};
+
+const findExpiredProducts = (date) => {
+    return prisma.product.findMany({
+        where: {
+            expiryDate: {
+                lt: date,
+            },
+            status: {
+                not: "EXPIRED",
+            },
             isDeleted: false,
         },
         include: {
@@ -184,6 +201,8 @@ module.exports = {
     latestProducts,
 
     findExpiringProducts,
+
+    findExpiredProducts,
 
     updateStatus
 };
