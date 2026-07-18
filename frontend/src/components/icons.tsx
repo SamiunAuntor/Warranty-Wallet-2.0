@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 
-type IconName = "sparkles" | "arrow" | "scan" | "calendar" | "vault" | "support" | "receipt" | "warning" | "check" | "dashboard" | "products" | "documents" | "notifications" | "profile" | "settings" | "logout" | "claims" | "insights" | "clipboard" | "shield" | "laptop" | "printer" | "more";
+type IconName = "sparkles" | "arrow" | "scan" | "calendar" | "vault" | "support" | "receipt" | "warning" | "check" | "dashboard" | "products" | "documents" | "notifications" | "profile" | "settings" | "logout" | "claims" | "insights" | "clipboard" | "shield" | "laptop" | "printer" | "more" | "search" | "list" | "filter" | "plus" | "headphones" | "watch" | "upload" | "download" | "folder" | "link" | "image" | "chair";
 
 const paths: Record<IconName, React.ReactNode> = {
   sparkles: <path d="m12 3 1.2 3.8L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.2L12 3Zm-6 9 .8 2.2L9 15l-2.2.8L6 18l-.8-2.2L3 15l2.2-.8L6 12Zm11 2 .8 2.2L20 17l-2.2.8L17 20l-.8-2.2L14 17l2.2-.8L17 14Z" />,
@@ -26,6 +26,18 @@ const paths: Record<IconName, React.ReactNode> = {
   laptop: <><path d="M5 5h14v11H5z"/><path d="M3 19h18"/></>,
   printer: <><path d="M7 9V4h10v5M7 17H4v-7h16v7h-3"/><path d="M7 14h10v6H7z"/></>,
   more: <><circle cx="12" cy="5" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/></>,
+  search: <><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></>,
+  list: <><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1" fill="currentColor" stroke="none"/></>,
+  filter: <path d="M4 6h16M7 12h10m-7 6h4"/>,
+  plus: <path d="M12 5v14M5 12h14"/>,
+  headphones: <><path d="M4 13a8 8 0 0 1 16 0v6h-4v-6M4 13v6h4v-6"/><path d="M16 19c-1 1-2 2-4 2"/></>,
+  watch: <><rect x="7" y="6" width="10" height="12" rx="3"/><path d="m9 6 1-3h4l1 3m0 12-1 3h-4l-1-3"/></>,
+  upload: <><path d="M12 16V4m-4 4 4-4 4 4"/><path d="M4 15v5h16v-5"/></>,
+  download: <><path d="M12 4v12m-4-4 4 4 4-4"/><path d="M4 20h16"/></>,
+  folder: <path d="M3 6h7l2 2h9v11H3V6Z"/>,
+  link: <><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></>,
+  image: <><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m3 17 5-5 4 4 3-3 6 6"/></>,
+  chair: <><path d="M7 4h10v9H7zM5 13h14v4H5z"/><path d="M8 17v4m8-4v4"/></>,
 };
 
 export function Icon({ name, ...props }: SVGProps<SVGSVGElement> & { name: IconName }) {
