@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 
-type IconName = "sparkles" | "arrow" | "scan" | "calendar" | "vault" | "support" | "receipt" | "warning" | "check" | "dashboard" | "products" | "documents" | "notifications" | "profile" | "settings" | "logout";
+type IconName = "sparkles" | "arrow" | "scan" | "calendar" | "vault" | "support" | "receipt" | "warning" | "check" | "dashboard" | "products" | "documents" | "notifications" | "profile" | "settings" | "logout" | "claims" | "insights" | "clipboard" | "shield" | "laptop" | "printer" | "more" | "search" | "list" | "filter" | "plus" | "headphones" | "watch" | "upload" | "download" | "folder" | "link" | "image" | "chair";
 
 const paths: Record<IconName, React.ReactNode> = {
   sparkles: <path d="m12 3 1.2 3.8L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.2L12 3Zm-6 9 .8 2.2L9 15l-2.2.8L6 18l-.8-2.2L3 15l2.2-.8L6 12Zm11 2 .8 2.2L20 17l-2.2.8L17 20l-.8-2.2L14 17l2.2-.8L17 14Z" />,
@@ -19,6 +19,25 @@ const paths: Record<IconName, React.ReactNode> = {
   profile: <><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></>,
   settings: <><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1A8 8 0 0 0 15 6l-.3-2.5h-4L10.4 6A8 8 0 0 0 8.8 7L6.5 6l-2 3.4L6.6 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.3-1A8 8 0 0 0 10.4 18l.3 2.5h4L15 18a8 8 0 0 0 1.6-1l2.3 1 2-3.4-2-1.5a7 7 0 0 0 .1-1Z"/></>,
   logout: <><path d="M10 5H5v14h5M14 8l4 4-4 4m4-4H9"/></>,
+  claims: <><path d="M5 4h14v16H5zM9 4V2h6v2"/><path d="M12 8v5m0 3v.01"/></>,
+  insights: <><path d="M4 4h16v16H4z"/><path d="M8 16v-3m4 3V8m4 8v-5"/></>,
+  clipboard: <><path d="M8 4h8l1 2h3v15H4V6h3l1-2Z"/><path d="M9 11h6m-6 4h6"/></>,
+  shield: <><path d="M12 3 19 6v5c0 4.5-2.7 8-7 10-4.3-2-7-5.5-7-10V6l7-3Z"/><path d="m9 12 2 2 4-5"/></>,
+  laptop: <><path d="M5 5h14v11H5z"/><path d="M3 19h18"/></>,
+  printer: <><path d="M7 9V4h10v5M7 17H4v-7h16v7h-3"/><path d="M7 14h10v6H7z"/></>,
+  more: <><circle cx="12" cy="5" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/></>,
+  search: <><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></>,
+  list: <><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1" fill="currentColor" stroke="none"/></>,
+  filter: <path d="M4 6h16M7 12h10m-7 6h4"/>,
+  plus: <path d="M12 5v14M5 12h14"/>,
+  headphones: <><path d="M4 13a8 8 0 0 1 16 0v6h-4v-6M4 13v6h4v-6"/><path d="M16 19c-1 1-2 2-4 2"/></>,
+  watch: <><rect x="7" y="6" width="10" height="12" rx="3"/><path d="m9 6 1-3h4l1 3m0 12-1 3h-4l-1-3"/></>,
+  upload: <><path d="M12 16V4m-4 4 4-4 4 4"/><path d="M4 15v5h16v-5"/></>,
+  download: <><path d="M12 4v12m-4-4 4 4 4-4"/><path d="M4 20h16"/></>,
+  folder: <path d="M3 6h7l2 2h9v11H3V6Z"/>,
+  link: <><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></>,
+  image: <><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m3 17 5-5 4 4 3-3 6 6"/></>,
+  chair: <><path d="M7 4h10v9H7zM5 13h14v4H5z"/><path d="M8 17v4m8-4v4"/></>,
 };
 
 export function Icon({ name, ...props }: SVGProps<SVGSVGElement> & { name: IconName }) {

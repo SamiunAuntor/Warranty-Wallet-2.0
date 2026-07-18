@@ -107,19 +107,18 @@ Create a `.env` file in the `backend/` directory.
 ```env
 NODE_ENV=development
 PORT=5000
-CLIENT_URL=http://localhost:5173
+CLIENT_URL=http://localhost:3000
 
 DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE"
 
-FIREBASE_PROJECT_ID=your-firebase-project-id
-FIREBASE_CLIENT_EMAIL=your-firebase-client-email
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+FIREBASE_SERVICE_ACCOUNT_BASE64=your-base64-encoded-service-account-json
 
 CLOUDINARY_CLOUD_NAME=your-cloudinary-cloud-name
 CLOUDINARY_API_KEY=your-cloudinary-api-key
 CLOUDINARY_API_SECRET=your-cloudinary-api-secret
 
 STRIPE_SECRET_KEY=sk_test_or_live_key
+STRIPE_WEBHOOK_SECRET=whsec_your-webhook-signing-secret
 
 SMTP_HOST=smtp.example.com
 SMTP_PORT=587
@@ -131,7 +130,7 @@ GEMINI_API_KEY=your-gemini-api-key
 
 Important notes:
 
-- `FIREBASE_PRIVATE_KEY` can contain escaped newlines. The app converts `\\n` to real line breaks.
+- `FIREBASE_SERVICE_ACCOUNT_BASE64` is the Base64 encoding of the complete Firebase Admin service-account JSON file. It must only be stored on the backend.
 - `CLIENT_URL` is used by Stripe success and cancel redirects.
 - Keep `.env` out of version control.
 
@@ -642,12 +641,12 @@ npx prisma generate
 
 ## Troubleshooting
 
-### Firebase private key errors
+### Firebase service-account errors
 
-Make sure `FIREBASE_PRIVATE_KEY` is wrapped in quotes and uses escaped newlines:
+Make sure `FIREBASE_SERVICE_ACCOUNT_BASE64` contains the Base64 encoding of the complete JSON file, without quotes or line breaks:
 
 ```env
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+FIREBASE_SERVICE_ACCOUNT_BASE64=eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...snip
 ```
 
 ### Prisma cannot connect to the database
