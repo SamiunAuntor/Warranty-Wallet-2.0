@@ -24,9 +24,15 @@ enum UserPlan {
 }
 
 enum WarrantyStatus {
+  NO_WARRANTY
   ACTIVE
   EXPIRING_SOON
   EXPIRED
+}
+
+enum AssetLifecycleStatus {
+  ADDED
+  ARCHIVED
 }
 
 enum WarrantyType {
@@ -178,13 +184,17 @@ model Product {
 
   purchaseDate DateTime
 
-  warrantyDuration Int
+  hasWarranty Boolean @default(true)
 
-  warrantyType WarrantyType
+  warrantyDuration Int?
 
-  expiryDate DateTime
+  warrantyType WarrantyType?
 
-  status WarrantyStatus @default(ACTIVE)
+  expiryDate DateTime?
+
+  warrantyStatus WarrantyStatus @default(ACTIVE) @map("status")
+
+  lifecycleStatus AssetLifecycleStatus @default(ADDED)
 
   sellerName String?
 
@@ -220,12 +230,13 @@ model Product {
 
   @@index([userId])
   @@index([categoryId])
-  @@index([status])
+  @@index([warrantyStatus])
+  @@index([lifecycleStatus])
   @@index([expiryDate])
   @@index([purchaseDate])
   @@index([createdAt])
   @@index([isDeleted])
-  @@index([userId, status])
+  @@index([userId, warrantyStatus])
 }
 
 model Document {

@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { Icon } from "@/components/icons";
-import type { Asset, AssetInput, Category, WarrantyType } from "@/lib/assets-api";
+import type { Asset, AssetInput, AssetLifecycleStatus, Category, WarrantyType } from "@/lib/assets-api";
 
 type Props = {
   asset?: Asset | null;
@@ -17,6 +17,8 @@ const labelClass = "space-y-1.5 text-sm font-medium text-[#17243a]";
 
 export function AssetFormModal({ asset, categories, pending, onClose, onSubmit }: Props) {
   const [warrantyType, setWarrantyType] = useState<WarrantyType>(asset?.warrantyType ?? "MANUFACTURER");
+  const [hasWarranty, setHasWarranty] = useState(asset?.hasWarranty ?? true);
+  const [lifecycleStatus, setLifecycleStatus] = useState<AssetLifecycleStatus>(asset?.lifecycleStatus ?? "ADDED");
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -31,8 +33,10 @@ export function AssetFormModal({ asset, categories, pending, onClose, onSubmit }
       categoryId: String(form.get("categoryId")),
       purchasePrice: Number(form.get("purchasePrice")),
       purchaseDate: String(form.get("purchaseDate")),
-      warrantyDuration: Number(form.get("warrantyDuration")),
-      warrantyType,
+      hasWarranty,
+      warrantyDuration: hasWarranty ? Number(form.get("warrantyDuration")) : null,
+      warrantyType: hasWarranty ? warrantyType : null,
+      lifecycleStatus,
       sellerName: optional("sellerName"),
       sellerPhone: optional("sellerPhone"),
       sellerAddress: optional("sellerAddress"),
@@ -55,8 +59,10 @@ export function AssetFormModal({ asset, categories, pending, onClose, onSubmit }
         <label className={labelClass}>Category <span className="text-[#ba1a1a]">*</span><select name="categoryId" required defaultValue={asset?.categoryId ?? ""} className={inputClass}><option value="" disabled>Select a category</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
         <label className={labelClass}>Purchase price <span className="text-[#ba1a1a]">*</span><input name="purchasePrice" type="number" min="0.01" step="0.01" required defaultValue={asset?.purchasePrice} className={inputClass}/></label>
         <label className={labelClass}>Purchase date <span className="text-[#ba1a1a]">*</span><input name="purchaseDate" type="date" required defaultValue={asset?.purchaseDate.slice(0, 10)} className={inputClass}/></label>
-        <label className={labelClass}>Warranty duration (months) <span className="text-[#ba1a1a]">*</span><input name="warrantyDuration" type="number" min="1" step="1" required defaultValue={asset?.warrantyDuration ?? 12} className={inputClass}/></label>
-        <label className={labelClass}>Warranty type <span className="text-[#ba1a1a]">*</span><select value={warrantyType} onChange={(event) => setWarrantyType(event.target.value as WarrantyType)} className={inputClass}><option value="MANUFACTURER">Manufacturer</option><option value="EXTENDED">Extended</option></select></label>
+        <label className="flex items-center gap-3 text-sm font-medium text-[#17243a] sm:col-span-2"><input type="checkbox" checked={hasWarranty} onChange={(event) => setHasWarranty(event.target.checked)} className="h-4 w-4 accent-[#4b41e1]"/>This asset has a warranty</label>
+        {hasWarranty && <><label className={labelClass}>Warranty duration (months) <span className="text-[#ba1a1a]">*</span><input name="warrantyDuration" type="number" min="1" step="1" required defaultValue={asset?.warrantyDuration ?? 12} className={inputClass}/></label>
+        <label className={labelClass}>Warranty type <span className="text-[#ba1a1a]">*</span><select value={warrantyType} onChange={(event) => setWarrantyType(event.target.value as WarrantyType)} className={inputClass}><option value="MANUFACTURER">Manufacturer</option><option value="EXTENDED">Extended</option></select></label></>}
+        {asset && <label className={labelClass}>Asset state<select value={lifecycleStatus} onChange={(event) => setLifecycleStatus(event.target.value as AssetLifecycleStatus)} className={inputClass}><option value="ADDED">Added</option><option value="ARCHIVED">Archived</option></select></label>}
         <label className={labelClass}>Seller name<input name="sellerName" defaultValue={asset?.sellerName ?? ""} className={inputClass}/></label>
         <label className={labelClass}>Seller phone<input name="sellerPhone" defaultValue={asset?.sellerPhone ?? ""} className={inputClass}/></label>
         <label className={labelClass}>Image URL<input name="productImageUrl" type="url" defaultValue={asset?.productImageUrl ?? ""} className={inputClass}/></label>

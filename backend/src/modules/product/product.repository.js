@@ -1,10 +1,40 @@
 const prisma = require("../../config/prisma");
 
+const ACTIVE_CLAIM_STATUSES = ["DRAFT", "SUBMITTED", "UNDER_REVIEW", "APPROVED"];
+
+const claimSummary = {
+    claims: {
+        where: {
+            status: { in: ACTIVE_CLAIM_STATUSES },
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 3,
+        select: {
+            id: true,
+            claimNumber: true,
+            title: true,
+            status: true,
+            updatedAt: true,
+        },
+    },
+    _count: {
+        select: {
+            claims: {
+                where: {
+                    status: { in: ACTIVE_CLAIM_STATUSES },
+                },
+            },
+            documents: true,
+        },
+    },
+};
+
 const create = (payload) => {
     return prisma.product.create({
         data: payload,
         include: {
             category: true,
+            ...claimSummary,
         },
     });
 };
@@ -18,6 +48,28 @@ const findById = (id) => {
         include: {
             category: true,
             documents: true,
+            claims: {
+                orderBy: { updatedAt: "desc" },
+                include: {
+                    timeline: {
+                        orderBy: { createdAt: "desc" },
+                        take: 1,
+                    },
+                    _count: {
+                        select: { documents: true },
+                    },
+                },
+            },
+            _count: {
+                select: {
+                    documents: true,
+                    claims: {
+                        where: {
+                            status: { in: ACTIVE_CLAIM_STATUSES },
+                        },
+                    },
+                },
+            },
         },
     });
 };
@@ -51,6 +103,7 @@ const findMany = ({ where, orderBy, skip, take }) => {
 
         include: {
             category: true,
+            ...claimSummary,
         },
 
         orderBy,
@@ -101,7 +154,7 @@ const findByInvoiceNumber = (invoiceNumber) => {
 
 const dashboardStats = (userId) => {
     return prisma.product.groupBy({
-        by: ["status"],
+        by: ["warrantyStatus"],
 
         where: {
             userId,
@@ -140,7 +193,8 @@ const findExpiringProducts = (fromDate, toDate) => {
                 gte: fromDate,
                 lte: toDate,
             },
-            status: "ACTIVE",
+            warrantyStatus: "ACTIVE",
+            hasWarranty: true,
             isDeleted: false,
         },
         include: {
@@ -155,9 +209,10 @@ const findExpiredProducts = (date) => {
             expiryDate: {
                 lt: date,
             },
-            status: {
+            warrantyStatus: {
                 not: "EXPIRED",
             },
+            hasWarranty: true,
             isDeleted: false,
         },
         include: {
@@ -166,13 +221,13 @@ const findExpiredProducts = (date) => {
     });
 };
 
-const updateStatus = (id, status) => {
+const updateWarrantyStatus = (id, warrantyStatus) => {
     return prisma.product.update({
         where: {
             id,
         },
         data: {
-            status,
+            warrantyStatus,
         },
     });
 };
@@ -204,5 +259,5 @@ module.exports = {
 
     findExpiredProducts,
 
-    updateStatus
+    updateWarrantyStatus
 };

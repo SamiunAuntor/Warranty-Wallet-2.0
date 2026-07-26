@@ -1,4 +1,5 @@
-export type WarrantyStatus = "ACTIVE" | "EXPIRING_SOON" | "EXPIRED";
+export type WarrantyStatus = "NO_WARRANTY" | "ACTIVE" | "EXPIRING_SOON" | "EXPIRED";
+export type AssetLifecycleStatus = "ADDED" | "ARCHIVED";
 export type WarrantyType = "MANUFACTURER" | "EXTENDED";
 
 export type Category = {
@@ -19,10 +20,12 @@ export type Asset = {
   serialNumber: string | null;
   purchasePrice: string;
   purchaseDate: string;
-  warrantyDuration: number;
-  warrantyType: WarrantyType;
-  expiryDate: string;
-  status: WarrantyStatus;
+  hasWarranty: boolean;
+  warrantyDuration: number | null;
+  warrantyType: WarrantyType | null;
+  expiryDate: string | null;
+  warrantyStatus: WarrantyStatus;
+  lifecycleStatus: AssetLifecycleStatus;
   sellerName: string | null;
   sellerPhone: string | null;
   sellerAddress: string | null;
@@ -32,6 +35,8 @@ export type Asset = {
   updatedAt: string;
   category: Category;
   documents?: Array<{ id: string; fileName: string }>;
+  claims?: Array<{ id: string; claimNumber: string; title: string; status: string; updatedAt: string; _count?: { documents: number } }>;
+  _count?: { claims: number; documents: number };
 };
 
 export type AssetInput = {
@@ -42,8 +47,10 @@ export type AssetInput = {
   categoryId: string;
   purchasePrice: number;
   purchaseDate: string;
-  warrantyDuration: number;
-  warrantyType: WarrantyType;
+  hasWarranty: boolean;
+  warrantyDuration?: number | null;
+  warrantyType?: WarrantyType | null;
+  lifecycleStatus?: AssetLifecycleStatus;
   sellerName?: string;
   sellerPhone?: string;
   sellerAddress?: string;
@@ -98,7 +105,8 @@ export function getAssets(
     page: number;
     limit: number;
     search?: string;
-    status?: WarrantyStatus;
+    warrantyStatus?: WarrantyStatus;
+    lifecycleStatus?: AssetLifecycleStatus;
     categoryId?: string;
   },
 ) {
@@ -107,7 +115,8 @@ export function getAssets(
     limit: String(query.limit),
   });
   if (query.search) params.set("search", query.search);
-  if (query.status) params.set("status", query.status);
+  if (query.warrantyStatus) params.set("warrantyStatus", query.warrantyStatus);
+  if (query.lifecycleStatus) params.set("lifecycleStatus", query.lifecycleStatus);
   if (query.categoryId) params.set("categoryId", query.categoryId);
   return request<AssetList>(`/products?${params.toString()}`, token);
 }

@@ -12,7 +12,7 @@ const getProductStatistics = async (userId) => {
         prisma.product.count({
             where: {
                 userId,
-                status: "ACTIVE",
+                warrantyStatus: "ACTIVE",
                 isDeleted: false,
             },
         }),
@@ -20,7 +20,7 @@ const getProductStatistics = async (userId) => {
         prisma.product.count({
             where: {
                 userId,
-                status: "EXPIRING_SOON",
+                warrantyStatus: "EXPIRING_SOON",
                 isDeleted: false,
             },
         }),
@@ -28,7 +28,7 @@ const getProductStatistics = async (userId) => {
         prisma.product.count({
             where: {
                 userId,
-                status: "EXPIRED",
+                warrantyStatus: "EXPIRED",
                 isDeleted: false,
             },
         }),
@@ -206,7 +206,7 @@ const getWarrantyTimeline = async (userId, limit = 10) => {
 
             expiryDate: true,
 
-            status: true,
+            warrantyStatus: true,
 
         },
 

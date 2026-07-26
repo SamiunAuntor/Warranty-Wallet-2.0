@@ -28,11 +28,13 @@ const PAGE_SIZE = 8;
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 const date = new Intl.DateTimeFormat("en-US", { dateStyle: "medium" });
 const statusLabels: Record<WarrantyStatus, string> = {
+  NO_WARRANTY: "No warranty",
   ACTIVE: "Active",
   EXPIRING_SOON: "Expiring soon",
   EXPIRED: "Expired",
 };
 const statusStyles: Record<WarrantyStatus, { border: string; badge: string }> = {
+  NO_WARRANTY: { border: "border-t-[#8b91a1]", badge: "bg-[#eef0f4] text-[#596170]" },
   ACTIVE: { border: "border-t-[#66bf8a]", badge: "bg-[#e5f7ed] text-[#2c8657]" },
   EXPIRING_SOON: { border: "border-t-[#eca82e]", badge: "bg-[#fff3df] text-[#a75a0a]" },
   EXPIRED: { border: "border-t-[#d97982]", badge: "bg-[#fdecef] text-[#b74d5d]" },
@@ -76,7 +78,7 @@ export default function AssetsPage() {
           page,
           limit: PAGE_SIZE,
           search: search || undefined,
-          status: status || undefined,
+          warrantyStatus: status || undefined,
           categoryId: categoryId || undefined,
         }),
         getAssetUsage(token),
@@ -205,14 +207,14 @@ export default function AssetsPage() {
     {loading ? <Loading fullScreen={false} className="mt-6 min-h-80 rounded-xl" label="Loading assets"/> : error ? <section className="mt-6 rounded-xl border border-[#f1c4c4] bg-white p-10 text-center"><Icon name="warning" className="mx-auto h-8 w-8 text-[#ba1a1a]"/><h2 className="mt-3 font-semibold text-[#17243a]">Assets could not be loaded</h2><p className="mt-1 text-sm text-[#686d77]">{error}</p><button onClick={refresh} className="mt-4 rounded-lg bg-[#4b41e1] px-4 py-2 text-sm font-semibold text-white">Try again</button></section> : assets.length === 0 ? <section className="mt-6 rounded-xl border border-dashed border-[#c9ccd5] bg-white p-12 text-center"><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#eaf0ff] text-[#4b41e1]"><Icon name="products" className="h-7 w-7"/></div><h2 className="mt-4 text-lg font-semibold text-[#17243a]">{hasFilters ? "No matching assets" : "Your portfolio is empty"}</h2><p className="mx-auto mt-2 max-w-md text-sm text-[#686d77]">{hasFilters ? "Try a different search or clear the current filters." : "Add your first purchase to start tracking its warranty."}</p>{hasFilters ? <button onClick={clearFilters} className="mt-5 rounded-lg border border-[#c9ccd5] px-4 py-2 text-sm font-semibold">Clear filters</button> : <button onClick={() => setFormAsset("new")} disabled={atLimit} className="mt-5 rounded-lg bg-[#4b41e1] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Add your first asset</button>}</section> :
       <section className={`mt-6 grid gap-5 ${view === "grid" ? "sm:grid-cols-2 xl:grid-cols-4" : "grid-cols-1"}`}>
         {assets.map((asset) => {
-          const style = statusStyles[asset.status];
+          const style = statusStyles[asset.warrantyStatus];
           return <article key={asset.id} className={`group overflow-hidden rounded-xl border border-[#dfe2ea] border-t-4 bg-white shadow-[0_2px_7px_rgba(24,32,56,.06)] transition hover:-translate-y-0.5 hover:shadow-md ${style.border} ${view === "list" ? "md:flex" : ""}`}>
             <button onClick={() => void openDetails(asset)} className={`flex min-w-0 flex-1 gap-4 bg-[#f8f9fd] p-4 text-left ${view === "list" ? "md:w-2/5" : "w-full"}`}>
               <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-[#dce1eb] bg-gradient-to-br from-white to-[#dfe5e8] text-[#27364b]"><Icon name="products" className="h-8 w-8"/></div>
-              <div className="min-w-0 flex-1"><h2 className="truncate text-lg font-semibold text-[#172033]">{asset.name}</h2><p className="truncate text-sm text-[#686d77]">{asset.brand} · {asset.category.name}</p><span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${style.badge}`}>{statusLabels[asset.status]}</span></div>
+              <div className="min-w-0 flex-1"><h2 className="truncate text-lg font-semibold text-[#172033]">{asset.name}</h2><p className="truncate text-sm text-[#686d77]">{asset.brand} · {asset.category.name}</p><span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${style.badge}`}>{statusLabels[asset.warrantyStatus]}</span>{Boolean(asset._count?.claims) && <span className="ml-2 mt-2 inline-flex rounded-full bg-[#eee9ff] px-2.5 py-1 text-[10px] font-semibold text-[#5942d6]">{asset._count?.claims} active claim{asset._count?.claims === 1 ? "" : "s"}</span>}</div>
             </button>
             <div className={`border-t border-[#e5e7ee] p-4 ${view === "list" ? "flex flex-1 items-center gap-6 md:border-l md:border-t-0" : "min-h-40"}`}>
-              <button onClick={() => void openDetails(asset)} className="flex flex-1 justify-between gap-4 text-left"><div><p className="text-xs font-medium text-[#6a6f78]">{asset.status === "EXPIRED" ? "Expired" : "Expires"}</p><p className={`mt-1 text-sm font-medium ${asset.status === "ACTIVE" ? "text-[#17243a]" : "text-[#b55245]"}`}>{date.format(new Date(asset.expiryDate))}</p></div><div className="text-right"><p className="text-xs font-medium text-[#6a6f78]">Value</p><p className="mt-1 text-sm font-medium text-[#17243a]">{money.format(Number(asset.purchasePrice))}</p></div></button>
+              <button onClick={() => void openDetails(asset)} className="flex flex-1 justify-between gap-4 text-left"><div><p className="text-xs font-medium text-[#6a6f78]">{asset.hasWarranty ? asset.warrantyStatus === "EXPIRED" ? "Expired" : "Expires" : "Warranty"}</p><p className={`mt-1 text-sm font-medium ${asset.warrantyStatus === "ACTIVE" ? "text-[#17243a]" : "text-[#b55245]"}`}>{asset.expiryDate ? date.format(new Date(asset.expiryDate)) : "Not provided"}</p></div><div className="text-right"><p className="text-xs font-medium text-[#6a6f78]">Value</p><p className="mt-1 text-sm font-medium text-[#17243a]">{money.format(Number(asset.purchasePrice))}</p></div></button>
               <div className={`flex gap-2 ${view === "grid" ? "mt-8" : ""}`}><button onClick={() => void openDetails(asset)} className="flex-1 rounded-lg border border-[#c9ccd5] px-3 py-2 text-xs font-semibold text-[#27364b] hover:bg-[#f4f5fb]">View</button><button onClick={() => setFormAsset(asset)} className="flex-1 rounded-lg bg-[#eef0ff] px-3 py-2 text-xs font-semibold text-[#4b41e1] hover:bg-[#e2dfff]">Edit</button><button onClick={() => void removeAsset(asset)} className="rounded-lg px-3 py-2 text-xs font-semibold text-[#ba1a1a] hover:bg-[#fff0f0]" aria-label={`Delete ${asset.name}`}>Delete</button></div>
             </div>
           </article>;

@@ -86,7 +86,7 @@ const exportProductsExcel = async (user, query) => {
                 product.expiryDate,
 
             status:
-                product.status,
+                product.warrantyStatus,
 
             purchasePrice:
                 Number(product.purchasePrice),
@@ -131,7 +131,7 @@ const exportProductsPDF = async (user, query) => {
                 product.category.name,
 
             Warranty:
-                product.status,
+                product.warrantyStatus,
 
             Price:
                 Number(product.purchasePrice),
