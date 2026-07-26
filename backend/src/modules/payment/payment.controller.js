@@ -8,7 +8,8 @@ const paymentService = require("./payment.service");
 
 const createCheckout = asyncHandler(async (req, res) => {
     const session = await paymentService.createCheckoutSession(
-        req.user
+        req.user,
+        req.body.plan
     );
 
     return res.status(201).json(
@@ -129,9 +130,20 @@ const subscription = asyncHandler(async (req, res) => {
 
 });
 
+const plans = asyncHandler(async (req, res) => {
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            "Plans fetched successfully.",
+            paymentService.getPlans()
+        )
+    );
+});
+
 module.exports = {
     createCheckout,
     webhook,
     paymentHistory,
-    subscription
+    subscription,
+    plans,
 };

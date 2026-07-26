@@ -18,8 +18,9 @@ enum UserStatus {
 }
 
 enum UserPlan {
-  FREE
-  PREMIUM
+  BASIC
+  PLUS
+  PRO
 }
 
 enum WarrantyStatus {
@@ -98,7 +99,7 @@ model User {
 
   status UserStatus @default(ACTIVE)
 
-  plan UserPlan @default(FREE)
+  plan UserPlan @default(BASIC)
 
   lastLoginAt DateTime?
 
@@ -289,6 +290,8 @@ model Subscription {
 
   stripeCustomerId String?
 
+  stripeSubscriptionId String? @unique
+
   plan UserPlan
 
   status SubscriptionStatus @default(ACTIVE)
@@ -325,6 +328,8 @@ model Payment {
   currency String
 
   paymentMethod String
+
+  plan UserPlan?
 
   status PaymentStatus @default(PENDING)
 
