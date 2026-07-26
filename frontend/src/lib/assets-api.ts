@@ -8,6 +8,8 @@ export type Category = {
   slug: string;
   icon: string | null;
   description: string | null;
+  isActive: boolean;
+  _count?: { products: number };
 };
 
 export type Brand = {
@@ -16,6 +18,7 @@ export type Brand = {
   slug: string;
   description: string | null;
   websiteUrl: string | null;
+  isActive: boolean;
 };
 
 export type Asset = {
