@@ -31,6 +31,7 @@ type AuthContextValue = {
   requestPasswordReset: (email: string) => Promise<void>;
   verifyResetCode: (code: string) => Promise<string>;
   resetPassword: (code: string, password: string) => Promise<void>;
+  setCurrentAppUser: (user: AppUser) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -129,6 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     requestPasswordReset,
     verifyResetCode,
     resetPassword,
+    setCurrentAppUser: setAppUser,
   }), [firebaseUser, appUser, loading, register, login, loginWithGoogle, logout, requestPasswordReset, verifyResetCode, resetPassword]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

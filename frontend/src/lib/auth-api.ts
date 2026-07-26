@@ -11,6 +11,7 @@ export type AppUser = {
   status: "ACTIVE" | "BLOCKED" | "DELETED";
   plan: UserPlan;
   emailVerified: boolean;
+  phone?: string | null;
 };
 
 type ApiResponse<T> = { success: boolean; message: string; data: T };
@@ -36,5 +37,16 @@ export async function syncUser(firebaseUser: User, preferredName?: string): Prom
   if (!response.ok) {
     throw new Error(payload?.message || "Could not synchronize your account with Warranty Wallet.");
   }
+  return (payload as ApiResponse<AppUser>).data;
+}
+
+export async function updateAppUser(token: string, input: { name?: string; phone?: string | null; photoURL?: string | null }) {
+  const response = await fetch(`${API_URL}/users/profile`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(input),
+  });
+  const payload = await response.json().catch(() => null) as ApiResponse<AppUser> | { message?: string } | null;
+  if (!response.ok) throw new Error(payload?.message || "Could not update profile.");
   return (payload as ApiResponse<AppUser>).data;
 }
