@@ -8,6 +8,8 @@ export type Category = {
   slug: string;
   icon: string | null;
   description: string | null;
+  isActive: boolean;
+  _count?: { products: number };
 };
 
 export type Brand = {
