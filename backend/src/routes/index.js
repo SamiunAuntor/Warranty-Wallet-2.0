@@ -4,6 +4,7 @@ const router = express.Router();
 
 const userRoutes = require("../modules/user/user.route");
 const categoryRoutes = require("../modules/category/category.route");
+const brandRoutes = require("../modules/brand/brand.route");
 const productRoutes = require("../modules/product/product.route");
 const documentRoutes = require("../modules/document/document.route");
 const aiRoutes = require("../modules/ai/ai.route");
@@ -20,6 +21,7 @@ const claimRoutes = require("../modules/claim/claim.route");
 router.use("/users", userRoutes);
 
 router.use("/categories", categoryRoutes);
+router.use("/brands", brandRoutes);
 
 router.use("/products", productRoutes);
 

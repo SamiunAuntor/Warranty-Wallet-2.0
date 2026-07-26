@@ -10,10 +10,19 @@ export type Category = {
   description: string | null;
 };
 
+export type Brand = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  websiteUrl: string | null;
+};
+
 export type Asset = {
   id: string;
   userId: string;
   categoryId: string;
+  brandId: string | null;
   name: string;
   brand: string;
   model: string | null;
@@ -34,6 +43,7 @@ export type Asset = {
   createdAt: string;
   updatedAt: string;
   category: Category;
+  brandReference?: Brand | null;
   documents?: Array<{ id: string; fileName: string }>;
   claims?: Array<{ id: string; claimNumber: string; title: string; status: string; updatedAt: string; _count?: { documents: number } }>;
   _count?: { claims: number; documents: number };
@@ -42,6 +52,7 @@ export type Asset = {
 export type AssetInput = {
   name: string;
   brand: string;
+  brandId?: string | null;
   model?: string;
   serialNumber?: string;
   categoryId: string;
@@ -97,6 +108,10 @@ async function request<T>(path: string, token?: string, init?: RequestInit): Pro
 
 export function getCategories() {
   return request<Category[]>("/categories");
+}
+
+export function getBrands() {
+  return request<Brand[]>("/brands");
 }
 
 export function getAssets(

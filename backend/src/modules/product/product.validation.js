@@ -2,7 +2,8 @@ const { z } = require("zod");
 
 const productBody = z.object({
     name: z.string().trim().min(2).max(150),
-    brand: z.string().trim().min(2).max(80),
+        brand: z.string().trim().min(2).max(80),
+        brandId: z.string().cuid().nullable().optional(),
     model: z.string().trim().max(120).optional(),
     serialNumber: z.string().trim().max(150).optional(),
     categoryId: z.string().cuid(),
@@ -51,6 +52,7 @@ const updateProductSchema = z.object({
     body: z.object({
         name: z.string().trim().min(2).max(150).optional(),
         brand: z.string().trim().min(2).max(80).optional(),
+        brandId: z.string().cuid().nullable().optional(),
         model: z.string().trim().max(120).nullable().optional(),
         serialNumber: z.string().trim().max(150).nullable().optional(),
         categoryId: z.string().cuid().optional(),

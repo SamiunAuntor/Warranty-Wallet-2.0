@@ -14,11 +14,13 @@ import {
   getAsset,
   getAssets,
   getAssetUsage,
+  getBrands,
   getCategories,
   updateAsset,
   type Asset,
   type AssetInput,
   type AssetList,
+  type Brand,
   type Category,
   type WarrantyStatus,
 } from "@/lib/assets-api";
@@ -43,6 +45,7 @@ const statusStyles: Record<WarrantyStatus, { border: string; badge: string }> = 
 export default function AssetsPage() {
   const { firebaseUser, appUser } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
   const [result, setResult] = useState<AssetList | null>(null);
   const [usage, setUsage] = useState(0);
   const [searchInput, setSearchInput] = useState("");
@@ -66,6 +69,9 @@ export default function AssetsPage() {
     getCategories()
       .then(setCategories)
       .catch((categoryError) => toast.error(categoryError instanceof Error ? categoryError.message : "Could not load categories."));
+    getBrands()
+      .then(setBrands)
+      .catch((brandError) => toast.error(brandError instanceof Error ? brandError.message : "Could not load brands."));
   }, []);
 
   useEffect(() => {
@@ -224,7 +230,7 @@ export default function AssetsPage() {
 
     {result && result.meta.totalPages > 1 && <div className="mt-7 flex items-center justify-between rounded-xl border border-[#e0e3eb] bg-white px-4 py-3"><p className="text-sm text-[#686d77]">{pageSummary}</p><div className="flex items-center gap-2"><button onClick={() => { setLoading(true); setPage((value) => Math.max(1, value - 1)); }} disabled={page === 1} className="rounded-lg border border-[#c9ccd5] px-3 py-2 text-sm font-semibold disabled:opacity-40">Previous</button><span className="px-2 text-sm font-medium">Page {page} of {result.meta.totalPages}</span><button onClick={() => { setLoading(true); setPage((value) => Math.min(result.meta.totalPages, value + 1)); }} disabled={page === result.meta.totalPages} className="rounded-lg border border-[#c9ccd5] px-3 py-2 text-sm font-semibold disabled:opacity-40">Next</button></div></div>}
 
-    {formAsset && <AssetFormModal asset={formAsset === "new" ? null : formAsset} categories={categories} pending={saving} onClose={() => setFormAsset(null)} onSubmit={saveAsset}/>}
+    {formAsset && <AssetFormModal asset={formAsset === "new" ? null : formAsset} categories={categories} brands={brands} pending={saving} onClose={() => setFormAsset(null)} onSubmit={saveAsset}/>}
     {selectedAsset && <AssetDetailsModal asset={selectedAsset} onClose={() => setSelectedAsset(null)} onEdit={() => { setFormAsset(selectedAsset); setSelectedAsset(null); }} onDelete={() => void removeAsset(selectedAsset)}/>}
   </div>;
 }

@@ -1,5 +1,6 @@
 const productRepository = require("./product.repository");
 const categoryRepository = require("../category/category.repository");
+const brandRepository = require("../brand/brand.repository");
 
 const ApiError = require("../../utils/ApiError");
 
@@ -67,6 +68,13 @@ const createProduct = async (user, payload) => {
 
     if (!assetLimit) {
         throw new ApiError(500, `Unsupported user plan: ${user.plan}.`);
+    }
+    if (category.isActive === false) throw new ApiError(400, "Selected category is inactive.");
+
+    if (payload.brandId) {
+        const brand = await brandRepository.findById(payload.brandId);
+        if (!brand || !brand.isActive) throw new ApiError(404, "Brand not found.");
+        payload.brand = brand.name;
     }
 
     if (totalProducts >= assetLimit) {
@@ -174,6 +182,13 @@ const updateProduct = async (id, payload, user) => {
         if (!category) {
             throw new ApiError(404, "Category not found.");
         }
+        if (category.isActive === false) throw new ApiError(400, "Selected category is inactive.");
+    }
+
+    if (payload.brandId) {
+        const brand = await brandRepository.findById(payload.brandId);
+        if (!brand || !brand.isActive) throw new ApiError(404, "Brand not found.");
+        payload.brand = brand.name;
     }
 
     if (payload.serialNumber && payload.serialNumber !== product.serialNumber) {

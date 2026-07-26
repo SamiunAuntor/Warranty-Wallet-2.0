@@ -34,6 +34,7 @@ const create = (payload) => {
         data: payload,
         include: {
             category: true,
+            brandReference: true,
             ...claimSummary,
         },
     });
@@ -47,6 +48,7 @@ const findById = (id) => {
         },
         include: {
             category: true,
+            brandReference: true,
             documents: true,
             claims: {
                 orderBy: { updatedAt: "desc" },
@@ -103,6 +105,7 @@ const findMany = ({ where, orderBy, skip, take }) => {
 
         include: {
             category: true,
+            brandReference: true,
             ...claimSummary,
         },
 

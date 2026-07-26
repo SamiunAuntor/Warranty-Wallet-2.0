@@ -2,11 +2,12 @@
 
 import { useState, type FormEvent } from "react";
 import { Icon } from "@/components/icons";
-import type { Asset, AssetInput, AssetLifecycleStatus, Category, WarrantyType } from "@/lib/assets-api";
+import type { Asset, AssetInput, AssetLifecycleStatus, Brand, Category, WarrantyType } from "@/lib/assets-api";
 
 type Props = {
   asset?: Asset | null;
   categories: Category[];
+  brands: Brand[];
   pending: boolean;
   onClose: () => void;
   onSubmit: (input: AssetInput) => Promise<void>;
@@ -15,10 +16,13 @@ type Props = {
 const inputClass = "h-11 w-full rounded-lg border border-[#c9ccd5] bg-white px-3 text-sm outline-none transition focus:border-[#4b41e1] focus:ring-2 focus:ring-[#e2dfff]";
 const labelClass = "space-y-1.5 text-sm font-medium text-[#17243a]";
 
-export function AssetFormModal({ asset, categories, pending, onClose, onSubmit }: Props) {
+export function AssetFormModal({ asset, categories, brands, pending, onClose, onSubmit }: Props) {
   const [warrantyType, setWarrantyType] = useState<WarrantyType>(asset?.warrantyType ?? "MANUFACTURER");
   const [hasWarranty, setHasWarranty] = useState(asset?.hasWarranty ?? true);
   const [lifecycleStatus, setLifecycleStatus] = useState<AssetLifecycleStatus>(asset?.lifecycleStatus ?? "ADDED");
+  const initialBrandId = asset?.brandId ?? brands.find((item) => item.name.toLowerCase() === asset?.brand.toLowerCase())?.id ?? "";
+  const [brandId, setBrandId] = useState(initialBrandId);
+  const [customBrand, setCustomBrand] = useState(!initialBrandId);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -27,7 +31,8 @@ export function AssetFormModal({ asset, categories, pending, onClose, onSubmit }
 
     await onSubmit({
       name: String(form.get("name")).trim(),
-      brand: String(form.get("brand")).trim(),
+      brand: customBrand ? String(form.get("brand")).trim() : brands.find((item) => item.id === brandId)?.name ?? "",
+      brandId: customBrand ? null : brandId,
       model: optional("model"),
       serialNumber: optional("serialNumber"),
       categoryId: String(form.get("categoryId")),
@@ -53,7 +58,8 @@ export function AssetFormModal({ asset, categories, pending, onClose, onSubmit }
       </div>
       <form onSubmit={submit} className="grid gap-5 p-6 sm:grid-cols-2">
         <label className={labelClass}>Asset name <span className="text-[#ba1a1a]">*</span><input name="name" required minLength={2} maxLength={150} defaultValue={asset?.name} className={inputClass}/></label>
-        <label className={labelClass}>Brand <span className="text-[#ba1a1a]">*</span><input name="brand" required minLength={2} maxLength={80} defaultValue={asset?.brand} className={inputClass}/></label>
+        <label className={labelClass}>Brand <span className="text-[#ba1a1a]">*</span><select value={customBrand ? "__custom" : brandId} onChange={(event) => { const value = event.target.value; setCustomBrand(value === "__custom"); setBrandId(value === "__custom" ? "" : value); }} required className={inputClass}><option value="" disabled>Select a brand</option>{brands.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}<option value="__custom">Other — type a brand</option></select></label>
+        {customBrand && <label className={labelClass}>Custom brand <span className="text-[#ba1a1a]">*</span><input name="brand" required minLength={2} maxLength={80} defaultValue={asset?.brand ?? ""} className={inputClass}/></label>}
         <label className={labelClass}>Model<input name="model" defaultValue={asset?.model ?? ""} className={inputClass}/></label>
         <label className={labelClass}>Serial number<input name="serialNumber" defaultValue={asset?.serialNumber ?? ""} className={inputClass}/></label>
         <label className={labelClass}>Category <span className="text-[#ba1a1a]">*</span><select name="categoryId" required defaultValue={asset?.categoryId ?? ""} className={inputClass}><option value="" disabled>Select a category</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
