@@ -37,7 +37,7 @@ export const createCategory = (token: string, input: { name: string; description
 export const updateCategory = (token: string, id: string, input: Partial<Category>) => request<Category>(`/categories/${id}`, token, { method: "PATCH", body: JSON.stringify(input) });
 export const deleteCategory = (token: string, id: string) => request<null>(`/categories/${id}`, token, { method: "DELETE" });
 export const getAdminBrands = async (token: string) => (await request<Brand[]>("/brands?includeInactive=true", token)).data;
-export const createBrand = (token: string, input: { name: string; description?: string }) => request<Brand>("/brands", token, { method: "POST", body: JSON.stringify(input) });
+export const createBrand = (token: string, input: { name: string; description?: string; websiteUrl?: string | null }) => request<Brand>("/brands", token, { method: "POST", body: JSON.stringify(input) });
 export const updateBrand = (token: string, id: string, input: Partial<Brand> & { isActive?: boolean }) => request<Brand>(`/brands/${id}`, token, { method: "PATCH", body: JSON.stringify(input) });
 export const deleteBrand = (token: string, id: string) => request<null>(`/brands/${id}`, token, { method: "DELETE" });
 export const getAdminPayments = async (token: string, query: Record<string, string | number | undefined>) => { const result = await request<AdminPayment[]>(`/admin/payments?${params(query)}`, token); return { data: result.data, meta: result.meta! }; };

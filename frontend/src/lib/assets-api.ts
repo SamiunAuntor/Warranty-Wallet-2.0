@@ -18,6 +18,7 @@ export type Brand = {
   slug: string;
   description: string | null;
   websiteUrl: string | null;
+  isActive: boolean;
 };
 
 export type Asset = {
