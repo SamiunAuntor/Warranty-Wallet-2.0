@@ -1,4 +1,5 @@
 const multer = require("multer");
+const ApiError = require("../utils/ApiError");
 
 const {
     MAX_FILE_SIZE,
@@ -15,7 +16,7 @@ const fileFilter = (req, file, cb) => {
         )
     ) {
         return cb(
-            new Error("Unsupported file type"),
+            new ApiError(400, "Unsupported file type. Use PDF, JPG, PNG, or WebP."),
             false
         );
     }

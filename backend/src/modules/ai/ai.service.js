@@ -1,6 +1,18 @@
 const ai = require("../../config/gemini");
 
 const ApiError = require("../../utils/ApiError");
+const { z } = require("zod");
+
+const extractedDocumentSchema = z.object({
+    productName: z.string().nullable().optional(),
+    brand: z.string().nullable().optional(),
+    purchaseDate: z.string().nullable().optional(),
+    purchasePrice: z.number().nullable().optional(),
+    sellerName: z.string().nullable().optional(),
+    invoiceNumber: z.string().nullable().optional(),
+    warrantyDuration: z.number().int().nonnegative().nullable().optional(),
+    confidence: z.number().min(0).max(1).nullable().optional(),
+});
 
 const extractInvoice = async (file) => {
 
@@ -72,11 +84,11 @@ No comments.
 
         });
 
-    const text = response.text.trim();
+    const text = response.text.trim().replace(/^```json\s*/i, "").replace(/```$/, "").trim();
 
     try {
 
-        return JSON.parse(text);
+        return extractedDocumentSchema.parse(JSON.parse(text));
 
     } catch {
 
@@ -91,4 +103,5 @@ No comments.
 
 module.exports = {
     extractInvoice,
+    extractedDocumentSchema,
 };

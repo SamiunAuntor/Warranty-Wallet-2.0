@@ -7,6 +7,7 @@ const create = (payload) =>
 
 const findAll = () =>
     prisma.category.findMany({
+        where: { isActive: true },
         orderBy: {
             name: "asc",
         },

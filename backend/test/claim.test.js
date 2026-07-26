@@ -116,3 +116,62 @@ test("claim details enforce claim ownership", async (t) => {
         (error) => error.statusCode === 403
     );
 });
+
+test("users cannot perform administrator claim transitions", async (t) => {
+    const originalFindClaim = claimRepository.findById;
+    claimRepository.findById = async () => ({
+        id: "claim-1",
+        userId: user.id,
+        status: "SUBMITTED",
+        documents: [],
+    });
+    t.after(() => {
+        claimRepository.findById = originalFindClaim;
+    });
+
+    await assert.rejects(
+        claimService.updateClaim("claim-1", user, { status: "UNDER_REVIEW" }),
+        (error) => error.statusCode === 403
+    );
+});
+
+test("invalid claim transitions are rejected for administrators", async (t) => {
+    const originalFindClaim = claimRepository.findById;
+    claimRepository.findById = async () => ({
+        id: "claim-1",
+        userId: user.id,
+        status: "SUBMITTED",
+        documents: [],
+    });
+    t.after(() => {
+        claimRepository.findById = originalFindClaim;
+    });
+
+    await assert.rejects(
+        claimService.updateClaim("claim-1", { id: "admin-1", role: "ADMIN" }, { status: "RESOLVED" }),
+        (error) => error.statusCode === 409
+    );
+});
+
+test("users can submit their own draft claim", async (t) => {
+    const originalFindClaim = claimRepository.findById;
+    const originalUpdate = claimRepository.update;
+    let received;
+    claimRepository.findById = async () => ({
+        id: "claim-1",
+        userId: user.id,
+        status: "DRAFT",
+        documents: [],
+    });
+    claimRepository.update = async (_claim, payload) => {
+        received = payload;
+    };
+    t.after(() => {
+        claimRepository.findById = originalFindClaim;
+        claimRepository.update = originalUpdate;
+    });
+
+    await claimService.updateClaim("claim-1", user, { status: "SUBMITTED" });
+    assert.equal(received.status, "SUBMITTED");
+    assert.ok(received.filedAt instanceof Date);
+});

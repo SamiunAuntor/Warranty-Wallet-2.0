@@ -1,5 +1,6 @@
 const productRepository = require("./product.repository");
 const categoryRepository = require("../category/category.repository");
+const brandRepository = require("../brand/brand.repository");
 
 const ApiError = require("../../utils/ApiError");
 
@@ -7,7 +8,46 @@ const { PRODUCT_LIMIT } = require("./product.constant");
 
 const { calculateExpiryDate, calculateWarrantyStatus, } = require("./product.utils");
 
-const { pagination, search, filter, sort } = require("../../utils/query");
+const { pagination, search, sort } = require("../../utils/query");
+
+const warrantyFields = (payload, product = null) => {
+    const hasWarranty = payload.hasWarranty ?? product?.hasWarranty ?? true;
+
+    if (!hasWarranty) {
+        return {
+            hasWarranty: false,
+            warrantyDuration: null,
+            warrantyType: null,
+            expiryDate: null,
+            warrantyStatus: "NO_WARRANTY",
+        };
+    }
+
+    const warrantyDuration = payload.warrantyDuration !== undefined
+        ? payload.warrantyDuration
+        : product?.warrantyDuration;
+    const warrantyType = payload.warrantyType !== undefined
+        ? payload.warrantyType
+        : product?.warrantyType;
+    const purchaseDate = payload.purchaseDate || product?.purchaseDate;
+
+    if (!warrantyDuration || !warrantyType) {
+        throw new ApiError(
+            400,
+            "Warranty duration and warranty type are required for assets with a warranty."
+        );
+    }
+
+    const expiryDate = calculateExpiryDate(purchaseDate, warrantyDuration);
+
+    return {
+        hasWarranty: true,
+        warrantyDuration,
+        warrantyType,
+        expiryDate,
+        warrantyStatus: calculateWarrantyStatus(expiryDate),
+    };
+};
 
 const createProduct = async (user, payload) => {
     // Check category exists
@@ -29,6 +69,13 @@ const createProduct = async (user, payload) => {
     if (!assetLimit) {
         throw new ApiError(500, `Unsupported user plan: ${user.plan}.`);
     }
+    if (category.isActive === false) throw new ApiError(400, "Selected category is inactive.");
+
+    if (payload.brandId) {
+        const brand = await brandRepository.findById(payload.brandId);
+        if (!brand || !brand.isActive) throw new ApiError(404, "Brand not found.");
+        payload.brand = brand.name;
+    }
 
     if (totalProducts >= assetLimit) {
         throw new ApiError(
@@ -46,20 +93,14 @@ const createProduct = async (user, payload) => {
         }
     }
 
-    // Calculate expiry
-    const expiryDate = calculateExpiryDate(payload.purchaseDate, payload.warrantyDuration);
-
-    // Calculate status
-    const status = calculateWarrantyStatus(expiryDate);
+    const warranty = warrantyFields(payload);
 
     return productRepository.create({
         ...payload,
 
         userId: user.id,
 
-        expiryDate,
-
-        status,
+        ...warranty,
     });
 };
 
@@ -74,7 +115,11 @@ const getProducts = async (user, query) => {
             "brand",
         ]),
 
-        ...filter(query),
+        ...(query.categoryId && { categoryId: query.categoryId }),
+
+        ...(query.warrantyStatus && { warrantyStatus: query.warrantyStatus }),
+
+        ...(query.lifecycleStatus && { lifecycleStatus: query.lifecycleStatus }),
     };
 
     const orderBy = sort(query);
@@ -137,6 +182,13 @@ const updateProduct = async (id, payload, user) => {
         if (!category) {
             throw new ApiError(404, "Category not found.");
         }
+        if (category.isActive === false) throw new ApiError(400, "Selected category is inactive.");
+    }
+
+    if (payload.brandId) {
+        const brand = await brandRepository.findById(payload.brandId);
+        if (!brand || !brand.isActive) throw new ApiError(404, "Brand not found.");
+        payload.brand = brand.name;
     }
 
     if (payload.serialNumber && payload.serialNumber !== product.serialNumber) {
@@ -147,24 +199,14 @@ const updateProduct = async (id, payload, user) => {
         }
     }
 
-    let expiryDate = product.expiryDate;
-
-    let status = product.status;
-
-    if (payload.purchaseDate || payload.warrantyDuration) {
-        expiryDate = calculateExpiryDate(payload.purchaseDate || product.purchaseDate, payload.warrantyDuration || product.warrantyDuration);
-
-        status = calculateWarrantyStatus(expiryDate);
-    }
+    const warranty = warrantyFields(payload, product);
 
     return productRepository.update(
         id,
         {
             ...payload,
 
-            expiryDate,
-
-            status,
+            ...warranty,
         }
     );
 };

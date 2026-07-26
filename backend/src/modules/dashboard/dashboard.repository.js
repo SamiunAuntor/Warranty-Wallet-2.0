@@ -12,7 +12,7 @@ const getProductStatistics = async (userId) => {
         prisma.product.count({
             where: {
                 userId,
-                status: "ACTIVE",
+                warrantyStatus: "ACTIVE",
                 isDeleted: false,
             },
         }),
@@ -20,7 +20,7 @@ const getProductStatistics = async (userId) => {
         prisma.product.count({
             where: {
                 userId,
-                status: "EXPIRING_SOON",
+                warrantyStatus: "EXPIRING_SOON",
                 isDeleted: false,
             },
         }),
@@ -28,7 +28,7 @@ const getProductStatistics = async (userId) => {
         prisma.product.count({
             where: {
                 userId,
-                status: "EXPIRED",
+                warrantyStatus: "EXPIRED",
                 isDeleted: false,
             },
         }),
@@ -190,6 +190,12 @@ const getWarrantyTimeline = async (userId, limit = 10) => {
 
             isDeleted: false,
 
+            hasWarranty: true,
+
+            lifecycleStatus: "ADDED",
+
+            expiryDate: { not: null },
+
         },
 
         orderBy: {
@@ -206,7 +212,7 @@ const getWarrantyTimeline = async (userId, limit = 10) => {
 
             expiryDate: true,
 
-            status: true,
+            warrantyStatus: true,
 
         },
 
@@ -425,6 +431,12 @@ module.exports = {
 
     getDocumentStatistics,
 
+    getOpenClaimsCount,
+
+    getRecentDocuments,
+
+    getAiProcessingCount,
+
     getNotificationStatistics,
 
     getRecentNotifications,
@@ -444,3 +456,32 @@ module.exports = {
     getProductGrowth,
 
 };
+
+const getOpenClaimsCount = (userId) => prisma.claim.count({
+    where: {
+        userId,
+        status: { in: ["DRAFT", "SUBMITTED", "UNDER_REVIEW", "APPROVED"] },
+    },
+});
+
+const getRecentDocuments = (userId, limit = 5) => prisma.document.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    select: {
+        id: true,
+        fileName: true,
+        fileType: true,
+        ocrProcessed: true,
+        createdAt: true,
+        product: { select: { id: true, name: true } },
+    },
+});
+
+const getAiProcessingCount = (userId) => prisma.document.count({
+    where: {
+        userId,
+        fileType: { in: ["INVOICE", "RECEIPT", "WARRANTY_CARD"] },
+        ocrProcessed: false,
+    },
+});

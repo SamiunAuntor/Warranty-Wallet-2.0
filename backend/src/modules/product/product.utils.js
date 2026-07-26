@@ -10,7 +10,11 @@ const calculateExpiryDate = (purchaseDate, duration) => {
     return expiry;
 };
 
-const calculateWarrantyStatus = (expiryDate) => {
+const calculateWarrantyStatus = (expiryDate, hasWarranty = true) => {
+    if (!hasWarranty || !expiryDate) {
+        return WARRANTY_STATUS.NO_WARRANTY;
+    }
+
     const today = new Date();
 
     const days = Math.ceil(

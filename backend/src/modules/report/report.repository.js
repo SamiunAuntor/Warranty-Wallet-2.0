@@ -15,7 +15,7 @@ const getProductsReport = async ({
     }
 
     if (filters.status) {
-        where.status = filters.status;
+        where.warrantyStatus = filters.status;
     }
 
     if (filters.categoryId) {
@@ -76,7 +76,7 @@ const getWarrantyReport = async ({
     }
 
     if (filters.status) {
-        where.status = filters.status;
+        where.warrantyStatus = filters.status;
     }
 
     return prisma.product.findMany({

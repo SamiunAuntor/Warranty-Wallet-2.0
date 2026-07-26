@@ -3,6 +3,7 @@ const claimRepository = require("./claim.repository");
 const productRepository = require("../product/product.repository");
 const ApiError = require("../../utils/ApiError");
 const { pagination } = require("../../utils/query");
+const { CLAIM_TRANSITIONS, TERMINAL_CLAIM_STATUSES } = require("./claim.constant");
 
 const claimNumber = () =>
     `CLM-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(2).toString("hex").toUpperCase()}`;
@@ -47,6 +48,20 @@ const validateDocuments = async (documentIds, productId, user) => {
     }
 
     return uniqueIds;
+};
+
+const assertStatusTransition = (claim, nextStatus, user) => {
+    if (!nextStatus || nextStatus === claim.status) return;
+    if (!CLAIM_TRANSITIONS[claim.status]?.includes(nextStatus)) {
+        throw new ApiError(409, `A claim cannot move from ${claim.status} to ${nextStatus}.`);
+    }
+    if (user.role !== "ADMIN") {
+        const userCanSubmit = claim.status === "DRAFT" && nextStatus === "SUBMITTED";
+        const userCanCancel = nextStatus === "CANCELLED";
+        if (!userCanSubmit && !userCanCancel) {
+            throw new ApiError(403, "Only an administrator can perform this claim status transition.");
+        }
+    }
 };
 
 const createClaim = async (user, payload) => {
@@ -100,6 +115,13 @@ const getClaim = (id, user) => assertClaimOwnership(id, user);
 
 const updateClaim = async (id, user, payload) => {
     const claim = await assertClaimOwnership(id, user);
+    assertStatusTransition(claim, payload.status, user);
+    if (TERMINAL_CLAIM_STATUSES.includes(claim.status)) {
+        throw new ApiError(409, "A completed claim can no longer be edited.");
+    }
+    if (payload.resolution !== undefined && user.role !== "ADMIN") {
+        throw new ApiError(403, "Only an administrator can record a claim resolution.");
+    }
     const update = {
         ...payload,
         ...(payload.status === "SUBMITTED" && !claim.filedAt && { filedAt: new Date() }),
@@ -119,12 +141,22 @@ const updateClaim = async (id, user, payload) => {
 };
 
 const deleteClaim = async (id, user) => {
-    await assertClaimOwnership(id, user);
+    const claim = await assertClaimOwnership(id, user);
+    if (user.role !== "ADMIN" && !["DRAFT", "CANCELLED"].includes(claim.status)) {
+        throw new ApiError(409, "Only draft or cancelled claims can be deleted.");
+    }
     await claimRepository.remove(id);
 };
 
 const addTimelineEvent = async (id, user, payload) => {
-    await assertClaimOwnership(id, user);
+    const claim = await assertClaimOwnership(id, user);
+    if (TERMINAL_CLAIM_STATUSES.includes(claim.status)) {
+        throw new ApiError(409, "A completed claim can no longer receive timeline updates.");
+    }
+    assertStatusTransition(claim, payload.status, user);
+    if (user.role !== "ADMIN" && payload.status && payload.status !== "CANCELLED") {
+        throw new ApiError(403, "Only an administrator can update claim progress.");
+    }
     await claimRepository.addTimelineEvent(id, payload);
     return assertClaimOwnership(id, user);
 };

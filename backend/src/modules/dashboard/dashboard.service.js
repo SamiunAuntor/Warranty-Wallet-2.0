@@ -14,6 +14,9 @@ const getUserDashboard = async (user) => {
         recentActivities,
         categoryDistribution,
         warrantyTimeline,
+        openClaims,
+        recentDocuments,
+        aiProcessing,
     ] = await Promise.all([
 
         dashboardRepository.getProductStatistics(userId),
@@ -29,6 +32,12 @@ const getUserDashboard = async (user) => {
         dashboardRepository.getCategoryDistribution(userId),
 
         dashboardRepository.getWarrantyTimeline(userId),
+
+        dashboardRepository.getOpenClaimsCount(userId),
+
+        dashboardRepository.getRecentDocuments(userId),
+
+        dashboardRepository.getAiProcessingCount(userId),
 
     ]);
 
@@ -52,7 +61,19 @@ const getUserDashboard = async (user) => {
 
             total: documentCount,
 
+            recent: recentDocuments,
+
+            aiProcessing,
+
         },
+
+        claims: { open: openClaims },
+
+        warrantyHealth: productStats.total === 0
+            ? 100
+            : Math.max(0, Math.round(
+                ((productStats.active + (productStats.expiringSoon * 0.5)) / productStats.total) * 100
+            )),
 
         notifications: notificationStats,
 

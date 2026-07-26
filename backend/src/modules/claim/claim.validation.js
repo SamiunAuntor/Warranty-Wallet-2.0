@@ -1,14 +1,7 @@
 const { z } = require("zod");
 
-const CLAIM_STATUSES = [
-    "DRAFT",
-    "SUBMITTED",
-    "UNDER_REVIEW",
-    "APPROVED",
-    "REJECTED",
-    "RESOLVED",
-    "CANCELLED",
-];
+const { CLAIM_STATUS } = require("./claim.constant");
+const CLAIM_STATUSES = Object.values(CLAIM_STATUS);
 
 const claimIdParams = z.object({
     id: z.string().cuid(),

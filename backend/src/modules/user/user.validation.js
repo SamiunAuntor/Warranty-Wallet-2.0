@@ -9,10 +9,10 @@ const syncUserSchema = z.object({
 
 const updateProfileSchema = z.object({
     body: z.object({
-        name: z.string().min(2).optional(),
-        phone: z.string().optional(),
-        photoURL: z.string().optional(),
-    }),
+        name: z.string().trim().min(2).max(100).optional(),
+        phone: z.string().trim().min(7).max(30).nullable().optional(),
+        photoURL: z.string().url().nullable().optional(),
+    }).refine((body) => Object.keys(body).length > 0, "At least one field is required."),
 });
 
 module.exports = {

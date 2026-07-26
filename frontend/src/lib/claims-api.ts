@@ -9,6 +9,18 @@ export type ClaimStatus =
   | "RESOLVED"
   | "CANCELLED";
 
+export const claimTransitions: Record<ClaimStatus, ClaimStatus[]> = {
+  DRAFT: ["SUBMITTED", "CANCELLED"],
+  SUBMITTED: ["UNDER_REVIEW", "CANCELLED"],
+  UNDER_REVIEW: ["APPROVED", "REJECTED", "CANCELLED"],
+  APPROVED: ["RESOLVED", "CANCELLED"],
+  REJECTED: [],
+  RESOLVED: [],
+  CANCELLED: [],
+};
+
+export const terminalClaimStatuses: ClaimStatus[] = ["REJECTED", "RESOLVED", "CANCELLED"];
+
 export type AssetDocument = {
   id: string;
   productId: string;

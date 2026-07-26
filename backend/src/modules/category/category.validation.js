@@ -11,6 +11,7 @@ const createCategorySchema = z.object({
             .max(50),
 
         icon: z.string().url().optional(),
+        description: z.string().trim().max(500).nullable().optional(),
     }),
 });
 
@@ -18,6 +19,8 @@ const updateCategorySchema = z.object({
     body: z.object({
         name: z.string().trim().min(2).max(50).optional(),
         icon: z.string().url().optional(),
+        description: z.string().trim().max(500).nullable().optional(),
+        isActive: z.boolean().optional(),
     }),
 });
 

@@ -24,9 +24,15 @@ enum UserPlan {
 }
 
 enum WarrantyStatus {
+  NO_WARRANTY
   ACTIVE
   EXPIRING_SOON
   EXPIRED
+}
+
+enum AssetLifecycleStatus {
+  ADDED
+  ARCHIVED
 }
 
 enum WarrantyType {
@@ -157,12 +163,25 @@ model Category {
   products Product[]
 }
 
+model Brand {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  websiteUrl  String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
+}
+
 model Product {
   id String @id @default(cuid())
 
   userId String
 
   categoryId String
+  brandId    String?
 
   name String
 
@@ -178,13 +197,17 @@ model Product {
 
   purchaseDate DateTime
 
-  warrantyDuration Int
+  hasWarranty Boolean @default(true)
 
-  warrantyType WarrantyType
+  warrantyDuration Int?
 
-  expiryDate DateTime
+  warrantyType WarrantyType?
 
-  status WarrantyStatus @default(ACTIVE)
+  expiryDate DateTime?
+
+  warrantyStatus WarrantyStatus @default(ACTIVE) @map("status")
+
+  lifecycleStatus AssetLifecycleStatus @default(ADDED)
 
   sellerName String?
 
@@ -212,7 +235,8 @@ model Product {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  category Category @relation(fields: [categoryId], references: [id])
+  category       Category @relation(fields: [categoryId], references: [id])
+  brandReference Brand?   @relation(fields: [brandId], references: [id], onDelete: SetNull)
 
   documents Document[]
 
@@ -220,12 +244,14 @@ model Product {
 
   @@index([userId])
   @@index([categoryId])
-  @@index([status])
+  @@index([brandId])
+  @@index([warrantyStatus])
+  @@index([lifecycleStatus])
   @@index([expiryDate])
   @@index([purchaseDate])
   @@index([createdAt])
   @@index([isDeleted])
-  @@index([userId, status])
+  @@index([userId, warrantyStatus])
 }
 
 model Document {
@@ -360,6 +386,10 @@ model Notification {
 
   type NotificationType
 
+  entityId String?
+
+  eventKey String?
+
   isRead Boolean @default(false)
 
   createdAt DateTime @default(now())
@@ -368,6 +398,7 @@ model Notification {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, type, entityId, eventKey])
   @@index([userId])
   @@index([createdAt])
   @@index([userId, isRead])
