@@ -147,20 +147,34 @@ const broadcastNotification = async ({ title, message, type, }) => {
 
 };
 
-const notifyWarrantyExpiry = async ({ userId, productId, productName, }) => {
+const notifyWarrantyExpiry = async ({ userId, productId, productName, expiryDate, expired = false }) => {
+    const eventKey = `${expired ? "expired" : "expiring"}:${new Date(expiryDate).toISOString().slice(0, 10)}`;
+    const existing = await notificationRepository.findByEvent({
+        userId,
+        type: "REMINDER",
+        entityId: productId,
+        eventKey,
+    });
+    if (existing) return existing;
 
     return notificationRepository.create({
 
         userId,
 
         title:
-            "Warranty Expiring Soon",
+            expired ? "Warranty Expired" : "Warranty Expiring Soon",
 
         message:
-            `Your warranty for "${productName}" is expiring soon.`,
+            expired
+                ? `Your warranty for "${productName}" has expired.`
+                : `Your warranty for "${productName}" is expiring soon.`,
 
         type:
             "REMINDER",
+
+        entityId: productId,
+
+        eventKey,
 
     });
 

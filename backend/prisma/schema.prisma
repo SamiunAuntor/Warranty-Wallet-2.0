@@ -386,6 +386,10 @@ model Notification {
 
   type NotificationType
 
+  entityId String?
+
+  eventKey String?
+
   isRead Boolean @default(false)
 
   createdAt DateTime @default(now())
@@ -394,6 +398,7 @@ model Notification {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, type, entityId, eventKey])
   @@index([userId])
   @@index([createdAt])
   @@index([userId, isRead])

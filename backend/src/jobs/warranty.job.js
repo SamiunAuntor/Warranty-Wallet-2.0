@@ -38,6 +38,8 @@ const processExpiringSoon = async () => {
 
                 productName: product.name,
 
+                expiryDate: product.expiryDate,
+
             });
 
             await activityService.logActivity({
@@ -107,6 +109,14 @@ const processExpired = async () => {
                 product.id,
                 "EXPIRED"
             );
+
+            await notificationService.notifyWarrantyExpiry({
+                userId: product.userId,
+                productId: product.id,
+                productName: product.name,
+                expiryDate: product.expiryDate,
+                expired: true,
+            });
 
             await activityService.logActivity({
 
