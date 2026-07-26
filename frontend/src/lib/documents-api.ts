@@ -21,6 +21,16 @@ export type DocumentRecord = {
   vendorName: string | null;
   ocrProcessed: boolean;
   ocrConfidence: number | null;
+  ocrRaw: {
+    productName?: string | null;
+    brand?: string | null;
+    purchaseDate?: string | null;
+    purchasePrice?: number | null;
+    sellerName?: string | null;
+    invoiceNumber?: string | null;
+    warrantyDuration?: number | null;
+    confidence?: number | null;
+  } | null;
   createdAt: string;
   updatedAt: string;
   product: Asset;

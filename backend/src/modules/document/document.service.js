@@ -8,6 +8,27 @@ const ApiError = require("../../utils/ApiError");
 
 const { DOCUMENT_TYPE, MAX_FILES_PER_UPLOAD } = require("./document.constant");
 const { pagination } = require("../../utils/query");
+const aiService = require("../ai/ai.service");
+
+const EXTRACTABLE_TYPES = new Set([
+    DOCUMENT_TYPE.INVOICE,
+    DOCUMENT_TYPE.RECEIPT,
+    DOCUMENT_TYPE.WARRANTY_CARD,
+]);
+
+const extractMetadata = async (file, type) => {
+    if (!EXTRACTABLE_TYPES.has(type)) {
+        return { ocrProcessed: false, ocrConfidence: null, ocrRaw: null };
+    }
+    const data = await aiService.extractInvoice(file);
+    return {
+        invoiceNumber: data.invoiceNumber || null,
+        vendorName: data.sellerName || null,
+        ocrProcessed: true,
+        ocrConfidence: data.confidence ?? null,
+        ocrRaw: data,
+    };
+};
 
 const hasValidSignature = (file) => {
     if (!file?.buffer) return false;
@@ -86,6 +107,7 @@ const uploadDocuments = async ({ user, productId, files, type, }) => {
     const uploadedDocuments = [];
 
     for (const file of files) {
+        const extracted = await extractMetadata(file, type);
 
         const uploaded =
             await uploadFile(file.buffer, getFolder(type));
@@ -235,6 +257,8 @@ const replaceDocument = async ({ id, user, file, }) => {
         throw new ApiError(400, "The replacement file's contents do not match its declared type.");
     }
 
+    const extracted = await extractMetadata(file, document.fileType);
+
     const uploaded = await uploadFile(
         file.buffer,
         getFolder(document.fileType)
@@ -252,6 +276,7 @@ const replaceDocument = async ({ id, user, file, }) => {
 
             fileSize:
                 file.size,
+            ...extracted,
         });
 
     await deleteImage(document.publicId);
