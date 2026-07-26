@@ -1,0 +1,2 @@
+import Link from "next/link";
+export default function PaymentCancelPage() { return <main className="flex min-h-screen items-center justify-center bg-[#f8f9ff] p-5"><div className="max-w-md rounded-2xl border bg-white p-8 text-center shadow-lg"><h1 className="text-2xl font-semibold">Checkout cancelled</h1><p className="mt-3 text-sm text-[#626773]">No payment was made and your current plan remains unchanged.</p><Link href="/dashboard/billing" className="mt-6 inline-flex rounded-lg bg-[#5b47ee] px-5 py-3 text-sm font-semibold text-white">Back to billing</Link></div></main>; }

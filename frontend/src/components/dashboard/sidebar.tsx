@@ -9,7 +9,7 @@ import { toast } from "@/lib/notifications";
 import { plans } from "@/constants/plans";
 
 const items = [
-  ["dashboard", "Dashboard", "/dashboard"], ["products", "Assets", "/dashboard/assets"], ["claims", "Claims", "/dashboard/claims"], ["documents", "Documents", "/dashboard/documents"],
+  ["dashboard", "Dashboard", "/dashboard"], ["products", "Assets", "/dashboard/assets"], ["claims", "Claims", "/dashboard/claims"], ["documents", "Documents", "/dashboard/documents"], ["clipboard", "Billing", "/dashboard/billing"],
 ] as const;
 
 export function Sidebar() {
