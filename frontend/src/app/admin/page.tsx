@@ -1,0 +1,1 @@
+export default function AdminPage() { return <div><h1 className="text-3xl font-semibold text-[#111d32]">Admin Overview</h1><p className="mt-2 text-sm text-[#626773]">Administrative analytics are loading in the next dashboard module.</p></div>; }
