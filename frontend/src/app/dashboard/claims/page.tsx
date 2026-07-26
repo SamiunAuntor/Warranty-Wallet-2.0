@@ -16,6 +16,8 @@ import {
   getClaim,
   getClaims,
   updateClaim,
+  claimTransitions,
+  terminalClaimStatuses,
   type AssetDocument,
   type Claim,
   type ClaimInput,
@@ -39,7 +41,7 @@ const badges: Record<ClaimStatus, string> = {
 };
 
 export default function ClaimsPage() {
-  const { firebaseUser } = useAuth();
+  const { firebaseUser, appUser } = useAuth();
   const [result, setResult] = useState<ClaimList | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [assetDocuments, setAssetDocuments] = useState<AssetDocument[]>([]);
@@ -258,13 +260,13 @@ export default function ClaimsPage() {
 
           <div className="mt-6 border-t border-[#d8dbe2] pt-5"><h3 className="text-lg font-semibold text-[#172033]">Timeline</h3><div className="mt-4">{selectedClaim.timeline.map((event, index) => <TimelineItem key={event.id} event={event} active={index === 0}/>)}</div></div>
 
-          <form onSubmit={submitTimeline} className="mt-5 space-y-2 rounded-xl border border-[#ded9ff] bg-[#faf9ff] p-3"><h3 className="text-sm font-semibold text-[#372a91]">Add timeline update</h3><input name="title" required minLength={2} placeholder="Update title" className="h-9 w-full rounded-lg border border-[#d4d0e8] px-3 text-xs outline-none"/><textarea name="description" rows={2} placeholder="What happened?" className="w-full rounded-lg border border-[#d4d0e8] px-3 py-2 text-xs outline-none"/><select name="status" defaultValue="" className="h-9 w-full rounded-lg border border-[#d4d0e8] px-2 text-xs"><option value="">Keep current status</option>{Object.keys(badges).map((value) => <option key={value} value={value}>{statusLabel(value as ClaimStatus)}</option>)}</select><button disabled={saving} className="h-9 w-full rounded-lg bg-[#5b47ee] text-xs font-semibold text-white disabled:opacity-50">{saving ? "Saving…" : "Add update"}</button></form>
-          <button onClick={() => void removeClaim()} className="mt-4 w-full rounded-lg px-3 py-2 text-xs font-semibold text-[#a83e4c] hover:bg-[#fff0f1]">Delete claim</button>
+          {!terminalClaimStatuses.includes(selectedClaim.status) && <form onSubmit={submitTimeline} className="mt-5 space-y-2 rounded-xl border border-[#ded9ff] bg-[#faf9ff] p-3"><h3 className="text-sm font-semibold text-[#372a91]">Add timeline update</h3><input name="title" required minLength={2} placeholder="Update title" className="h-9 w-full rounded-lg border border-[#d4d0e8] px-3 text-xs outline-none"/><textarea name="description" rows={2} placeholder="What happened?" className="w-full rounded-lg border border-[#d4d0e8] px-3 py-2 text-xs outline-none"/><select name="status" defaultValue="" className="h-9 w-full rounded-lg border border-[#d4d0e8] px-2 text-xs"><option value="">Keep current status</option>{(appUser?.role === "ADMIN" ? claimTransitions[selectedClaim.status] : ["CANCELLED"] as ClaimStatus[]).map((value) => <option key={value} value={value}>{statusLabel(value)}</option>)}</select><button disabled={saving} className="h-9 w-full rounded-lg bg-[#5b47ee] text-xs font-semibold text-white disabled:opacity-50">{saving ? "Saving…" : "Add update"}</button></form>}
+          {(appUser?.role === "ADMIN" || ["DRAFT", "CANCELLED"].includes(selectedClaim.status)) && <button onClick={() => void removeClaim()} className="mt-4 w-full rounded-lg px-3 py-2 text-xs font-semibold text-[#a83e4c] hover:bg-[#fff0f1]">Delete claim</button>}
         </aside>}
       </div>
     }
 
-    {formClaim && <ClaimFormModal claim={formClaim === "new" ? null : formClaim} assets={assets} documents={assetDocuments} pending={saving} onAssetChange={(assetId) => void loadDocuments(assetId)} onClose={() => setFormClaim(null)} onSubmit={saveClaim}/>}
+    {formClaim && <ClaimFormModal claim={formClaim === "new" ? null : formClaim} assets={assets} documents={assetDocuments} pending={saving} isAdmin={appUser?.role === "ADMIN"} onAssetChange={(assetId) => void loadDocuments(assetId)} onClose={() => setFormClaim(null)} onSubmit={saveClaim}/>}
   </div>;
 }
 

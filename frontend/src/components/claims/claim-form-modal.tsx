@@ -2,13 +2,14 @@
 
 import { useState, type FormEvent } from "react";
 import type { Asset } from "@/lib/assets-api";
-import type { AssetDocument, Claim, ClaimInput, ClaimStatus, ClaimUpdate } from "@/lib/claims-api";
+import { claimTransitions, type AssetDocument, type Claim, type ClaimInput, type ClaimStatus, type ClaimUpdate } from "@/lib/claims-api";
 
 type Props = {
   claim?: Claim | null;
   assets: Asset[];
   documents: AssetDocument[];
   pending: boolean;
+  isAdmin: boolean;
   onAssetChange: (assetId: string) => void;
   onClose: () => void;
   onSubmit: (input: ClaimInput | ClaimUpdate) => Promise<void>;
@@ -17,7 +18,7 @@ type Props = {
 const inputClass = "h-11 w-full rounded-lg border border-[#c9ccd5] bg-white px-3 text-sm outline-none focus:border-[#5b47ee] focus:ring-2 focus:ring-[#e4dfff]";
 const labelClass = "space-y-1.5 text-sm font-medium text-[#17243a]";
 
-export function ClaimFormModal({ claim, assets, documents, pending, onAssetChange, onClose, onSubmit }: Props) {
+export function ClaimFormModal({ claim, assets, documents, pending, isAdmin, onAssetChange, onClose, onSubmit }: Props) {
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -26,13 +27,16 @@ export function ClaimFormModal({ claim, assets, documents, pending, onAssetChang
     const serviceCenter = String(form.get("serviceCenter") ?? "").trim() || undefined;
 
     if (claim) {
-      await onSubmit({
+      const update: ClaimUpdate = {
         title: String(form.get("title")).trim(),
         issueDescription: String(form.get("issueDescription")).trim(),
         serviceCenter: serviceCenter ?? null,
-        resolution: String(form.get("resolution") ?? "").trim() || null,
-        status: String(form.get("status")) as ClaimStatus,
-      });
+      };
+      if (isAdmin) {
+        update.resolution = String(form.get("resolution") ?? "").trim() || null;
+        update.status = String(form.get("status")) as ClaimStatus;
+      }
+      await onSubmit(update);
       return;
     }
 
@@ -54,8 +58,8 @@ export function ClaimFormModal({ claim, assets, documents, pending, onAssetChang
         <label className={`${labelClass} sm:col-span-2`}>Issue title <span className="text-[#ba1a1a]">*</span><input name="title" required minLength={3} maxLength={150} defaultValue={claim?.title} placeholder="e.g. Display stopped working" className={inputClass}/></label>
         <label className={`${labelClass} sm:col-span-2`}>Issue description <span className="text-[#ba1a1a]">*</span><textarea name="issueDescription" required minLength={10} maxLength={3000} rows={5} defaultValue={claim?.issueDescription} className="w-full rounded-lg border border-[#c9ccd5] bg-white px-3 py-2 text-sm outline-none focus:border-[#5b47ee] focus:ring-2 focus:ring-[#e4dfff]"/></label>
         <label className={labelClass}>Service center<input name="serviceCenter" maxLength={200} defaultValue={claim?.serviceCenter ?? ""} className={inputClass}/></label>
-        <label className={labelClass}>Status <span className="text-[#ba1a1a]">*</span><select name="status" defaultValue={claim?.status ?? "SUBMITTED"} className={inputClass}>{claim ? <><option value="DRAFT">Draft</option><option value="SUBMITTED">Submitted</option><option value="UNDER_REVIEW">Under review</option><option value="APPROVED">Approved</option><option value="REJECTED">Rejected</option><option value="RESOLVED">Resolved</option><option value="CANCELLED">Cancelled</option></> : <><option value="SUBMITTED">Submit now</option><option value="DRAFT">Save as draft</option></>}</select></label>
-        {claim && <label className={`${labelClass} sm:col-span-2`}>Resolution<textarea name="resolution" maxLength={3000} rows={3} defaultValue={claim.resolution ?? ""} className="w-full rounded-lg border border-[#c9ccd5] bg-white px-3 py-2 text-sm outline-none focus:border-[#5b47ee] focus:ring-2 focus:ring-[#e4dfff]"/></label>}
+        {(!claim || isAdmin) && <label className={labelClass}>Status <span className="text-[#ba1a1a]">*</span><select name="status" defaultValue={claim?.status ?? "SUBMITTED"} className={inputClass}>{claim ? <><option value={claim.status}>{claim.status.replaceAll("_", " ")}</option>{claimTransitions[claim.status].map((status) => <option key={status} value={status}>{status.replaceAll("_", " ")}</option>)}</> : <><option value="SUBMITTED">Submit now</option><option value="DRAFT">Save as draft</option></>}</select></label>}
+        {claim && isAdmin && <label className={`${labelClass} sm:col-span-2`}>Resolution<textarea name="resolution" maxLength={3000} rows={3} defaultValue={claim.resolution ?? ""} className="w-full rounded-lg border border-[#c9ccd5] bg-white px-3 py-2 text-sm outline-none focus:border-[#5b47ee] focus:ring-2 focus:ring-[#e4dfff]"/></label>}
         {!claim && documents.length > 0 && <fieldset className="sm:col-span-2"><legend className="text-sm font-medium text-[#17243a]">Attach asset documents</legend><div className="mt-2 grid gap-2 sm:grid-cols-2">{documents.map((document) => <label key={document.id} className="flex items-center gap-3 rounded-lg border border-[#dfe2ea] bg-white p-3 text-sm"><input type="checkbox" checked={selectedDocuments.includes(document.id)} onChange={(event) => setSelectedDocuments((current) => event.target.checked ? [...current, document.id] : current.filter((id) => id !== document.id))}/><span className="min-w-0 truncate">{document.fileName}</span></label>)}</div></fieldset>}
         <div className="flex justify-end gap-3 border-t border-[#e1e4ec] pt-5 sm:col-span-2"><button type="button" onClick={onClose} disabled={pending} className="h-11 rounded-lg border border-[#c9ccd5] bg-white px-5 text-sm font-semibold">Cancel</button><button disabled={pending || (!claim && assets.length === 0)} className="h-11 rounded-lg bg-[#5b47ee] px-5 text-sm font-semibold text-white hover:bg-[#6e5cf5] disabled:opacity-50">{pending ? "Saving…" : claim ? "Save changes" : "Create claim"}</button></div>
       </form>
