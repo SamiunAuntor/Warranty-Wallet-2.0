@@ -13,6 +13,7 @@ const paymentRoutes = require("../modules/payment/payment.route");
 const dashboardRoutes = require("../modules/dashboard/dashboard.route");
 const adminRoutes = require("../modules/admin/admin.route");
 const reportRoutes = require("../modules/report/report.route");
+const claimRoutes = require("../modules/claim/claim.route");
 
 
 
@@ -21,6 +22,8 @@ router.use("/users", userRoutes);
 router.use("/categories", categoryRoutes);
 
 router.use("/products", productRoutes);
+
+router.use("/claims", claimRoutes);
 
 router.use("/", documentRoutes);
 
