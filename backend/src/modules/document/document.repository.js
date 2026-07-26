@@ -49,6 +49,24 @@ const findManyByProduct = async ( productId, fileType = null) => {
     });
 };
 
+const findMany = ({ where, skip, take }) =>
+    prisma.document.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { createdAt: "desc" },
+        include: {
+            product: {
+                include: { category: true },
+            },
+            _count: {
+                select: { claims: true },
+            },
+        },
+    });
+
+const count = (where) => prisma.document.count({ where });
+
 const countByProduct = async (  productId) => {
     return prisma.document.count({
         where: {
@@ -119,6 +137,10 @@ module.exports = {
     findById,
 
     findManyByProduct,
+
+    findMany,
+
+    count,
 
     countByProduct,
 

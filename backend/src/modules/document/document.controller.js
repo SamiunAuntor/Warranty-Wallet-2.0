@@ -43,6 +43,18 @@ const getDocuments = asyncHandler(async (req, res) => {
 
 });
 
+const listDocuments = asyncHandler(async (req, res) => {
+    const result = await documentService.listDocuments(req.user, req.query);
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            "Documents fetched successfully.",
+            result
+        )
+    );
+});
+
 const getDocument = asyncHandler(async (req, res) => {
     const document = await documentService.getDocument(
         req.params.id,
@@ -120,6 +132,8 @@ module.exports = {
     uploadDocuments,
 
     getDocuments,
+
+    listDocuments,
 
     getDocument,
 

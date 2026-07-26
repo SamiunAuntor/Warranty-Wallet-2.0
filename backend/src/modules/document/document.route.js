@@ -8,11 +8,13 @@ const auth = require("../../middlewares/auth.middleware");
 const validate = require("../../middlewares/validate.middleware");
 const upload = require("../../middlewares/upload.middleware");
 
-const { createDocumentSchema, documentIdSchema } = require("./document.validation");
+const { createDocumentSchema, documentIdSchema, listDocumentsSchema } = require("./document.validation");
 
 router.post("/products/:productId/documents", auth, upload.multiple, validate(createDocumentSchema), controller.uploadDocuments);
 
 router.get("/products/:productId/documents", auth, controller.getDocuments);
+
+router.get("/documents", auth, validate(listDocumentsSchema), controller.listDocuments);
 
 router.get("/documents/statistics", auth, controller.getDocumentStatistics);
 

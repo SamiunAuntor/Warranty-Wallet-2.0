@@ -7,6 +7,25 @@ const deleteImage = require("../../utils/deleteCloudinaryFile");
 const ApiError = require("../../utils/ApiError");
 
 const { DOCUMENT_TYPE, MAX_FILES_PER_UPLOAD } = require("./document.constant");
+const { pagination } = require("../../utils/query");
+
+const hasValidSignature = (file) => {
+    if (!file?.buffer) return false;
+
+    const signatures = {
+        "application/pdf": Buffer.from("%PDF"),
+        "image/jpeg": Buffer.from([0xff, 0xd8, 0xff]),
+        "image/png": Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    };
+
+    if (file.mimetype === "image/webp") {
+        return file.buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
+            file.buffer.subarray(8, 12).toString("ascii") === "WEBP";
+    }
+
+    const signature = signatures[file.mimetype];
+    return Boolean(signature && file.buffer.subarray(0, signature.length).equals(signature));
+};
 
 const getFolder = (type) => {
     switch (type) {
@@ -50,6 +69,10 @@ const uploadDocuments = async ({ user, productId, files, type, }) => {
 
     if (files.length > MAX_FILES_PER_UPLOAD) {
         throw new ApiError(400, `Maximum ${MAX_FILES_PER_UPLOAD} files allowed.`);
+    }
+
+    if (files.some((file) => !hasValidSignature(file))) {
+        throw new ApiError(400, "A file's contents do not match its declared PDF or image type.");
     }
 
     if (type === DOCUMENT_TYPE.INVOICE || type === DOCUMENT_TYPE.WARRANTY_CARD) {
@@ -119,6 +142,36 @@ const getDocuments = async (user, productId) => {
     );
 };
 
+const listDocuments = async (user, query) => {
+    const { skip, take, page, limit } = pagination(query);
+    const where = {
+        ...(user.role !== "ADMIN" && { userId: user.id }),
+        ...(query.productId && { productId: query.productId }),
+        ...(query.type && { fileType: query.type }),
+        ...(query.search && {
+            OR: [
+                { fileName: { contains: query.search, mode: "insensitive" } },
+                { vendorName: { contains: query.search, mode: "insensitive" } },
+                { product: { name: { contains: query.search, mode: "insensitive" } } },
+            ],
+        }),
+    };
+    const [documents, total] = await Promise.all([
+        documentRepository.findMany({ where, skip, take }),
+        documentRepository.count(where),
+    ]);
+
+    return {
+        data: documents,
+        meta: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+        },
+    };
+};
+
 const getDocument = async (id, user) => {
     const document = await documentRepository.findById(id);
 
@@ -174,16 +227,20 @@ const replaceDocument = async ({ id, user, file, }) => {
         );
     }
 
-    await deleteImage(document.publicId);
+    if (!file) {
+        throw new ApiError(400, "A replacement file is required.");
+    }
+
+    if (!hasValidSignature(file)) {
+        throw new ApiError(400, "The replacement file's contents do not match its declared type.");
+    }
 
     const uploaded = await uploadFile(
         file.buffer,
         getFolder(document.fileType)
     );
 
-    return documentRepository.update(
-        id,
-        {
+    const updated = await documentRepository.update(id, {
             fileName:
                 file.originalname,
 
@@ -195,8 +252,11 @@ const replaceDocument = async ({ id, user, file, }) => {
 
             fileSize:
                 file.size,
-        }
-    );
+        });
+
+    await deleteImage(document.publicId);
+
+    return updated;
 };
 
 const getDocumentStatistics =
@@ -213,6 +273,8 @@ module.exports = {
     uploadDocuments,
 
     getDocuments,
+
+    listDocuments,
 
     getDocument,
 
