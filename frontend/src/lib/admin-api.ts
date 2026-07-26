@@ -11,6 +11,7 @@ export type AdminPayment = Payment & { user: { id: string; name: string; email: 
 export type AdminStats = { totalUsers: number; activeUsers: number; blockedUsers: number; paidUsers: number; totalProducts: number; totalCategories: number; totalPayments: number; totalRevenue: string | number };
 export type RevenuePoint = { createdAt?: string; _sum?: { amount?: string | number | null }; month?: number; revenue?: string | number };
 export type GrowthPoint = { createdAt?: string; _count?: { id?: number }; month?: number; count?: number };
+export type Activity = { id: string; title: string; description: string | null; type: string; entity: string; createdAt: string };
 
 type Envelope<T> = { data: T; message: string; meta?: Meta };
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api/v1";
@@ -42,4 +43,10 @@ export const updateBrand = (token: string, id: string, input: Partial<Brand> & {
 export const deleteBrand = (token: string, id: string) => request<null>(`/brands/${id}`, token, { method: "DELETE" });
 export const getAdminPayments = async (token: string, query: Record<string, string | number | undefined>) => { const result = await request<AdminPayment[]>(`/admin/payments?${params(query)}`, token); return { data: result.data, meta: result.meta! }; };
 export const broadcast = (token: string, input: { title: string; message: string; type: string }) => request<null>("/admin/notifications", token, { method: "POST", body: JSON.stringify(input) });
+export const getAdminActivities = async (token: string) => { const result = await request<Activity[]>("/activities?page=1&limit=20", token); return result.data; };
+export async function downloadAdminReport(token: string, report: string, format: "PDF" | "EXCEL") {
+  const response = await fetch(`${API_URL}/reports/${report}?format=${format}`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!response.ok) { const error = await response.json().catch(() => null); throw new Error(error?.message || "Report download failed."); }
+  const blob = await response.blob(); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `${report.replaceAll("/", "-")}.${format === "PDF" ? "pdf" : "xlsx"}`; link.click(); URL.revokeObjectURL(url);
+}
 export { type Asset, type Brand, type Category, type Claim, type ClaimStatus };
