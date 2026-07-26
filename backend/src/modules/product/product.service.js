@@ -22,16 +22,19 @@ const createProduct = async (user, payload) => {
         );
     }
 
-    // Check plan limit
-    if (user.plan === "FREE") {
-        const totalProducts =
-            await productRepository.countUserProducts(
-                user.id
-            );
+    // Enforce the asset limit for every subscription tier.
+    const assetLimit = PRODUCT_LIMIT[user.plan];
+    const totalProducts = await productRepository.countUserProducts(user.id);
 
-        if (totalProducts >= PRODUCT_LIMIT.FREE) {
-            throw new ApiError(403, "Free users can only add up to 10 products. Upgrade to Premium.");
-        }
+    if (!assetLimit) {
+        throw new ApiError(500, `Unsupported user plan: ${user.plan}.`);
+    }
+
+    if (totalProducts >= assetLimit) {
+        throw new ApiError(
+            403,
+            `${user.plan} users can add up to ${assetLimit} assets. Upgrade your plan to add more.`
+        );
     }
 
     // Check duplicate serial number

@@ -1,332 +1,195 @@
 const stripe = require("../../config/stripe");
 const prisma = require("../../config/prisma");
-
 const paymentRepository = require("./payment.repository");
-
 const notificationService = require("../notification/notification.service");
 const activityService = require("../activity/activity.service");
-
 const emailService = require("../../services/email.service");
-
 const paymentTemplate = require("../../templates/paymentSuccess.template");
-
 const ApiError = require("../../utils/ApiError");
-
 const { pagination } = require("../../utils/query");
-
-const { PREMIUM_PRICE, CURRENCY, } = require("./payment.constant");
+const { PLAN_CONFIG, PAID_PLANS } = require("../../constants/plans");
+const { CURRENCY } = require("./payment.constant");
 
 const CLIENT_URL = process.env.CLIENT_URL;
 
-const createCheckoutSession = async (user) => {
-    if (user.plan === "PREMIUM") {
-
-        throw new ApiError(
-            400,
-            "You already have Premium."
-        );
-
+const createCheckoutSession = async (user, plan) => {
+    if (!PAID_PLANS.includes(plan)) {
+        throw new ApiError(400, "Checkout is only available for Plus and Pro plans.");
     }
 
+    if (user.plan === plan) {
+        throw new ApiError(400, `You already have the ${PLAN_CONFIG[plan].name} plan.`);
+    }
+
+    if (PAID_PLANS.includes(user.plan)) {
+        throw new ApiError(
+            400,
+            "Plan changes for active subscriptions are not available through checkout."
+        );
+    }
+
+    const selectedPlan = PLAN_CONFIG[plan];
     const session = await stripe.checkout.sessions.create({
-
-        mode: "payment",
-
-        payment_method_types: [
-            "card",
-        ],
-
-        customer_email:
-            user.email,
-
+        mode: "subscription",
+        payment_method_types: ["card"],
+        customer_email: user.email,
         metadata: {
             userId: user.id,
+            plan,
         },
-
+        subscription_data: {
+            metadata: {
+                userId: user.id,
+                plan,
+            },
+        },
         line_items: [
             {
                 quantity: 1,
-
                 price_data: {
-
-                    currency:
-                        CURRENCY,
-
+                    currency: CURRENCY,
                     product_data: {
-
-                        name:
-                            "WarrantyWallet Premium",
-
+                        name: `Warranty Wallet ${selectedPlan.name}`,
                     },
-
-                    unit_amount:
-                        PREMIUM_PRICE *
-                        100,
-
+                    recurring: {
+                        interval: "month",
+                    },
+                    unit_amount: selectedPlan.price * 100,
                 },
             },
         ],
-
-        success_url:
-            `${CLIENT_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-
-        cancel_url:
-            `${CLIENT_URL}/payment/cancel`,
+        success_url: `${CLIENT_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${CLIENT_URL}/payment/cancel`,
     });
 
     await paymentRepository.createPayment({
-
         userId: user.id,
-
-        amount: PREMIUM_PRICE,
-
+        amount: selectedPlan.price,
         currency: CURRENCY,
-
-        stripeSessionId:
-            session.id,
-
-        paymentMethod:
-            "STRIPE",
-
+        stripeSessionId: session.id,
+        paymentMethod: "STRIPE",
+        plan,
         status: "PENDING",
     });
 
-    return {
-        url: session.url,
-    };
+    return { url: session.url };
 };
 
-
 const handleWebhook = async (session) => {
-    const payment = await paymentRepository.findPaymentBySessionId(
-        session.id
-    );
+    const payment = await paymentRepository.findPaymentBySessionId(session.id);
 
     if (!payment) {
-
-        throw new ApiError(
-            404,
-            "Payment not found."
-        );
-
+        throw new ApiError(404, "Payment not found.");
     }
 
-    if (
-        payment.status ===
-        "SUCCESS"
-    ) {
+    if (payment.status === "SUCCESS") return;
 
-        return;
-
+    const plan = session.metadata?.plan;
+    if (!PAID_PLANS.includes(plan)) {
+        throw new ApiError(400, "Stripe session contains an invalid plan.");
     }
 
-    await prisma.$transaction(
-        async () => {
+    const selectedPlan = PLAN_CONFIG[plan];
+    const now = new Date();
+    const expires = new Date(now);
+    expires.setMonth(expires.getMonth() + 1);
 
-            await paymentRepository.updatePayment(
-                payment.id,
-                {
-                    status:
-                        "SUCCESS",
+    await prisma.$transaction(async (tx) => {
+        await tx.payment.update({
+            where: { id: payment.id },
+            data: {
+                status: "SUCCESS",
+                stripePaymentIntent: session.payment_intent || null,
+            },
+        });
 
-                    stripePaymentIntent:
-                        session.payment_intent,
-                }
-            );
+        const subscription = await tx.subscription.findUnique({
+            where: { userId: payment.userId },
+        });
+        const subscriptionPayload = {
+            latestPaymentId: payment.id,
+            stripeCustomerId: session.customer || null,
+            stripeSubscriptionId: session.subscription || null,
+            plan,
+            status: "ACTIVE",
+            startsAt: now,
+            expiresAt: expires,
+            isActive: true,
+        };
 
-            const now =
-                new Date();
-
-            const expires =
-                new Date();
-
-            expires.setFullYear(
-                now.getFullYear() + 1
-            );
-
-            const subscription =
-                await paymentRepository.findSubscription(
-                    payment.userId
-                );
-
-            if (
-                subscription
-            ) {
-
-                await paymentRepository.updateSubscription(
-                    payment.userId,
-                    {
-                        latestPaymentId:
-                            payment.id,
-
-                        plan:
-                            "PREMIUM",
-
-                        startsAt:
-                            now,
-
-                        expiresAt:
-                            expires,
-
-                        isActive:
-                            true,
-                    }
-                );
-
-            } else {
-
-                await paymentRepository.createSubscription(
-                    {
-
-                        userId:
-                            payment.userId,
-
-                        latestPaymentId:
-                            payment.id,
-
-                        plan:
-                            "PREMIUM",
-
-                        startsAt:
-                            now,
-
-                        expiresAt:
-                            expires,
-
-                    }
-                );
-
-            }
-
-            await paymentRepository.upgradeUserPlan(
-
-                payment.userId,
-
-                "PREMIUM"
-
-            );
-
+        if (subscription) {
+            await tx.subscription.update({
+                where: { userId: payment.userId },
+                data: subscriptionPayload,
+            });
+        } else {
+            await tx.subscription.create({
+                data: {
+                    userId: payment.userId,
+                    ...subscriptionPayload,
+                },
+            });
         }
-    );
 
+        await tx.user.update({
+            where: { id: payment.userId },
+            data: { plan },
+        });
+    });
 
     await notificationService.notifyPaymentSuccess({
-
-        userId:
-            payment.userId,
-
-        amount:
-            PREMIUM_PRICE,
-
+        userId: payment.userId,
+        amount: selectedPlan.price,
+        planName: selectedPlan.name,
     });
 
     await activityService.logPaymentSuccess({
-
-        userId:
-            payment.userId,
-
-        paymentId:
-            payment.id,
-
-        amount:
-            PREMIUM_PRICE,
-
+        userId: payment.userId,
+        paymentId: payment.id,
+        amount: selectedPlan.price,
     });
 
-    const user =
-        payment.user;
-
-    if (user) {
-
+    if (payment.user) {
         await emailService.sendEmail({
-
-            to:
-                user.email,
-
-            subject:
-                "Premium Activated",
-
-            html:
-                paymentTemplate({
-
-                    userName:
-                        user.name,
-
-                    amount:
-                        PREMIUM_PRICE,
-
-                }),
-
+            to: payment.user.email,
+            subject: `${selectedPlan.name} Plan Activated`,
+            html: paymentTemplate({
+                userName: payment.user.name,
+                amount: selectedPlan.price,
+                planName: selectedPlan.name,
+            }),
         });
-
     }
-
 };
 
 const getPaymentHistory = async (user, query) => {
-    const {
-        skip,
-        take,
-        page,
-        limit,
-    } = pagination(query);
-
-    const payments =
-        await paymentRepository.paymentHistory({
-
-            userId:
-                user.id,
-
-            skip,
-
-            take,
-
-        });
-
-    const total =
-        await paymentRepository.paymentCount(
-
-            user.id
-
-        );
+    const { skip, take, page, limit } = pagination(query);
+    const payments = await paymentRepository.paymentHistory({ userId: user.id, skip, take });
+    const total = await paymentRepository.paymentCount(user.id);
 
     return {
-
-        data:
-            payments,
-
+        data: payments,
         meta: {
-
             page,
-
             limit,
-
             total,
-
-            totalPages:
-                Math.ceil(
-                    total /
-                    limit
-                ),
-
+            totalPages: Math.ceil(total / limit),
         },
-
     };
-
 };
 
-const getSubscription = async (userId) => {
-    return paymentRepository.findSubscription(
+const getSubscription = (userId) => paymentRepository.findSubscription(userId);
 
-        userId
-
-    );
-
-};
+const getPlans = () =>
+    Object.entries(PLAN_CONFIG).map(([id, config]) => ({
+        id,
+        ...config,
+    }));
 
 module.exports = {
     createCheckoutSession,
     handleWebhook,
     getPaymentHistory,
     getSubscription,
+    getPlans,
 };

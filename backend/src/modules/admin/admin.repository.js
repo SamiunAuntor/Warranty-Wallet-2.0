@@ -6,7 +6,7 @@ const getDashboardStatistics = async () => {
         totalUsers,
         activeUsers,
         blockedUsers,
-        premiumUsers,
+        paidUsers,
         totalProducts,
         totalCategories,
         totalPayments,
@@ -29,7 +29,7 @@ const getDashboardStatistics = async () => {
 
         prisma.user.count({
             where: {
-                plan: "PREMIUM",
+                plan: { in: ["PLUS", "PRO"] },
             },
         }),
 
@@ -62,7 +62,7 @@ const getDashboardStatistics = async () => {
 
         blockedUsers,
 
-        premiumUsers,
+        paidUsers,
 
         totalProducts,
 

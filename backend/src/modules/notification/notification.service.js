@@ -166,7 +166,7 @@ const notifyWarrantyExpiry = async ({ userId, productId, productName, }) => {
 
 };
 
-const notifyPaymentSuccess = async ({ userId, amount, }) => {
+const notifyPaymentSuccess = async ({ userId, amount, planName, }) => {
 
     return notificationRepository.create({
 
@@ -176,7 +176,7 @@ const notifyPaymentSuccess = async ({ userId, amount, }) => {
             "Payment Successful",
 
         message:
-            `Your Premium subscription payment of $${amount} was successful.`,
+            `Your ${planName} subscription payment of $${amount} was successful.`,
 
         type:
             "PAYMENT",

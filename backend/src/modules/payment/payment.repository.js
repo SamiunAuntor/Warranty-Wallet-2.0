@@ -84,20 +84,6 @@ const updateSubscription = (userId, payload) => {
     });
 };
 
-const upgradeUserPlan = (
-    userId,
-    plan
-) => {
-    return prisma.user.update({
-        where: {
-            id: userId,
-        },
-        data: {
-            plan,
-        },
-    });
-};
-
 const totalRevenue = () => {
     return prisma.payment.aggregate({
         where: {
@@ -113,14 +99,6 @@ const successfulPayments = () => {
     return prisma.payment.count({
         where: {
             status: "SUCCESS",
-        },
-    });
-};
-
-const premiumUsers = () => {
-    return prisma.subscription.count({
-        where: {
-            isActive: true,
         },
     });
 };
@@ -156,13 +134,9 @@ module.exports = {
 
     updateSubscription,
 
-    upgradeUserPlan,
-
     totalRevenue,
 
     successfulPayments,
-
-    premiumUsers,
 
     recentPayments,
 

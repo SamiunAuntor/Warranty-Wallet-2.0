@@ -64,7 +64,9 @@ const getUserDashboard = async (user) => {
 
         warrantyTimeline,
 
-        premium: user.plan === "PREMIUM",
+        plan: user.plan,
+
+        paid: user.plan !== "BASIC",
 
     };
 

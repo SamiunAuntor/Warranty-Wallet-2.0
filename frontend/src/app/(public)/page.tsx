@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Icon } from "@/components/icons";
+import { plans } from "@/constants/plans";
 
 function Action({ children, secondary = false }: { children: React.ReactNode; secondary?: boolean }) {
   return <Link href="/register" className={`flex min-h-12 items-center justify-center gap-2 rounded-lg px-8 py-3 text-sm font-semibold transition active:scale-95 ${secondary ? "border border-[#c6c6cd] bg-white text-[#0b1c30] hover:bg-[#eff4ff]" : "bg-[#4b41e1] text-white shadow-md hover:bg-[#645efb]"}`}>{children}</Link>;
@@ -47,10 +48,10 @@ export default function LandingPage() {
         <div className="mx-auto grid grid-cols-1 gap-6 md:grid-cols-3">
           <article className="flex min-h-[540px] flex-col rounded-2xl border border-[#d3e4fe] bg-[#f8f9ff] p-8 shadow-sm">
             <h3 className="text-2xl font-semibold">Basic</h3>
-            <div className="my-1 text-5xl font-bold">$0<span className="text-base font-normal text-[#45464d]">/mo</span></div>
+            <div className="my-1 text-5xl font-bold">${plans.BASIC.price}<span className="text-base font-normal text-[#45464d]">/mo</span></div>
             <p className="mb-6 border-b border-[#dce9ff] pb-5 leading-6 text-[#45464d]">Perfect for individuals starting to organize their major purchases.</p>
             <ul className="mb-8 flex flex-1 flex-col gap-4">
-              <CheckItem>Up to 5 assets</CheckItem>
+              <CheckItem>Up to {plans.BASIC.assetLimit} assets</CheckItem>
               <CheckItem>Basic email reminders</CheckItem>
               <CheckItem>Manual entry</CheckItem>
             </ul>
@@ -59,10 +60,10 @@ export default function LandingPage() {
 
           <article className="flex min-h-[540px] flex-col rounded-2xl border border-[#d3e4fe] bg-[#f8f9ff] p-8 shadow-sm">
             <h3 className="text-2xl font-semibold">Plus</h3>
-            <div className="my-1 text-5xl font-bold">$5<span className="text-base font-normal text-[#45464d]">/mo</span></div>
+            <div className="my-1 text-5xl font-bold">${plans.PLUS.price}<span className="text-base font-normal text-[#45464d]">/mo</span></div>
             <p className="mb-6 border-b border-[#dce9ff] pb-5 leading-6 text-[#45464d]">Enhanced protection for your growing collection of assets.</p>
             <ul className="mb-8 flex flex-1 flex-col gap-4">
-              <CheckItem>Up to 20 assets</CheckItem>
+              <CheckItem>Up to {plans.PLUS.assetLimit} assets</CheckItem>
               <CheckItem>Smart OCR Receipt Scanning</CheckItem>
               <CheckItem>Advanced multi-channel alerts</CheckItem>
               <CheckItem>Priority email support</CheckItem>
@@ -73,13 +74,13 @@ export default function LandingPage() {
           <article className="relative flex min-h-[540px] flex-col overflow-hidden rounded-2xl border border-[#645efb] bg-[#131b2e] p-8 text-white shadow-lg">
             <span className="absolute right-0 top-0 rounded-bl-lg bg-[#645efb] px-4 py-1.5 text-[11px] font-semibold tracking-wide">RECOMMENDED</span>
             <h3 className="text-2xl font-semibold text-[#7c839b]">Pro</h3>
-            <div className="my-1 text-5xl font-bold">$10<span className="text-base font-normal text-[#7c839b]">/mo</span></div>
+            <div className="my-1 text-5xl font-bold">${plans.PRO.price}<span className="text-base font-normal text-[#7c839b]">/mo</span></div>
             <p className="mb-6 border-b border-[#3f465c] pb-5 leading-6 text-[#7c839b]">The ultimate vault for power users and families.</p>
             <ul className="mb-8 flex flex-1 flex-col gap-4">
-              <CheckItem dark>Up to 100 assets</CheckItem>
-              <CheckItem dark>Unlimited OCR</CheckItem>
+              <CheckItem dark>Up to {plans.PRO.assetLimit} assets</CheckItem>
+              <CheckItem dark>High-volume AI extraction</CheckItem>
               <CheckItem dark>Claim preparation assistant</CheckItem>
-              <CheckItem dark>Shared vaults</CheckItem>
+              <CheckItem dark>Advanced warranty analytics</CheckItem>
               <CheckItem dark>Priority phone support</CheckItem>
             </ul>
             <Link href="/register" className="rounded-lg bg-[#e2dfff] px-5 py-2.5 text-center text-sm font-medium text-[#0f0069] hover:bg-[#c3c0ff]">Start Pro Trial</Link>

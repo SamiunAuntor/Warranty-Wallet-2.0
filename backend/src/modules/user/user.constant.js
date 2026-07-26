@@ -3,10 +3,7 @@ const USER_ROLE = {
     ADMIN: "ADMIN",
 };
 
-const USER_PLAN = {
-    FREE: "FREE",
-    PREMIUM: "PREMIUM",
-};
+const { PLAN: USER_PLAN } = require("../../constants/plans");
 
 const USER_STATUS = {
     ACTIVE: "ACTIVE",

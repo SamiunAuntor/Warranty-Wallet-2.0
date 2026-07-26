@@ -221,7 +221,7 @@ const getAdminStatistics = async () => {
 
         totalUsers,
 
-        premiumUsers,
+        paidUsers,
 
         totalProducts,
 
@@ -233,14 +233,10 @@ const getAdminStatistics = async () => {
 
         prisma.user.count(),
 
-        prisma.subscription.count({
-
+        prisma.user.count({
             where: {
-
-                isActive: true,
-
+                plan: { in: ["PLUS", "PRO"] },
             },
-
         }),
 
         prisma.product.count({
@@ -285,7 +281,7 @@ const getAdminStatistics = async () => {
 
         totalUsers,
 
-        premiumUsers,
+        paidUsers,
 
         totalProducts,
 

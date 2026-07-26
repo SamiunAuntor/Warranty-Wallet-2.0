@@ -5,8 +5,12 @@ const router = express.Router();
 const controller = require("./payment.controller");
 
 const auth = require("../../middlewares/auth.middleware");
+const validate = require("../../middlewares/validate.middleware");
+const { checkoutSchema } = require("./payment.validation");
 
-router.post("/create-checkout", auth, controller.createCheckout);
+router.get("/plans", controller.plans);
+
+router.post("/create-checkout", auth, validate(checkoutSchema), controller.createCheckout);
 
 router.get("/", auth, controller.paymentHistory);
 

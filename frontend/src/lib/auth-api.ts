@@ -1,4 +1,5 @@
 import type { User } from "firebase/auth";
+import type { UserPlan } from "@/constants/plans";
 
 export type AppUser = {
   id: string;
@@ -8,7 +9,7 @@ export type AppUser = {
   photoURL: string | null;
   role: "USER" | "ADMIN";
   status: "ACTIVE" | "BLOCKED" | "DELETED";
-  plan: "FREE" | "PREMIUM";
+  plan: UserPlan;
   emailVerified: boolean;
 };
 

@@ -20,8 +20,9 @@ const listUsersSchema = z.object({
         ]).optional(),
 
         plan: z.enum([
-            "FREE",
-            "PREMIUM",
+            "BASIC",
+            "PLUS",
+            "PRO",
         ]).optional(),
 
         status: z.enum([

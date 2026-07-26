@@ -1,4 +1,4 @@
-const paymentSuccessTemplate = ({ userName, amount, }) => {
+const paymentSuccessTemplate = ({ userName, amount, planName, }) => {
     return `
         <h2>Payment Successful</h2>
 
@@ -6,7 +6,7 @@ const paymentSuccessTemplate = ({ userName, amount, }) => {
 
         <p>
 
-        Your Premium subscription payment of
+        Your ${planName} subscription payment of
 
         <strong>$${amount}</strong>
 

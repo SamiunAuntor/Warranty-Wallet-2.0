@@ -1,6 +1,6 @@
 # Warranty Wallet Backend
 
-Backend API for Warranty Wallet, a warranty and purchase-document management platform. The service lets users sync Firebase-authenticated accounts, manage products and warranty data, upload invoice/warranty documents, extract invoice details with Gemini, receive warranty notifications, upgrade to Premium through Stripe, and export operational reports.
+Backend API for Warranty Wallet, a warranty and purchase-document management platform. The service lets users sync Firebase-authenticated accounts, manage products and warranty data, upload invoice/warranty documents, extract invoice details with Gemini, receive warranty notifications, subscribe to Plus or Pro through Stripe, and export operational reports.
 
 ## Table of Contents
 
@@ -31,7 +31,7 @@ Backend API for Warranty Wallet, a warranty and purchase-document management pla
 - Firebase Admin SDK for token verification
 - Cloudinary for document and image storage
 - Multer for memory-based file uploads
-- Stripe Checkout and webhooks for Premium subscriptions
+- Stripe Checkout and webhooks for Plus and Pro subscriptions
 - Gemini via `@google/genai` for invoice extraction
 - Nodemailer for transactional email
 - Zod for request validation
@@ -48,7 +48,7 @@ Backend API for Warranty Wallet, a warranty and purchase-document management pla
 - AI-powered invoice extraction from uploaded files
 - Notifications and activity logs
 - User dashboards and admin analytics
-- Stripe Checkout-based Premium upgrade flow
+- Stripe Checkout-based Plus and Pro subscription flow
 - Stripe webhook handling
 - Excel and PDF report exports
 - Daily warranty reminder cron job
@@ -381,11 +381,12 @@ The AI service asks Gemini to return JSON with:
 
 | Method | Endpoint | Auth | Description |
 | --- | --- | --- | --- |
-| `POST` | `/payments/create-checkout` | User | Create a Stripe Checkout session for Premium |
+| `GET` | `/payments/plans` | Public | List plan prices and asset limits |
+| `POST` | `/payments/create-checkout` | User | Create a Stripe Checkout session for Plus or Pro |
 | `GET` | `/payments` | User | Get payment history |
 | `GET` | `/payments/subscription` | User | Get current subscription |
 
-The checkout endpoint returns a Stripe Checkout URL. After payment succeeds, the Stripe webhook upgrades the user to `PREMIUM` and creates or updates the subscription for one year.
+The checkout request body must include `plan` with either `PLUS` or `PRO`. After payment succeeds, the Stripe webhook activates the selected monthly subscription and updates the user's plan.
 
 ### Stripe Webhooks
 
@@ -573,7 +574,7 @@ Main Prisma models:
 - `Product`: purchased item and warranty metadata
 - `Document`: uploaded invoice, warranty card, receipt, product image, or other document
 - `Notification`: user notification
-- `Subscription`: Premium subscription state
+- `Subscription`: Plus or Pro subscription state
 - `Payment`: Stripe payment record
 - `ActivityLog`: auditable user/admin activity
 - `WebhookEvent`: Stripe webhook event tracking
@@ -582,7 +583,7 @@ Important enums:
 
 - `UserRole`: `USER`, `ADMIN`
 - `UserStatus`: `ACTIVE`, `BLOCKED`, `DELETED`
-- `UserPlan`: `FREE`, `PREMIUM`
+- `UserPlan`: `BASIC`, `PLUS`, `PRO`
 - `WarrantyStatus`: `ACTIVE`, `EXPIRING_SOON`, `EXPIRED`
 - `WarrantyType`: `MANUFACTURER`, `EXTENDED`
 - `PaymentStatus`: `PENDING`, `SUCCESS`, `FAILED`, `REFUNDED`
@@ -659,7 +660,7 @@ Check:
 - credentials are correct
 - network/firewall access if using a remote database
 
-### Stripe checkout works but Premium is not activated
+### Stripe checkout works but the paid plan is not activated
 
 Check:
 
