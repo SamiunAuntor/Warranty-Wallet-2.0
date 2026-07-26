@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/icons";
 import { Loading } from "@/components/ui/loading";
+import { AdminCharts } from "@/components/admin/admin-charts";
 import { useAuth } from "@/contexts/auth-context";
 import { getAdminStats, type AdminStats } from "@/lib/admin-api";
 
@@ -19,5 +20,11 @@ export default function AdminPage() {
     ["Assets", stats.totalProducts, "Across all accounts", "products", "/admin/assets"],
     ["Revenue", `$${Number(stats.totalRevenue).toFixed(2)}`, `${stats.totalPayments} payments`, "clipboard", "/admin/payments"],
   ] as const;
-  return <div className="mx-auto max-w-[1440px] pb-10"><header><h1 className="text-3xl font-semibold text-[#111d32]">Admin Overview</h1><p className="mt-1 text-sm text-[#626773]">Platform health, growth, and operational activity.</p></header><div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map(([label, value, detail, icon, href]) => <Link href={href} key={label} className="rounded-xl border border-[#e0e3eb] bg-white p-5 shadow-[0_2px_7px_rgba(24,32,56,.05)] transition hover:border-[#8b7dff]"><div className="flex items-center justify-between"><p className="text-sm font-semibold text-[#626773]">{label}</p><span className="rounded-lg bg-[#efedff] p-2 text-[#5b47ee]"><Icon name={icon} className="h-5 w-5"/></span></div><p className="mt-4 text-3xl font-semibold text-[#111d32]">{value}</p><p className="mt-2 text-xs text-[#777d88]">{detail}</p></Link>)}</div><div className="mt-6 grid gap-4 md:grid-cols-3"><section className="rounded-xl border bg-white p-5"><p className="text-sm font-semibold">User health</p><p className="mt-4 text-2xl font-semibold text-green-700">{stats.activeUsers}</p><p className="text-xs text-[#626773]">active accounts</p></section><section className="rounded-xl border bg-white p-5"><p className="text-sm font-semibold">Blocked accounts</p><p className="mt-4 text-2xl font-semibold text-red-700">{stats.blockedUsers}</p><p className="text-xs text-[#626773]">requiring review</p></section><section className="rounded-xl border bg-white p-5"><p className="text-sm font-semibold">Catalog</p><p className="mt-4 text-2xl font-semibold text-[#5b47ee]">{stats.totalCategories}</p><p className="text-xs text-[#626773]">managed categories</p></section></div><div id="admin-charts" className="mt-6"/></div>;
+  return <div className="mx-auto max-w-[1440px] pb-10">
+    <header><h1 className="text-3xl font-semibold text-[#111d32]">Admin Overview</h1><p className="mt-1 text-sm text-[#626773]">Platform health, growth, and operational activity.</p></header>
+    <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map(([label, value, detail, icon, href]) => <Link href={href} key={label} className="rounded-xl border bg-white p-5 shadow-sm hover:border-[#8b7dff]"><div className="flex justify-between"><p className="text-sm font-semibold text-[#626773]">{label}</p><Icon name={icon} className="h-5 w-5 text-[#5b47ee]"/></div><p className="mt-4 text-3xl font-semibold">{value}</p><p className="mt-2 text-xs text-[#777d88]">{detail}</p></Link>)}</div>
+    <div className="mt-6 grid gap-4 md:grid-cols-3"><Metric label="Active accounts" value={stats.activeUsers}/><Metric label="Blocked accounts" value={stats.blockedUsers}/><Metric label="Categories" value={stats.totalCategories}/></div>
+    <div className="mt-6"><AdminCharts/></div>
+  </div>;
 }
+function Metric({ label, value }: { label: string; value: number }) { return <section className="rounded-xl border bg-white p-5"><p className="text-sm font-semibold">{label}</p><p className="mt-4 text-2xl font-semibold text-[#5b47ee]">{value}</p></section>; }
