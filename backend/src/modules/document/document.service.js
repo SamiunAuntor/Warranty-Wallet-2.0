@@ -15,6 +15,7 @@ const {
 } = require("./document.constant");
 const { pagination } = require("../../utils/query");
 const aiService = require("../ai/ai.service");
+const { getDocumentFolder } = require("./document.storage");
 
 const EXTRACTABLE_TYPES = new Set([
     DOCUMENT_TYPE.INVOICE,
@@ -52,25 +53,6 @@ const extractMetadata = async (file, type, extractedData) => {
         ocrConfidence: data.confidence ?? null,
         ocrRaw: data,
     };
-};
-
-const getFolder = (type) => {
-    switch (type) {
-        case DOCUMENT_TYPE.INVOICE:
-            return "WarrantyWallet/invoices";
-
-        case DOCUMENT_TYPE.WARRANTY_CARD:
-            return "WarrantyWallet/warranty_cards";
-
-        case DOCUMENT_TYPE.PRODUCT_IMAGE:
-            return "WarrantyWallet/products";
-
-        case DOCUMENT_TYPE.RECEIPT:
-            return "WarrantyWallet/receipts";
-
-        default:
-            return "WarrantyWallet/others";
-    }
 };
 
 const uploadDocuments = async ({ user, productId, files, type, extractedData, }) => {
@@ -127,8 +109,11 @@ const uploadDocuments = async ({ user, productId, files, type, extractedData, })
     for (const file of files) {
         const extracted = await extractMetadata(file, type, extractedData);
 
-        const uploaded =
-            await uploadFile(file.buffer, getFolder(type));
+        const uploaded = await uploadFile(file.buffer, getDocumentFolder({
+            mimetype: file.mimetype,
+            productId,
+            type,
+        }));
 
         const document = await documentRepository.create({
             productId,
@@ -279,7 +264,11 @@ const replaceDocument = async ({ id, user, file, }) => {
 
     const uploaded = await uploadFile(
         file.buffer,
-        getFolder(document.fileType)
+        getDocumentFolder({
+            mimetype: file.mimetype,
+            productId: document.productId,
+            type: document.fileType,
+        })
     );
 
     const updated = await documentRepository.update(id, {
