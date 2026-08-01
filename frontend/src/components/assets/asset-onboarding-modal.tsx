@@ -155,7 +155,8 @@ export function AssetOnboardingModal({ categories, brands, pending, onClose, onS
 
   const busy = extracting || preparing;
   return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#111827]/45 p-4" role="dialog" aria-modal="true" aria-labelledby="asset-upload-title">
-    <div className="max-h-[94vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-[#f8f9ff] shadow-2xl">
+    <div className="w-full max-w-3xl overflow-hidden rounded-2xl bg-[#f8f9ff] shadow-2xl">
+      <div className="max-h-[94vh] overflow-y-auto">
       <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#e1e4ec] bg-white px-6 py-4">
         <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-[#4b41e1]">Step 1 of 2</p><h2 id="asset-upload-title" className="mt-1 text-xl font-semibold text-[#111d32]">Document the purchase and condition</h2><p className="mt-1 text-sm text-[#686d77]">AI reads purchase records while condition photos preserve how the product arrived.</p></div>
         <button type="button" onClick={onClose} className="rounded-lg p-2 text-[#596170] hover:bg-[#eef1f8]" aria-label="Close asset workflow">×</button>
@@ -174,6 +175,7 @@ export function AssetOnboardingModal({ categories, brands, pending, onClose, onS
         {extracting && <div className="rounded-lg bg-[#eeecff] px-4 py-3 text-sm text-[#4b41e1]">Analyzing document {Math.min(processedCount + 1, documents.length)} of {documents.length}…</div>}
 
         <div className="flex items-center justify-between border-t border-[#e1e4ec] pt-5"><button type="button" onClick={() => { setExtracted({}); setShowForm(true); }} disabled={busy} className="text-sm font-semibold text-[#596170] hover:text-[#4b41e1]">Enter details manually</button><button type="button" onClick={() => void analyze()} disabled={busy || documents.length === 0} className="flex h-11 items-center gap-2 rounded-lg bg-[#4b41e1] px-5 text-sm font-semibold text-white hover:bg-[#645efb] disabled:cursor-not-allowed disabled:opacity-50"><Icon name="sparkles" className="h-4 w-4"/>{extracting ? "Analyzing…" : preparing ? "Optimizing…" : "Analyze with AI"}</button></div>
+      </div>
       </div>
     </div>
   </div>;
