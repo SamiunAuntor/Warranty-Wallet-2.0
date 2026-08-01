@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { Suspense, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useSearchParams } from "next/navigation";
 import { ClaimFormModal } from "@/components/claims/claim-form-modal";
 import { Icon } from "@/components/icons";
 import { Loading } from "@/components/ui/loading";
@@ -26,6 +27,7 @@ import {
   type ClaimUpdate,
 } from "@/lib/claims-api";
 import { dialog, toast } from "@/lib/notifications";
+import { positivePage, useUrlQuerySync } from "@/hooks/use-url-query-sync";
 
 const PAGE_SIZE = 8;
 const dateTime = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" });
@@ -41,22 +43,30 @@ const badges: Record<ClaimStatus, string> = {
 };
 
 export default function ClaimsPage() {
+  return <Suspense fallback={<Loading label="Loading claim filters"/>}><ClaimsPageContent/></Suspense>;
+}
+
+function ClaimsPageContent() {
   const { firebaseUser, appUser } = useAuth();
+  const query = useSearchParams();
+  const statusQuery = query.get("status");
   const [result, setResult] = useState<ClaimList | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [assetDocuments, setAssetDocuments] = useState<AssetDocument[]>([]);
   const [selectedClaim, setSelectedClaim] = useState<Claim | null>(null);
   const [formClaim, setFormClaim] = useState<Claim | "new" | null>(null);
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<ClaimStatus | "">("");
-  const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState(query.get("search") ?? "");
+  const [search, setSearch] = useState(query.get("search") ?? "");
+  const [status, setStatus] = useState<ClaimStatus | "">(statusQuery && statusQuery in badges ? statusQuery as ClaimStatus : "");
+  const [page, setPage] = useState(() => positivePage(query.get("page")));
   const [reloadKey, setReloadKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [attachId, setAttachId] = useState("");
   const selectedClaimId = selectedClaim?.id;
+
+  useUrlQuerySync({ search, status, page });
 
   useEffect(() => {
     if (!firebaseUser) return;

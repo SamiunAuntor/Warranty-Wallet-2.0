@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { AssetDetailsModal } from "@/components/assets/asset-details-modal";
 import { AssetFormModal } from "@/components/assets/asset-form-modal";
 import { AssetOnboardingModal } from "@/components/assets/asset-onboarding-modal";
@@ -27,6 +28,7 @@ import {
 } from "@/lib/assets-api";
 import { dialog, toast } from "@/lib/notifications";
 import { uploadDocuments, type PendingAssetDocument } from "@/lib/documents-api";
+import { positivePage, useUrlQuerySync } from "@/hooks/use-url-query-sync";
 
 const PAGE_SIZE = 8;
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -45,16 +47,22 @@ const statusStyles: Record<WarrantyStatus, { border: string; badge: string }> = 
 };
 
 export default function AssetsPage() {
+  return <Suspense fallback={<Loading label="Loading asset filters"/>}><AssetsPageContent/></Suspense>;
+}
+
+function AssetsPageContent() {
   const { firebaseUser, appUser } = useAuth();
+  const query = useSearchParams();
+  const statusQuery = query.get("status");
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [result, setResult] = useState<AssetList | null>(null);
   const [usage, setUsage] = useState(0);
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<WarrantyStatus | "">("");
-  const [categoryId, setCategoryId] = useState("");
-  const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState(query.get("search") ?? "");
+  const [search, setSearch] = useState(query.get("search") ?? "");
+  const [status, setStatus] = useState<WarrantyStatus | "">(statusQuery && statusQuery in statusLabels ? statusQuery as WarrantyStatus : "");
+  const [categoryId, setCategoryId] = useState(query.get("category") ?? "");
+  const [page, setPage] = useState(() => positivePage(query.get("page")));
   const [view, setView] = useState<"grid" | "list">("grid");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -66,6 +74,8 @@ export default function AssetsPage() {
   const plan = appUser ? plans[appUser.plan] : plans.BASIC;
   const atLimit = usage >= plan.assetLimit;
   const usagePercent = Math.min(100, (usage / plan.assetLimit) * 100);
+
+  useUrlQuerySync({ search, status, category: categoryId, page });
 
   useEffect(() => {
     getCategories()

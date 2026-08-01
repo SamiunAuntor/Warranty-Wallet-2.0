@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { useSearchParams } from "next/navigation";
 import { Icon } from "@/components/icons";
 import { Loading } from "@/components/ui/loading";
 import { useAuth } from "@/contexts/auth-context";
@@ -16,6 +17,7 @@ import {
 } from "@/lib/documents-api";
 import { dialog, toast } from "@/lib/notifications";
 import { MAX_PDF_SIZE_MB, MAX_SOURCE_IMAGE_SIZE_MB, prepareUploadFile, prepareUploadFiles } from "@/lib/upload-files";
+import { positivePage, useUrlQuerySync } from "@/hooks/use-url-query-sync";
 
 const PAGE_SIZE = 12;
 const MAX_FILES = 5;
@@ -29,23 +31,31 @@ const fileSize = (bytes: number | null) => {
 const addedDate = new Intl.DateTimeFormat("en-US", { dateStyle: "medium" });
 
 export default function DocumentsPage() {
+  return <Suspense fallback={<Loading label="Loading document filters"/>}><DocumentsPageContent/></Suspense>;
+}
+
+function DocumentsPageContent() {
   const { firebaseUser } = useAuth();
+  const query = useSearchParams();
+  const typeQuery = query.get("type");
   const inputRef = useRef<HTMLInputElement>(null);
   const [result, setResult] = useState<DocumentList | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [uploadAssetId, setUploadAssetId] = useState("");
   const [uploadType, setUploadType] = useState<DocumentType>("RECEIPT");
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [type, setType] = useState<DocumentType | "">("");
-  const [productId, setProductId] = useState("");
-  const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState(query.get("search") ?? "");
+  const [search, setSearch] = useState(query.get("search") ?? "");
+  const [type, setType] = useState<DocumentType | "">(typeQuery && documentTypes.includes(typeQuery as DocumentType) ? typeQuery as DocumentType : "");
+  const [productId, setProductId] = useState(query.get("asset") ?? "");
+  const [page, setPage] = useState(() => positivePage(query.get("page")));
   const [reloadKey, setReloadKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
   const [preview, setPreview] = useState<DocumentRecord | null>(null);
+
+  useUrlQuerySync({ search, type, asset: productId, page });
 
   useEffect(() => {
     if (!firebaseUser) return;
