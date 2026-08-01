@@ -21,9 +21,13 @@ const ALLOWED_FILE_TYPES = [
     "application/pdf",
 ];
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
+// Vercel Functions accept at most 4.5 MB request bodies. Keeping a file below
+// 4 MB leaves room for multipart form metadata and authentication headers.
+const MAX_FILE_SIZE_MB = 4;
 
-const MAX_FILES_PER_UPLOAD = 5;
+const MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024;
+
+const MAX_FILES_PER_UPLOAD = 1;
 
 module.exports = {
     DOCUMENT_TYPE,
@@ -33,6 +37,8 @@ module.exports = {
     ALLOWED_FILE_TYPES,
 
     MAX_FILE_SIZE,
+
+    MAX_FILE_SIZE_MB,
 
     MAX_FILES_PER_UPLOAD,
 };

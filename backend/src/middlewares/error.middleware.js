@@ -1,8 +1,10 @@
+const { MAX_FILE_SIZE_MB } = require("../modules/document/document.constant");
+
 module.exports = (err, req, res, next) => {
     const isUploadError = err.name === "MulterError";
     const statusCode = err.statusCode || (isUploadError ? 400 : 500);
     const message = err.code === "LIMIT_FILE_SIZE"
-        ? "File size exceeds the 5 MB limit."
+        ? `File size exceeds the ${MAX_FILE_SIZE_MB} MB limit.`
         : err.code === "LIMIT_UNEXPECTED_FILE"
             ? "Too many files or an unexpected upload field was provided."
         : err.message;

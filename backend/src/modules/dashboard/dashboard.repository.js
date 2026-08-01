@@ -425,38 +425,6 @@ const getProductGrowth = async (year) => {
 
 };
 
-module.exports = {
-
-    getProductStatistics,
-
-    getDocumentStatistics,
-
-    getOpenClaimsCount,
-
-    getRecentDocuments,
-
-    getAiProcessingCount,
-
-    getNotificationStatistics,
-
-    getRecentNotifications,
-
-    getRecentActivities,
-
-    getCategoryDistribution,
-
-    getWarrantyTimeline,
-
-    getAdminStatistics,
-
-    getRecentPayments,
-
-    getMonthlyRevenue,
-
-    getProductGrowth,
-
-};
-
 const getOpenClaimsCount = (userId) => prisma.claim.count({
     where: {
         userId,
@@ -485,3 +453,20 @@ const getAiProcessingCount = (userId) => prisma.document.count({
         ocrProcessed: false,
     },
 });
+
+module.exports = {
+    getProductStatistics,
+    getDocumentStatistics,
+    getOpenClaimsCount,
+    getRecentDocuments,
+    getAiProcessingCount,
+    getNotificationStatistics,
+    getRecentNotifications,
+    getRecentActivities,
+    getCategoryDistribution,
+    getWarrantyTimeline,
+    getAdminStatistics,
+    getRecentPayments,
+    getMonthlyRevenue,
+    getProductGrowth,
+};

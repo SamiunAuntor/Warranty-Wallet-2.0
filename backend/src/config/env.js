@@ -20,4 +20,5 @@ module.exports = {
     SMTP_EMAIL: process.env.SMTP_EMAIL,
     SMTP_PASSWORD: process.env.SMTP_PASSWORD,
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+    CRON_SECRET: process.env.CRON_SECRET,
 };
