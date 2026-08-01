@@ -30,6 +30,18 @@ test("maps unavailable Prisma connections to a concise retryable response", () =
     });
 });
 
+test("maps Prisma transaction pool timeouts to a retryable response", () => {
+    const error = Object.assign(new Error("Unable to start a transaction in the given time"), {
+        name: "PrismaClientKnownRequestError",
+        code: "P2028",
+    });
+
+    assert.deepEqual(mapError(error), {
+        statusCode: 503,
+        message: "The database is temporarily unavailable. Please try again.",
+    });
+});
+
 test("maps invalid Firebase sessions to an authentication response", () => {
     const error = Object.assign(new Error("Decoded Firebase token internals"), {
         code: "auth/id-token-expired",

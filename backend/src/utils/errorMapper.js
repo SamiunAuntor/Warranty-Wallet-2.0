@@ -5,6 +5,7 @@ const DATABASE_UNAVAILABLE_CODES = new Set([
     "P1008",
     "P1017",
     "P2024",
+    "P2028",
 ]);
 
 const FIREBASE_AUTH_CODES = new Set([
