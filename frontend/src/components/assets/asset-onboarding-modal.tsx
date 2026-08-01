@@ -18,9 +18,11 @@ type Props = {
 };
 
 type PurchaseDocumentType = Extract<DocumentType, "INVOICE" | "RECEIPT" | "WARRANTY_CARD" | "OTHER">;
-type SelectedDocument = { file: File; type: PurchaseDocumentType };
+type SelectedDocument = { file: File; type: PurchaseDocumentType; sourceKey: string };
+type SelectedPhoto = { file: File; sourceKey: string };
 const MAX_DOCUMENTS = 3;
 const MAX_PHOTOS = 3;
+const fileKey = (file: File) => `${file.name}:${file.size}:${file.lastModified}`;
 
 const normalized = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
@@ -62,7 +64,7 @@ function toAssetDraft(extracted: ExtractedAssetData, categories: Category[], bra
 export function AssetOnboardingModal({ categories, brands, pending, onClose, onSubmit }: Props) {
   const { firebaseUser } = useAuth();
   const [documents, setDocuments] = useState<SelectedDocument[]>([]);
-  const [photos, setPhotos] = useState<File[]>([]);
+  const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
   const [extracting, setExtracting] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const [processedCount, setProcessedCount] = useState(0);
@@ -73,20 +75,36 @@ export function AssetOnboardingModal({ categories, brands, pending, onClose, onS
 
   const prepareSelection = async (selected: FileList | null, kind: "document" | "photo") => {
     if (!selected) return;
-    const selectedFiles = Array.from(selected);
+    const currentItems = kind === "document" ? documents : photos;
+    const existingKeys = new Set(currentItems.map((item) => item.sourceKey));
+    const selectedFiles = Array.from(selected).filter((file, index, all) => {
+      const key = fileKey(file);
+      return !existingKeys.has(key) && all.findIndex((candidate) => fileKey(candidate) === key) === index;
+    });
     const limit = kind === "document" ? MAX_DOCUMENTS : MAX_PHOTOS;
-    if (selectedFiles.length > limit) return void toast.warning(`Choose up to ${limit} ${kind === "document" ? "purchase documents" : "condition photos"}.`);
+    const remaining = limit - currentItems.length;
+    if (remaining === 0) return void toast.warning(`You already selected the maximum of ${limit} ${kind === "document" ? "purchase documents" : "condition photos"}.`);
+    if (selectedFiles.length === 0) return void toast.info("Those files are already selected.");
+    if (selectedFiles.length > remaining) return void toast.warning(`You can add ${remaining} more ${kind === "document" ? "purchase document" : "condition photo"}${remaining === 1 ? "" : "s"}.`);
     if (kind === "photo" && selectedFiles.some((file) => !file.type.startsWith("image/"))) return void toast.warning("Condition evidence must be JPG, PNG, or WebP images.");
 
     setPreparing(true);
     try {
       const prepared = await prepareUploadFiles(selectedFiles);
       if (kind === "document") {
-        setDocuments(prepared.map((file) => ({ file, type: "RECEIPT" })));
+        setDocuments((current) => {
+          const keys = new Set(current.map((item) => item.sourceKey));
+          const additions = prepared.map((file, index) => ({ file, type: "RECEIPT" as const, sourceKey: fileKey(selectedFiles[index]) })).filter((item) => !keys.has(item.sourceKey));
+          return [...current, ...additions].slice(0, MAX_DOCUMENTS);
+        });
         setExtracted(null);
         setFileExtractions([]);
       } else {
-        setPhotos(prepared);
+        setPhotos((current) => {
+          const keys = new Set(current.map((item) => item.sourceKey));
+          const additions = prepared.map((file, index) => ({ file, sourceKey: fileKey(selectedFiles[index]) })).filter((item) => !keys.has(item.sourceKey));
+          return [...current, ...additions].slice(0, MAX_PHOTOS);
+        });
       }
     } catch (error) {
       toast.warning(error instanceof Error ? error.message : "The selected files are invalid.");
@@ -130,7 +148,7 @@ export function AssetOnboardingModal({ categories, brands, pending, onClose, onS
   if (showForm) {
     const pendingDocuments: PendingAssetDocument[] = [
       ...documents.map((document, index) => ({ ...document, extractedData: fileExtractions[index] })),
-      ...photos.map((file) => ({ file, type: "PRODUCT_IMAGE" as const })),
+      ...photos.map((photo) => ({ file: photo.file, type: "PRODUCT_IMAGE" as const })),
     ];
     return <AssetFormModal initialValues={draft} categories={categories} brands={brands} pending={pending} onClose={onClose} onBack={() => setShowForm(false)} onSubmit={(input) => onSubmit(input, pendingDocuments)}/>;
   }
@@ -145,11 +163,11 @@ export function AssetOnboardingModal({ categories, brands, pending, onClose, onS
 
       <div className="space-y-5 p-6">
         <UploadBox title="Purchase documents" description="Add up to 3: invoice, warranty card, receipt, or another supporting record." multiple accept="application/pdf,image/jpeg,image/png,image/webp" onChange={(files) => void prepareSelection(files, "document")}/>
-        {documents.length > 0 && <div className="space-y-2 rounded-xl border border-[#dfe2ea] bg-white p-4">{documents.map((document, index) => <div key={`${document.file.name}-${document.file.lastModified}`} className="grid items-center gap-2 sm:grid-cols-[1fr_170px]"><div className="min-w-0"><p className="truncate text-sm font-medium text-[#394254]">{document.file.name}</p><p className="text-xs text-[#737986]">{(document.file.size / 1024 / 1024).toFixed(2)} MB</p></div><select value={document.type} onChange={(event) => changeDocumentType(index, event.target.value as PurchaseDocumentType)} className="h-10 rounded-lg border border-[#c9ccd5] bg-white px-2 text-sm"><option value="RECEIPT">Receipt</option><option value="INVOICE">Invoice</option><option value="WARRANTY_CARD">Warranty card</option><option value="OTHER">Other</option></select></div>)}</div>}
+        {documents.length > 0 && <div className="space-y-2 rounded-xl border border-[#dfe2ea] bg-white p-4">{documents.map((document, index) => <div key={document.sourceKey} className="grid items-center gap-2 sm:grid-cols-[1fr_170px_36px]"><div className="min-w-0"><p className="truncate text-sm font-medium text-[#394254]">{document.file.name}</p><p className="text-xs text-[#737986]">{(document.file.size / 1024 / 1024).toFixed(2)} MB</p></div><select value={document.type} onChange={(event) => changeDocumentType(index, event.target.value as PurchaseDocumentType)} className="h-10 rounded-lg border border-[#c9ccd5] bg-white px-2 text-sm"><option value="RECEIPT">Receipt</option><option value="INVOICE">Invoice</option><option value="WARRANTY_CARD">Warranty card</option><option value="OTHER">Other</option></select><button type="button" onClick={() => { setDocuments((current) => current.filter((_, itemIndex) => itemIndex !== index)); setExtracted(null); setFileExtractions([]); }} className="h-9 rounded-lg text-xl text-[#a83e4c] hover:bg-[#fff0f1]" aria-label={`Remove ${document.file.name}`}>×</button></div>)}</div>}
 
         <div className="rounded-xl border border-[#d7d2ff] bg-[#f3f1ff] p-4"><div className="flex gap-3"><Icon name="image" className="mt-0.5 h-5 w-5 shrink-0 text-[#4b41e1]"/><div><h3 className="font-semibold text-[#27214f]">Add arrival-condition photos</h3><p className="mt-1 text-sm leading-5 text-[#5e5a73]">Photograph the front, back, packaging, and any visible damage as soon as the product arrives. The upload time is recorded and may help resolve later damage disputes.</p></div></div></div>
         <UploadBox title="Product condition photos" description="Add up to 3 clear JPG, PNG, or WebP photos." multiple accept="image/jpeg,image/png,image/webp" onChange={(files) => void prepareSelection(files, "photo")}/>
-        {photos.length > 0 && <div className="grid gap-2 rounded-xl border border-[#dfe2ea] bg-white p-4 sm:grid-cols-3">{photos.map((photo) => <div key={`${photo.name}-${photo.lastModified}`} className="min-w-0 rounded-lg bg-[#f5f6fb] p-3"><p className="truncate text-sm font-medium text-[#394254]">{photo.name}</p><p className="mt-1 text-xs text-[#737986]">{(photo.size / 1024 / 1024).toFixed(2)} MB</p></div>)}</div>}
+        {photos.length > 0 && <div className="grid gap-2 rounded-xl border border-[#dfe2ea] bg-white p-4 sm:grid-cols-3">{photos.map((photo, index) => <div key={photo.sourceKey} className="flex min-w-0 items-start gap-2 rounded-lg bg-[#f5f6fb] p-3"><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-[#394254]">{photo.file.name}</p><p className="mt-1 text-xs text-[#737986]">{(photo.file.size / 1024 / 1024).toFixed(2)} MB</p></div><button type="button" onClick={() => setPhotos((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="text-lg text-[#a83e4c]" aria-label={`Remove ${photo.file.name}`}>×</button></div>)}</div>}
 
         <p className="text-xs text-[#737986]">Images up to {MAX_SOURCE_IMAGE_SIZE_MB} MB are optimized automatically. PDFs can be up to {MAX_PDF_SIZE_MB} MB.</p>
         {preparing && <div className="rounded-lg bg-[#eeecff] px-4 py-3 text-sm text-[#4b41e1]">Optimizing selected images…</div>}
