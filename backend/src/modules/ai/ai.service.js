@@ -1,4 +1,5 @@
 const ai = require("../../config/gemini");
+const env = require("../../config/env");
 
 const ApiError = require("../../utils/ApiError");
 const { hasValidFileSignature } = require("../../utils/fileValidation");
@@ -67,10 +68,12 @@ No comments.
 
 `;
 
-    const response =
-        await ai.models.generateContent({
+    let response;
 
-            model: "gemini-2.5-flash",
+    try {
+        response = await ai.models.generateContent({
+
+            model: env.GEMINI_MODEL,
 
             contents: [
 
@@ -96,6 +99,17 @@ No comments.
             ],
 
         });
+    } catch (error) {
+        if (error?.status === 404) {
+            throw new ApiError(503, `The configured AI model (${env.GEMINI_MODEL}) is unavailable. Please try again later.`);
+        }
+
+        if (error?.status === 429) {
+            throw new ApiError(429, "The AI extraction limit has been reached. Please try again later.");
+        }
+
+        throw new ApiError(502, "The AI extraction service is temporarily unavailable. Please try again.");
+    }
 
     const text = response.text.trim().replace(/^```json\s*/i, "").replace(/```$/, "").trim();
 
