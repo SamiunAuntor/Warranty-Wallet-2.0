@@ -1,25 +1,19 @@
 const repository = require("./user.repository");
+const ApiError = require("../../utils/ApiError");
 
 const syncUser = async (firebaseUser, payload) => {
-    let user = await repository.findByFirebaseUid(firebaseUser.uid);
-
-    if (!user) {
-        user = await repository.createUser({
-            firebaseUid: firebaseUser.uid,
-            email: firebaseUser.email,
-            emailVerified: Boolean(firebaseUser.email_verified),
-            name: payload.name,
-            photoURL: payload.photoURL,
-        });
-    } else {
-        user = await repository.updateUser(user.id, {
-            name: payload.name,
-            photoURL: payload.photoURL,
-            emailVerified: Boolean(firebaseUser.email_verified),
-        });
+    if (!firebaseUser.uid || !firebaseUser.email) {
+        throw new ApiError(400, "Your Firebase account does not provide a usable email address.");
     }
 
-    return user;
+    return repository.syncUser({
+        firebaseUid: firebaseUser.uid,
+        email: firebaseUser.email.trim().toLowerCase(),
+        emailVerified: Boolean(firebaseUser.email_verified),
+        name: payload.name.trim(),
+        photoURL: payload.photoURL,
+        lastLoginAt: new Date(),
+    });
 };
 
 const getProfile = async (id) => {

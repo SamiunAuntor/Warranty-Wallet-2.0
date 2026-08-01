@@ -1,16 +1,15 @@
 const prisma = require("../../config/prisma");
 
-const findByFirebaseUid = (firebaseUid) => {
-    return prisma.user.findUnique({
+const syncUser = ({ firebaseUid, ...payload }) => {
+    return prisma.user.upsert({
         where: {
             firebaseUid,
         },
-    });
-};
-
-const createUser = (payload) => {
-    return prisma.user.create({
-        data: payload,
+        create: {
+            firebaseUid,
+            ...payload,
+        },
+        update: payload,
     });
 };
 
@@ -32,8 +31,7 @@ const findById = (id) => {
 };
 
 module.exports = {
-    findByFirebaseUid,
-    createUser,
+    syncUser,
     updateUser,
     findById,
 };

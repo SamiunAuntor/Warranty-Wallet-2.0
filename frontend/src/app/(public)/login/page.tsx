@@ -11,6 +11,7 @@ import { getAuthError } from "@/lib/auth-errors";
 import { toast } from "@/lib/notifications";
 import { RequiredMark } from "@/components/auth/required-mark";
 import { AuthPageHeader } from "@/components/auth/auth-page-header";
+import { getAuthenticatedHome } from "@/lib/auth-routing";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,7 +19,7 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && appUser) router.replace("/dashboard");
+    if (!authLoading && appUser) router.replace(getAuthenticatedHome(appUser));
   }, [authLoading, appUser, router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -28,7 +29,6 @@ export default function LoginPage() {
     try {
       await login(String(form.get("email")), String(form.get("password")), form.get("remember") === "on");
       void toast.success("Signed in successfully");
-      router.replace("/dashboard");
     } catch (authError) {
       void toast.error(getAuthError(authError));
     } finally {
@@ -41,7 +41,6 @@ export default function LoginPage() {
     try {
       await loginWithGoogle();
       void toast.success("Signed in with Google");
-      router.replace("/dashboard");
     } catch (authError) {
       void toast.error(getAuthError(authError));
     } finally {

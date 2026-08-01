@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Logo } from "@/components/logo";
 import { useAuth } from "@/contexts/auth-context";
+import { getAuthenticatedHome } from "@/lib/auth-routing";
 
 export function Navbar() {
   const { appUser, loading } = useAuth();
@@ -17,7 +18,7 @@ export function Navbar() {
         </nav>
         <div className="flex min-w-32 items-center justify-end gap-4">
           {!loading && (appUser ? (
-            <Link href="/dashboard" className="rounded-lg bg-[#4b41e1] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#645efb] active:scale-95">Dashboard</Link>
+            <Link href={getAuthenticatedHome(appUser)} className="rounded-lg bg-[#4b41e1] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#645efb] active:scale-95">{appUser.role === "ADMIN" ? "Admin Panel" : "Dashboard"}</Link>
           ) : <><Link href="/login" className="hidden text-sm font-medium text-[#0b1c30] transition-colors hover:text-[#4b41e1] md:block">Log In</Link><Link href="/register" className="rounded-lg bg-[#4b41e1] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#645efb] active:scale-95">Start Free</Link></>)}
         </div>
       </div>

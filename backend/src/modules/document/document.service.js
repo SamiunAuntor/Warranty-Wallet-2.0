@@ -5,6 +5,7 @@ const { uploadFile } = require("../../services/upload.service");
 const deleteImage = require("../../utils/deleteCloudinaryFile");
 
 const ApiError = require("../../utils/ApiError");
+const { hasValidFileSignature } = require("../../utils/fileValidation");
 
 const { DOCUMENT_TYPE, MAX_FILES_PER_UPLOAD } = require("./document.constant");
 const { pagination } = require("../../utils/query");
@@ -16,11 +17,22 @@ const EXTRACTABLE_TYPES = new Set([
     DOCUMENT_TYPE.WARRANTY_CARD,
 ]);
 
-const extractMetadata = async (file, type) => {
+const extractMetadata = async (file, type, extractedData) => {
     if (!EXTRACTABLE_TYPES.has(type)) {
         return { ocrProcessed: false, ocrConfidence: null, ocrRaw: null };
     }
-    const data = await aiService.extractInvoice(file);
+
+    let data;
+    if (extractedData) {
+        try {
+            data = aiService.extractedDocumentSchema.parse(JSON.parse(extractedData));
+        } catch {
+            throw new ApiError(400, "The supplied AI extraction data is invalid.");
+        }
+    } else {
+        data = await aiService.extractInvoice(file);
+    }
+
     return {
         invoiceNumber: data.invoiceNumber || null,
         vendorName: data.sellerName || null,
@@ -28,24 +40,6 @@ const extractMetadata = async (file, type) => {
         ocrConfidence: data.confidence ?? null,
         ocrRaw: data,
     };
-};
-
-const hasValidSignature = (file) => {
-    if (!file?.buffer) return false;
-
-    const signatures = {
-        "application/pdf": Buffer.from("%PDF"),
-        "image/jpeg": Buffer.from([0xff, 0xd8, 0xff]),
-        "image/png": Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    };
-
-    if (file.mimetype === "image/webp") {
-        return file.buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
-            file.buffer.subarray(8, 12).toString("ascii") === "WEBP";
-    }
-
-    const signature = signatures[file.mimetype];
-    return Boolean(signature && file.buffer.subarray(0, signature.length).equals(signature));
 };
 
 const getFolder = (type) => {
@@ -67,7 +61,7 @@ const getFolder = (type) => {
     }
 };
 
-const uploadDocuments = async ({ user, productId, files, type, }) => {
+const uploadDocuments = async ({ user, productId, files, type, extractedData, }) => {
     const product = await productRepository.findById(productId);
 
     if (!product) {
@@ -92,7 +86,7 @@ const uploadDocuments = async ({ user, productId, files, type, }) => {
         throw new ApiError(400, `Maximum ${MAX_FILES_PER_UPLOAD} files allowed.`);
     }
 
-    if (files.some((file) => !hasValidSignature(file))) {
+    if (files.some((file) => !hasValidFileSignature(file))) {
         throw new ApiError(400, "A file's contents do not match its declared PDF or image type.");
     }
 
@@ -107,7 +101,7 @@ const uploadDocuments = async ({ user, productId, files, type, }) => {
     const uploadedDocuments = [];
 
     for (const file of files) {
-        const extracted = await extractMetadata(file, type);
+        const extracted = await extractMetadata(file, type, extractedData);
 
         const uploaded =
             await uploadFile(file.buffer, getFolder(type));
@@ -253,7 +247,7 @@ const replaceDocument = async ({ id, user, file, }) => {
         throw new ApiError(400, "A replacement file is required.");
     }
 
-    if (!hasValidSignature(file)) {
+    if (!hasValidFileSignature(file)) {
         throw new ApiError(400, "The replacement file's contents do not match its declared type.");
     }
 
@@ -276,6 +270,7 @@ const replaceDocument = async ({ id, user, file, }) => {
 
             fileSize:
                 file.size,
+            ...extracted,
             ...extracted,
         });
 

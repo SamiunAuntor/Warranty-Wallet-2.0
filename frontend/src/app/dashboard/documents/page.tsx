@@ -17,7 +17,8 @@ import {
 import { dialog, toast } from "@/lib/notifications";
 
 const PAGE_SIZE = 12;
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_FILE_SIZE_MB = 4;
+const MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024;
 const MAX_FILES = 5;
 const ALLOWED_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 const documentTypes: DocumentType[] = ["INVOICE", "WARRANTY_CARD", "PRODUCT_IMAGE", "RECEIPT", "OTHER"];
@@ -114,7 +115,7 @@ export default function DocumentsPage() {
     const invalidType = files.find((file) => !ALLOWED_TYPES.includes(file.type));
     if (invalidType) throw new Error(`${invalidType.name} is not a supported PDF or image file.`);
     const tooLarge = files.find((file) => file.size > MAX_FILE_SIZE);
-    if (tooLarge) throw new Error(`${tooLarge.name} exceeds the 5 MB limit.`);
+    if (tooLarge) throw new Error(`${tooLarge.name} exceeds the ${MAX_FILE_SIZE_MB} MB limit.`);
   };
 
   const submitFiles = async (files: File[]) => {
@@ -122,7 +123,11 @@ export default function DocumentsPage() {
     try {
       validateFiles(files);
       setUploading(true);
-      await uploadDocuments(await firebaseUser.getIdToken(), uploadAssetId, uploadType, files);
+      const token = await firebaseUser.getIdToken();
+
+      for (const file of files) {
+        await uploadDocuments(token, uploadAssetId, uploadType, [file]);
+      }
       toast.success(`${files.length} document${files.length === 1 ? "" : "s"} uploaded.`);
       if (inputRef.current) inputRef.current.value = "";
       refresh();
@@ -143,7 +148,7 @@ export default function DocumentsPage() {
     if (!firebaseUser) return;
     try {
       if (!ALLOWED_TYPES.includes(file.type)) throw new Error("Use a PDF, JPG, PNG, or WebP file.");
-      if (file.size > MAX_FILE_SIZE) throw new Error("The replacement file exceeds the 5 MB limit.");
+      if (file.size > MAX_FILE_SIZE) throw new Error(`The replacement file exceeds the ${MAX_FILE_SIZE_MB} MB limit.`);
       await replaceDocument(await firebaseUser.getIdToken(), document.id, file);
       toast.success("Document replaced successfully.");
       refresh();
@@ -194,7 +199,7 @@ export default function DocumentsPage() {
 
     <section className="mt-7 grid gap-4 rounded-xl border border-[#d6d9e2] bg-white p-4 shadow-sm md:grid-cols-[1fr_220px]">
       <div onDragEnter={(event) => { event.preventDefault(); setDragging(true); }} onDragOver={(event) => event.preventDefault()} onDragLeave={() => setDragging(false)} onDrop={drop} className={`flex min-h-48 flex-col items-center justify-center rounded-xl border-2 border-dashed px-5 text-center transition ${dragging ? "border-[#5141df] bg-[#f0eeff]" : "border-[#c7cad3] bg-[#fafbff]"}`}>
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#e8edff] text-[#5141df]"><Icon name="upload" className="h-7 w-7"/></div><h2 className="mt-4 text-lg font-semibold text-[#172033]">Drop files here</h2><p className="mt-1 text-sm text-[#686d77]">PDF, JPG, PNG, or WebP · 5 MB each · up to 5 files</p><input ref={inputRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => void submitFiles(Array.from(event.target.files ?? []))}/><button onClick={() => inputRef.current?.click()} disabled={uploading || assets.length === 0} className="mt-4 rounded-lg bg-[#4b41e1] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#645efb] disabled:cursor-not-allowed disabled:bg-[#aaa6c7]">{uploading ? "Uploading…" : "Browse files"}</button>
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#e8edff] text-[#5141df]"><Icon name="upload" className="h-7 w-7"/></div><h2 className="mt-4 text-lg font-semibold text-[#172033]">Drop files here</h2><p className="mt-1 text-sm text-[#686d77]">PDF, JPG, PNG, or WebP · {MAX_FILE_SIZE_MB} MB each · up to {MAX_FILES} files</p><input ref={inputRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => void submitFiles(Array.from(event.target.files ?? []))}/><button onClick={() => inputRef.current?.click()} disabled={uploading || assets.length === 0} className="mt-4 rounded-lg bg-[#4b41e1] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#645efb] disabled:cursor-not-allowed disabled:bg-[#aaa6c7]">{uploading ? "Uploading…" : "Browse files"}</button>
       </div>
       <div className="space-y-4 rounded-xl bg-[#f6f7fc] p-4"><h3 className="font-semibold text-[#172033]">Upload settings</h3><label className="block space-y-1.5 text-sm font-medium">Asset <span className="text-[#ba1a1a]">*</span><select value={uploadAssetId} onChange={(event) => setUploadAssetId(event.target.value)} className="h-11 w-full rounded-lg border border-[#c9ccd5] bg-white px-3 text-sm"><option value="" disabled>{assets.length ? "Select asset" : "Add an asset first"}</option>{assets.map((asset) => <option key={asset.id} value={asset.id}>{asset.name}</option>)}</select></label><label className="block space-y-1.5 text-sm font-medium">Document type <span className="text-[#ba1a1a]">*</span><select value={uploadType} onChange={(event) => setUploadType(event.target.value as DocumentType)} className="h-11 w-full rounded-lg border border-[#c9ccd5] bg-white px-3 text-sm">{documentTypes.map((value) => <option key={value} value={value}>{typeLabel(value)}</option>)}</select></label>{uploadAsset && <p className="rounded-lg bg-[#e9edff] p-3 text-xs leading-5 text-[#424a63]">Every uploaded file will belong to <strong>{uploadAsset.name}</strong>.</p>}</div>
     </section>

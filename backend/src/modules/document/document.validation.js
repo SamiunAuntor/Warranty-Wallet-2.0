@@ -11,6 +11,7 @@ const DOCUMENT_TYPES = [
 const createDocumentSchema = z.object({
     body: z.object({
         type: z.enum(DOCUMENT_TYPES),
+        extractedData: z.string().max(10000).optional(),
     }),
 
     params: z.object({

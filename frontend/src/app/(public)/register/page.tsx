@@ -11,6 +11,7 @@ import { getAuthError } from "@/lib/auth-errors";
 import { toast } from "@/lib/notifications";
 import { RequiredMark } from "@/components/auth/required-mark";
 import { AuthPageHeader } from "@/components/auth/auth-page-header";
+import { getAuthenticatedHome } from "@/lib/auth-routing";
 
 const inputClass = "w-full rounded-lg border border-[#c6c6cd] bg-white px-4 py-3 outline-none transition placeholder:text-[#76777d] focus:border-[#4b41e1] focus:ring-2 focus:ring-[#4b41e1]/15";
 
@@ -21,7 +22,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
 
   useEffect(() => {
-    if (!authLoading && appUser) router.replace("/dashboard");
+    if (!authLoading && appUser) router.replace(getAuthenticatedHome(appUser));
   }, [authLoading, appUser, router]);
 
   const strength = password.length >= 12 ? ["Strong", "w-full", "bg-[#4b41e1]"] : password.length >= 8 ? ["Fair", "w-2/3", "bg-amber-500"] : ["Weak", "w-1/4", "bg-[#ba1a1a]"];
@@ -40,7 +41,6 @@ export default function RegisterPage() {
     try {
       await register(name, email, password);
       void toast.success("Your account was created successfully");
-      router.replace("/dashboard");
     } catch (authError) {
       void toast.error(getAuthError(authError));
     } finally {
@@ -53,7 +53,6 @@ export default function RegisterPage() {
     try {
       await loginWithGoogle();
       void toast.success("Your Google account is connected");
-      router.replace("/dashboard");
     } catch (authError) {
       void toast.error(getAuthError(authError));
     } finally {
