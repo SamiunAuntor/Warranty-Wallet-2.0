@@ -15,6 +15,8 @@ const uploadDocuments = asyncHandler(async (req, res) => {
 
         type: req.body.type,
 
+        extractedData: req.body.extractedData,
+
     });
 
     return res.status(201).json(

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AssetDetailsModal } from "@/components/assets/asset-details-modal";
 import { AssetFormModal } from "@/components/assets/asset-form-modal";
+import { AssetOnboardingModal } from "@/components/assets/asset-onboarding-modal";
 import { Icon } from "@/components/icons";
 import { Loading } from "@/components/ui/loading";
 import { plans } from "@/constants/plans";
@@ -25,6 +26,7 @@ import {
   type WarrantyStatus,
 } from "@/lib/assets-api";
 import { dialog, toast } from "@/lib/notifications";
+import { uploadDocuments, type PendingAssetDocument } from "@/lib/documents-api";
 
 const PAGE_SIZE = 8;
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -141,14 +143,23 @@ export default function AssetsPage() {
     }
   };
 
-  const saveAsset = async (input: AssetInput) => {
+  const saveAsset = async (input: AssetInput, documents: PendingAssetDocument[] = []) => {
     if (!firebaseUser || !formAsset) return;
     setSaving(true);
     try {
       const token = await firebaseUser.getIdToken();
       if (formAsset === "new") {
-        await createAsset(token, input);
-        toast.success("Asset added successfully.");
+        const created = await createAsset(token, input);
+        let uploadedCount = 0;
+        for (const document of documents) {
+          try {
+            await uploadDocuments(token, created.id, document.type, [document.file], document.extractedData);
+            uploadedCount += 1;
+          } catch (uploadError) {
+            toast.warning(`Asset created, but ${document.file.name} was not attached: ${uploadError instanceof Error ? uploadError.message : "upload failed"}`);
+          }
+        }
+        toast.success(uploadedCount > 0 ? `Asset added with ${uploadedCount} document${uploadedCount === 1 ? "" : "s"}.` : "Asset added successfully.");
       } else {
         await updateAsset(token, formAsset.id, input);
         toast.success("Asset updated successfully.");
@@ -230,7 +241,8 @@ export default function AssetsPage() {
 
     {result && result.meta.totalPages > 1 && <div className="mt-7 flex items-center justify-between rounded-xl border border-[#e0e3eb] bg-white px-4 py-3"><p className="text-sm text-[#686d77]">{pageSummary}</p><div className="flex items-center gap-2"><button onClick={() => { setLoading(true); setPage((value) => Math.max(1, value - 1)); }} disabled={page === 1} className="rounded-lg border border-[#c9ccd5] px-3 py-2 text-sm font-semibold disabled:opacity-40">Previous</button><span className="px-2 text-sm font-medium">Page {page} of {result.meta.totalPages}</span><button onClick={() => { setLoading(true); setPage((value) => Math.min(result.meta.totalPages, value + 1)); }} disabled={page === result.meta.totalPages} className="rounded-lg border border-[#c9ccd5] px-3 py-2 text-sm font-semibold disabled:opacity-40">Next</button></div></div>}
 
-    {formAsset && <AssetFormModal asset={formAsset === "new" ? null : formAsset} categories={categories} brands={brands} pending={saving} onClose={() => setFormAsset(null)} onSubmit={saveAsset}/>}
+    {formAsset === "new" && <AssetOnboardingModal categories={categories} brands={brands} pending={saving} onClose={() => setFormAsset(null)} onSubmit={saveAsset}/>}
+    {formAsset && formAsset !== "new" && <AssetFormModal asset={formAsset} categories={categories} brands={brands} pending={saving} onClose={() => setFormAsset(null)} onSubmit={saveAsset}/>}
     {selectedAsset && <AssetDetailsModal asset={selectedAsset} onClose={() => setSelectedAsset(null)} onEdit={() => { setFormAsset(selectedAsset); setSelectedAsset(null); }} onDelete={() => void removeAsset(selectedAsset)}/>}
   </div>;
 }

@@ -49,6 +49,27 @@ export type DocumentList = {
   };
 };
 
+export type ExtractedAssetData = {
+  productName?: string | null;
+  brand?: string | null;
+  model?: string | null;
+  serialNumber?: string | null;
+  category?: string | null;
+  purchaseDate?: string | null;
+  purchasePrice?: number | null;
+  sellerName?: string | null;
+  invoiceNumber?: string | null;
+  warrantyDuration?: number | null;
+  warrantyType?: "MANUFACTURER" | "EXTENDED" | null;
+  confidence?: number | null;
+};
+
+export type PendingAssetDocument = {
+  file: File;
+  type: Extract<DocumentType, "INVOICE" | "RECEIPT" | "WARRANTY_CARD">;
+  extractedData?: ExtractedAssetData;
+};
+
 type ApiEnvelope<T> = {
   success: boolean;
   message: string;
@@ -100,11 +121,22 @@ export function uploadDocuments(
   productId: string,
   type: DocumentType,
   files: File[],
+  extractedData?: ExtractedAssetData,
 ) {
   const body = new FormData();
   body.set("type", type);
   files.forEach((file) => body.append("files", file));
+  if (extractedData) body.set("extractedData", JSON.stringify(extractedData));
   return request<DocumentRecord[]>(`/products/${productId}/documents`, token, {
+    method: "POST",
+    body,
+  });
+}
+
+export function extractAssetDocument(token: string, file: File) {
+  const body = new FormData();
+  body.set("file", file);
+  return request<ExtractedAssetData>("/ai/extract-invoice", token, {
     method: "POST",
     body,
   });
