@@ -70,6 +70,30 @@ enum ClaimStatus {
   CANCELLED
 }
 
+enum ClaimResolutionOutcome {
+  REPAIRED
+  REPLACED
+  REFUNDED
+  STORE_CREDIT
+  NO_FAULT_FOUND
+  OTHER
+}
+
+enum ClaimRecordType {
+  WARRANTY_CLAIM
+  SERVICE_RECORD
+}
+
+enum ClaimServicePurpose {
+  REPAIR
+  INSPECTION
+  MAINTENANCE
+  INSTALLATION
+  DAMAGE_ASSESSMENT
+  WARRANTY_CONSULTATION
+  OTHER
+}
+
 enum ActivityType {
   LOGIN
   REGISTER
@@ -308,13 +332,29 @@ model Claim {
 
   productId String
 
+  recordType ClaimRecordType @default(WARRANTY_CLAIM)
+
+  parentClaimId String?
+
   title String
 
   issueDescription String
 
   serviceCenter String?
 
+  servicePurpose ClaimServicePurpose?
+
+  serviceDate DateTime?
+
+  providerReference String?
+
+  submittedCondition String?
+
+  userCost Decimal? @db.Decimal(12, 2)
+
   resolution String?
+
+  resolutionOutcome ClaimResolutionOutcome?
 
   status ClaimStatus @default(DRAFT)
 
@@ -330,12 +370,18 @@ model Claim {
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
+  parentClaim Claim? @relation("ClaimFollowUps", fields: [parentClaimId], references: [id], onDelete: SetNull)
+
+  followUpClaims Claim[] @relation("ClaimFollowUps")
+
   timeline ClaimTimelineEvent[]
 
   documents ClaimDocument[]
 
   @@index([userId])
   @@index([productId])
+  @@index([parentClaimId])
+  @@index([recordType])
   @@index([status])
   @@index([updatedAt])
   @@index([userId, status])
@@ -366,6 +412,12 @@ model ClaimDocument {
   documentId String
 
   attachedAt DateTime @default(now())
+
+  evidenceType String @default("SUPPORTING_DOCUMENT")
+
+  claimStage ClaimStatus?
+
+  note String?
 
   claim Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
 

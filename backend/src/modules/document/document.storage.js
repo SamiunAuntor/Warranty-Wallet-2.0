@@ -8,7 +8,11 @@ const getDocumentFolder = ({ mimetype, productId, type }) => {
     const mediaFolder = mimetype === "application/pdf" ? "pdfs" : "images";
     const purposeFolder = type === DOCUMENT_TYPE.PRODUCT_IMAGE
         ? "condition-photos"
-        : folderSegment(type);
+        : type === DOCUMENT_TYPE.CLAIM_CONDITION
+            ? "claim-condition"
+            : type === DOCUMENT_TYPE.CLAIM_EVIDENCE
+                ? "claim-evidence"
+                : folderSegment(type);
 
     return `${ROOT_FOLDER}/${mediaFolder}/${purposeFolder}/${folderSegment(productId)}`;
 };

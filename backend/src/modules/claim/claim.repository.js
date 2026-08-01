@@ -52,22 +52,25 @@ const findDocuments = (ids) =>
         },
     });
 
-const create = (payload, documentIds) =>
+const create = (payload, evidence) =>
     prisma.claim.create({
         data: {
             ...payload,
             timeline: {
                 create: {
                     status: payload.status,
-                    title: payload.status === "SUBMITTED" ? "Claim submitted" : "Claim created",
-                    description: payload.status === "SUBMITTED"
-                        ? "The claim was submitted for review."
-                        : "The claim was saved as a draft.",
+                    title: payload.recordType === "SERVICE_RECORD" ? "Service visit recorded" : payload.status === "SUBMITTED" ? "Claim submitted" : "Claim created",
+                    description: payload.recordType === "SERVICE_RECORD" ? "The service outcome was added to this asset's history." : payload.status === "SUBMITTED" ? "The claim was submitted for review." : "The claim was saved as a draft.",
                 },
             },
-            ...(documentIds.length > 0 && {
+            ...(evidence.length > 0 && {
                 documents: {
-                    create: documentIds.map((documentId) => ({ documentId })),
+                    create: evidence.map((item) => ({
+                        documentId: item.documentId,
+                        evidenceType: item.evidenceType,
+                        note: item.note,
+                        claimStage: payload.status,
+                    })),
                 },
             }),
         },
@@ -127,9 +130,9 @@ const addTimelineEvent = (claimId, payload) =>
         });
     });
 
-const attachDocument = (claimId, documentId) =>
+const attachDocument = (claimId, evidence) =>
     prisma.claimDocument.create({
-        data: { claimId, documentId },
+        data: { claimId, ...evidence },
         include: { document: true },
     });
 

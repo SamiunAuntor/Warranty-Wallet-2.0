@@ -62,6 +62,7 @@ const findMany = ({ where, skip, take }) =>
             _count: {
                 select: { claims: true },
             },
+            _count: { select: { claims: true } },
         },
     });
 

@@ -46,4 +46,22 @@ export const dialog = {
     confirmButtonColor: brandColor,
     confirmButtonText: "Confirm",
   }),
+  select: (title: string, options: Record<string, string>) => Swal.fire({
+    title,
+    input: "select",
+    inputOptions: options,
+    inputPlaceholder: "Select an outcome",
+    showCancelButton: true,
+    confirmButtonColor: brandColor,
+    inputValidator: (value) => value ? undefined : "Please select an outcome.",
+  }),
+  textarea: (title: string, placeholder: string) => Swal.fire({
+    title,
+    input: "textarea",
+    inputPlaceholder: placeholder,
+    inputAttributes: { maxlength: "3000" },
+    showCancelButton: true,
+    confirmButtonColor: brandColor,
+    inputValidator: (value) => value.trim() ? undefined : "This explanation is required.",
+  }),
 };

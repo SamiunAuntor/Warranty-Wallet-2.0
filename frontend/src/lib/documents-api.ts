@@ -5,7 +5,9 @@ export type DocumentType =
   | "WARRANTY_CARD"
   | "PRODUCT_IMAGE"
   | "RECEIPT"
-  | "OTHER";
+  | "OTHER"
+  | "CLAIM_EVIDENCE"
+  | "CLAIM_CONDITION";
 
 export type DocumentRecord = {
   id: string;

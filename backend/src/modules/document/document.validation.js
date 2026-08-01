@@ -6,6 +6,8 @@ const DOCUMENT_TYPES = [
     "PRODUCT_IMAGE",
     "RECEIPT",
     "OTHER",
+    "CLAIM_EVIDENCE",
+    "CLAIM_CONDITION",
 ];
 
 const createDocumentSchema = z.object({

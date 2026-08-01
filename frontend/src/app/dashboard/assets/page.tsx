@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AssetDetailsModal } from "@/components/assets/asset-details-modal";
 import { AssetFormModal } from "@/components/assets/asset-form-modal";
 import { AssetOnboardingModal } from "@/components/assets/asset-onboarding-modal";
@@ -51,6 +51,7 @@ export default function AssetsPage() {
 }
 
 function AssetsPageContent() {
+  const router = useRouter();
   const { firebaseUser, appUser } = useAuth();
   const query = useSearchParams();
   const statusQuery = query.get("status");
@@ -253,6 +254,6 @@ function AssetsPageContent() {
 
     {formAsset === "new" && <AssetOnboardingModal categories={categories} brands={brands} pending={saving} onClose={() => setFormAsset(null)} onSubmit={saveAsset}/>}
     {formAsset && formAsset !== "new" && <AssetFormModal asset={formAsset} categories={categories} brands={brands} pending={saving} onClose={() => setFormAsset(null)} onSubmit={saveAsset}/>}
-    {selectedAsset && <AssetDetailsModal asset={selectedAsset} onClose={() => setSelectedAsset(null)} onEdit={() => { setFormAsset(selectedAsset); setSelectedAsset(null); }} onDelete={() => void removeAsset(selectedAsset)}/>}
+    {selectedAsset && <AssetDetailsModal asset={selectedAsset} onClose={() => setSelectedAsset(null)} onEdit={() => { setFormAsset(selectedAsset); setSelectedAsset(null); }} onDelete={() => void removeAsset(selectedAsset)} onRaiseClaim={() => router.push(`/dashboard/claims?assetId=${selectedAsset.id}`)}/>}
   </div>;
 }

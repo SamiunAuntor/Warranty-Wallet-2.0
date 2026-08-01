@@ -12,6 +12,7 @@ const {
     MAX_FILES_PER_UPLOAD,
     MAX_SUPPORTING_DOCUMENTS_PER_PRODUCT,
     MAX_PRODUCT_IMAGES_PER_PRODUCT,
+    MAX_CLAIM_FILES_PER_PRODUCT,
 } = require("./document.constant");
 const { pagination } = require("../../utils/query");
 const aiService = require("../ai/ai.service");
@@ -84,7 +85,12 @@ const uploadDocuments = async ({ user, productId, files, type, extractedData, })
         throw new ApiError(400, "A file's contents do not match its declared PDF or image type.");
     }
 
-    if (type === DOCUMENT_TYPE.PRODUCT_IMAGE) {
+    if ([DOCUMENT_TYPE.CLAIM_EVIDENCE, DOCUMENT_TYPE.CLAIM_CONDITION].includes(type)) {
+        const claimFileCount = await documentRepository.countByTypes(productId, [DOCUMENT_TYPE.CLAIM_EVIDENCE, DOCUMENT_TYPE.CLAIM_CONDITION]);
+        if (claimFileCount + files.length > MAX_CLAIM_FILES_PER_PRODUCT) {
+            throw new ApiError(409, `Each asset can store up to ${MAX_CLAIM_FILES_PER_PRODUCT} claim evidence files.`);
+        }
+    } else if (type === DOCUMENT_TYPE.PRODUCT_IMAGE) {
         const imageCount = await documentRepository.countByType(productId, DOCUMENT_TYPE.PRODUCT_IMAGE);
         if (imageCount + files.length > MAX_PRODUCT_IMAGES_PER_PRODUCT) {
             throw new ApiError(409, `Each asset can have up to ${MAX_PRODUCT_IMAGES_PER_PRODUCT} condition photos.`);
@@ -223,6 +229,10 @@ const deleteDocument = async (id, user) => {
         );
     }
 
+    if (document._count?.claims > 0) {
+        throw new ApiError(409, "Evidence attached to a claim cannot be deleted. Add a corrected file instead.");
+    }
+
     await deleteImage(
         document.publicId
     );
@@ -254,6 +264,10 @@ const replaceDocument = async ({ id, user, file, }) => {
 
     if (!file) {
         throw new ApiError(400, "A replacement file is required.");
+    }
+
+    if (document._count?.claims > 0) {
+        throw new ApiError(409, "Evidence attached to a claim cannot be replaced. Add a corrected file instead.");
     }
 
     if (!hasValidFileSignature(file)) {
