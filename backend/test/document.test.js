@@ -58,6 +58,48 @@ test("document uploads reject spoofed file contents", async (t) => {
     );
 });
 
+test("assets accept no more than three purchase documents", async (t) => {
+    const originalFindProduct = productRepository.findById;
+    const originalCountByTypes = documentRepository.countByTypes;
+    productRepository.findById = async () => ({ id: "asset-1", userId: user.id });
+    documentRepository.countByTypes = async () => 3;
+    t.after(() => {
+        productRepository.findById = originalFindProduct;
+        documentRepository.countByTypes = originalCountByTypes;
+    });
+
+    await assert.rejects(
+        documentService.uploadDocuments({
+            user,
+            productId: "asset-1",
+            files: [{ mimetype: "application/pdf", buffer: Buffer.from("%PDF demo") }],
+            type: "RECEIPT",
+        }),
+        (error) => error.statusCode === 409 && error.message.includes("three") === false && error.message.includes("3")
+    );
+});
+
+test("assets accept no more than three condition photos", async (t) => {
+    const originalFindProduct = productRepository.findById;
+    const originalCountByType = documentRepository.countByType;
+    productRepository.findById = async () => ({ id: "asset-1", userId: user.id });
+    documentRepository.countByType = async () => 3;
+    t.after(() => {
+        productRepository.findById = originalFindProduct;
+        documentRepository.countByType = originalCountByType;
+    });
+
+    await assert.rejects(
+        documentService.uploadDocuments({
+            user,
+            productId: "asset-1",
+            files: [{ mimetype: "image/jpeg", buffer: Buffer.from([0xff, 0xd8, 0xff]) }],
+            type: "PRODUCT_IMAGE",
+        }),
+        (error) => error.statusCode === 409 && error.message.includes("condition photos")
+    );
+});
+
 test("document listing is restricted to the current user", async (t) => {
     const originalFindMany = documentRepository.findMany;
     const originalCount = documentRepository.count;

@@ -66,7 +66,7 @@ export type ExtractedAssetData = {
 
 export type PendingAssetDocument = {
   file: File;
-  type: Extract<DocumentType, "INVOICE" | "RECEIPT" | "WARRANTY_CARD">;
+  type: DocumentType;
   extractedData?: ExtractedAssetData;
 };
 

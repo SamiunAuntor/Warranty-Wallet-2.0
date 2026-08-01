@@ -7,7 +7,12 @@ const deleteImage = require("../../utils/deleteCloudinaryFile");
 const ApiError = require("../../utils/ApiError");
 const { hasValidFileSignature } = require("../../utils/fileValidation");
 
-const { DOCUMENT_TYPE, MAX_FILES_PER_UPLOAD } = require("./document.constant");
+const {
+    DOCUMENT_TYPE,
+    MAX_FILES_PER_UPLOAD,
+    MAX_SUPPORTING_DOCUMENTS_PER_PRODUCT,
+    MAX_PRODUCT_IMAGES_PER_PRODUCT,
+} = require("./document.constant");
 const { pagination } = require("../../utils/query");
 const aiService = require("../ai/ai.service");
 
@@ -16,6 +21,13 @@ const EXTRACTABLE_TYPES = new Set([
     DOCUMENT_TYPE.RECEIPT,
     DOCUMENT_TYPE.WARRANTY_CARD,
 ]);
+
+const SUPPORTING_DOCUMENT_TYPES = [
+    DOCUMENT_TYPE.INVOICE,
+    DOCUMENT_TYPE.WARRANTY_CARD,
+    DOCUMENT_TYPE.RECEIPT,
+    DOCUMENT_TYPE.OTHER,
+];
 
 const extractMetadata = async (file, type, extractedData) => {
     if (!EXTRACTABLE_TYPES.has(type)) {
@@ -88,6 +100,18 @@ const uploadDocuments = async ({ user, productId, files, type, extractedData, })
 
     if (files.some((file) => !hasValidFileSignature(file))) {
         throw new ApiError(400, "A file's contents do not match its declared PDF or image type.");
+    }
+
+    if (type === DOCUMENT_TYPE.PRODUCT_IMAGE) {
+        const imageCount = await documentRepository.countByType(productId, DOCUMENT_TYPE.PRODUCT_IMAGE);
+        if (imageCount + files.length > MAX_PRODUCT_IMAGES_PER_PRODUCT) {
+            throw new ApiError(409, `Each asset can have up to ${MAX_PRODUCT_IMAGES_PER_PRODUCT} condition photos.`);
+        }
+    } else {
+        const documentCount = await documentRepository.countByTypes(productId, SUPPORTING_DOCUMENT_TYPES);
+        if (documentCount + files.length > MAX_SUPPORTING_DOCUMENTS_PER_PRODUCT) {
+            throw new ApiError(409, `Each asset can have up to ${MAX_SUPPORTING_DOCUMENTS_PER_PRODUCT} purchase documents.`);
+        }
     }
 
     if (type === DOCUMENT_TYPE.INVOICE || type === DOCUMENT_TYPE.WARRANTY_CARD) {

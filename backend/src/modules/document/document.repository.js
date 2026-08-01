@@ -84,6 +84,15 @@ const countByType = async (  productId,  fileType) => {
     });
 };
 
+const countByTypes = async (productId, fileTypes) => {
+    return prisma.document.count({
+        where: {
+            productId,
+            fileType: { in: fileTypes },
+        },
+    });
+};
+
 const update = async ( id, payload) => {
     return prisma.document.update({
         where: {
@@ -145,6 +154,8 @@ module.exports = {
     countByProduct,
 
     countByType,
+
+    countByTypes,
 
     update,
 
