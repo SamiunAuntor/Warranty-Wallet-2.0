@@ -8,17 +8,18 @@ import { claimStatusLabels } from "@/lib/claim-display";
 import { deleteDocument, replaceDocument, uploadDocuments, type DocumentType } from "@/lib/documents-api";
 import { dialog, toast } from "@/lib/notifications";
 import { prepareUploadFile } from "@/lib/upload-files";
+import { usePreferences } from "@/contexts/preferences-context";
 
 type Props = { asset: Asset; onClose: () => void; onEdit: () => void; onDelete: () => void; onRaiseClaim: () => void; onFilesChanged: () => Promise<void> };
 type AssetFile = NonNullable<Asset["documents"]>[number];
 
-const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 const date = (value: string | null) => value ? new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(value)) : "Not provided";
 const labels: Record<string, string> = { INVOICE: "Invoice", WARRANTY_CARD: "Warranty card", RECEIPT: "Receipt", OTHER: "Other document", PRODUCT_IMAGE: "Arrival-condition photo", CLAIM_EVIDENCE: "Claim evidence", CLAIM_CONDITION: "Pre-claim condition photo" };
 const size = (bytes: number | null) => !bytes ? "Size unavailable" : bytes < 1048576 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
 
 export function AssetDetailsModal({ asset, onClose, onEdit, onDelete, onRaiseClaim, onFilesChanged }: Props) {
   const { firebaseUser } = useAuth();
+  const { formatDate, formatMoney } = usePreferences();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploadType, setUploadType] = useState<DocumentType>("RECEIPT");
   const [busy, setBusy] = useState<string | null>(null);
@@ -26,7 +27,7 @@ export function AssetDetailsModal({ asset, onClose, onEdit, onDelete, onRaiseCla
   const purchaseFiles = documents.filter((file) => !["PRODUCT_IMAGE", "CLAIM_EVIDENCE", "CLAIM_CONDITION"].includes(file.fileType));
   const conditionPhotos = documents.filter((file) => file.fileType === "PRODUCT_IMAGE");
   const claimFiles = documents.filter((file) => ["CLAIM_EVIDENCE", "CLAIM_CONDITION"].includes(file.fileType));
-  const rows = [["Brand", asset.brand], ["Model", asset.model || "Not provided"], ["Category", asset.category.name], ["Serial number", asset.serialNumber || "Not provided"], ["Purchase price", money.format(Number(asset.purchasePrice))], ["Purchase date", date(asset.purchaseDate)], ["Warranty expires", date(asset.expiryDate)], ["Warranty type", !asset.hasWarranty ? "No warranty" : asset.warrantyType === "EXTENDED" ? "Extended" : "Manufacturer"], ["Asset state", asset.lifecycleStatus === "ARCHIVED" ? "Archived" : "Added"], ["Seller", asset.sellerName || "Not provided"], ["Documents", String(documents.length)]];
+  const rows = [["Brand", asset.brand], ["Model", asset.model || "Not provided"], ["Category", asset.category.name], ["Serial number", asset.serialNumber || "Not provided"], ["Purchase price", formatMoney(Number(asset.purchasePrice))], ["Purchase date", formatDate(asset.purchaseDate)], ["Warranty expires", formatDate(asset.expiryDate)], ["Warranty type", !asset.hasWarranty ? "No warranty" : asset.warrantyType === "EXTENDED" ? "Extended" : "Manufacturer"], ["Asset state", asset.lifecycleStatus === "ARCHIVED" ? "Archived" : "Added"], ["Seller", asset.sellerName || "Not provided"], ["Documents", String(documents.length)]];
 
   const download = (file: AssetFile) => { const anchor = window.document.createElement("a"); anchor.href = file.fileUrl; anchor.download = file.fileName; anchor.target = "_blank"; anchor.rel = "noreferrer"; anchor.click(); };
   const addFile = async (file: File) => { if (!firebaseUser) return; setBusy("upload"); try { await uploadDocuments(await firebaseUser.getIdToken(), asset.id, uploadType, [await prepareUploadFile(file)]); await onFilesChanged(); toast.success("File added to this asset."); } catch (error) { toast.error(error instanceof Error ? error.message : "Could not upload the file."); } finally { setBusy(null); if (inputRef.current) inputRef.current.value = ""; } };

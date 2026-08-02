@@ -29,9 +29,9 @@ import {
 import { dialog, toast } from "@/lib/notifications";
 import { uploadDocuments, type PendingAssetDocument } from "@/lib/documents-api";
 import { positivePage, useUrlQuerySync } from "@/hooks/use-url-query-sync";
+import { usePreferences } from "@/contexts/preferences-context";
 
 const PAGE_SIZE = 8;
-const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 const date = new Intl.DateTimeFormat("en-US", { dateStyle: "medium" });
 const statusLabels: Record<WarrantyStatus, string> = {
   NO_WARRANTY: "No warranty",
@@ -52,6 +52,7 @@ export default function AssetsPage() {
 
 function AssetsPageContent() {
   const router = useRouter();
+  const { formatMoney } = usePreferences();
   const { firebaseUser, appUser } = useAuth();
   const query = useSearchParams();
   const statusQuery = query.get("status");
@@ -256,7 +257,7 @@ function AssetsPageContent() {
               <div className="min-w-0 flex-1"><h2 className="truncate text-lg font-semibold text-[#172033]">{asset.name}</h2><p className="truncate text-sm text-[#686d77]">{asset.brand} · {asset.category.name}</p><span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${style.badge}`}>{statusLabels[asset.warrantyStatus]}</span>{Boolean(asset._count?.claims) && <span className="ml-2 mt-2 inline-flex rounded-full bg-[#eee9ff] px-2.5 py-1 text-[10px] font-semibold text-[#5942d6]">{asset._count?.claims} active claim{asset._count?.claims === 1 ? "" : "s"}</span>}</div>
             </button>
             <div className={`border-t border-[#e5e7ee] p-4 ${view === "list" ? "flex flex-1 items-center gap-6 md:border-l md:border-t-0" : "min-h-40"}`}>
-              <button onClick={() => void openDetails(asset)} className="flex flex-1 justify-between gap-4 text-left"><div><p className="text-xs font-medium text-[#6a6f78]">{asset.hasWarranty ? asset.warrantyStatus === "EXPIRED" ? "Expired" : "Expires" : "Warranty"}</p><p className={`mt-1 text-sm font-medium ${asset.warrantyStatus === "ACTIVE" ? "text-[#17243a]" : "text-[#b55245]"}`}>{asset.expiryDate ? date.format(new Date(asset.expiryDate)) : "Not provided"}</p></div><div className="text-right"><p className="text-xs font-medium text-[#6a6f78]">Value</p><p className="mt-1 text-sm font-medium text-[#17243a]">{money.format(Number(asset.purchasePrice))}</p></div></button>
+              <button onClick={() => void openDetails(asset)} className="flex flex-1 justify-between gap-4 text-left"><div><p className="text-xs font-medium text-[#6a6f78]">{asset.hasWarranty ? asset.warrantyStatus === "EXPIRED" ? "Expired" : "Expires" : "Warranty"}</p><p className={`mt-1 text-sm font-medium ${asset.warrantyStatus === "ACTIVE" ? "text-[#17243a]" : "text-[#b55245]"}`}>{asset.expiryDate ? date.format(new Date(asset.expiryDate)) : "Not provided"}</p></div><div className="text-right"><p className="text-xs font-medium text-[#6a6f78]">Value</p><p className="mt-1 text-sm font-medium text-[#17243a]">{formatMoney(Number(asset.purchasePrice))}</p></div></button>
               <div className={`flex gap-2 ${view === "grid" ? "mt-8" : ""}`}><button onClick={() => void openDetails(asset)} className="flex-1 rounded-lg border border-[#c9ccd5] px-3 py-2 text-xs font-semibold text-[#27364b] hover:bg-[#f4f5fb]">View</button><button onClick={() => setFormAsset(asset)} className="flex-1 rounded-lg bg-[#eef0ff] px-3 py-2 text-xs font-semibold text-[#4b41e1] hover:bg-[#e2dfff]">Edit</button><button onClick={() => void removeAsset(asset)} className="rounded-lg px-3 py-2 text-xs font-semibold text-[#ba1a1a] hover:bg-[#fff0f0]" aria-label={`Delete ${asset.name}`}>Delete</button></div>
             </div>
           </article>;

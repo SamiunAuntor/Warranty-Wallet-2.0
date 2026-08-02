@@ -1,27 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { useAuth } from "@/contexts/auth-context";
-import { getUserPreferences, updateAppUser, updateUserPreferences, uploadProfilePhoto, type UserPreferences } from "@/lib/auth-api";
+import { updateAppUser, updateUserPreferences, uploadProfilePhoto, type UserPreferences } from "@/lib/auth-api";
 import { toast } from "@/lib/notifications";
 import { prepareUploadFile } from "@/lib/upload-files";
 import { Loading } from "@/components/ui/loading";
+import { usePreferences } from "@/contexts/preferences-context";
 
 const inputClass = "mt-2 h-11 w-full rounded-lg border border-[#c9ccd5] bg-white px-3 text-sm outline-none focus:border-[#5b47ee] focus:ring-2 focus:ring-[#e4dfff]";
 const reminderOptions = [30, 14, 7, 3, 1];
 
 export default function SettingsPage() {
   const { firebaseUser, appUser, setCurrentAppUser } = useAuth();
+  const { preferences, setPreferences } = usePreferences();
   const photoInput = useRef<HTMLInputElement>(null);
-  const [preferences, setPreferences] = useState<UserPreferences | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPreferences, setSavingPreferences] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-
-  useEffect(() => {
-    if (!firebaseUser) return;
-    firebaseUser.getIdToken().then(getUserPreferences).then(setPreferences).catch((error) => toast.error(error instanceof Error ? error.message : "Could not load preferences."));
-  }, [firebaseUser]);
 
   const saveProfile = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault(); if (!firebaseUser) return;
