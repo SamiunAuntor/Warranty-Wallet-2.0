@@ -22,6 +22,8 @@ const syncUser = async (firebaseUser, payload) => {
 
 const getProfile = (id) => repository.findById(id);
 const updateProfile = (id, payload) => repository.updateUser(id, payload);
+const getPreferences = (userId) => repository.getPreferences(userId);
+const updatePreferences = (userId, payload) => repository.updatePreferences(userId, payload);
 
 const updateAvatar = async (user, file) => {
     if (!file) throw new ApiError(400, "Choose a profile photo to upload.");
@@ -38,4 +40,4 @@ const updateAvatar = async (user, file) => {
     }
 };
 
-module.exports = { syncUser, getProfile, updateProfile, updateAvatar };
+module.exports = { syncUser, getProfile, updateProfile, updateAvatar, getPreferences, updatePreferences };
