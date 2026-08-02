@@ -144,6 +144,8 @@ const uploadDocuments = async ({ user, productId, files, type, extractedData, })
 
             fileSize:
                 file.size,
+
+            ...extracted,
         });
 
         uploadedDocuments.push(

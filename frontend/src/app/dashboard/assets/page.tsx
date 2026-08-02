@@ -162,15 +162,29 @@ function AssetsPageContent() {
       if (formAsset === "new") {
         const created = await createAsset(token, input);
         let uploadedCount = 0;
+        const failedUploads: string[] = [];
         for (const document of documents) {
-          try {
-            await uploadDocuments(token, created.id, document.type, [document.file], document.extractedData);
-            uploadedCount += 1;
-          } catch (uploadError) {
-            toast.warning(`Asset created, but ${document.file.name} was not attached: ${uploadError instanceof Error ? uploadError.message : "upload failed"}`);
+          let lastError: unknown;
+          for (let attempt = 0; attempt < 2; attempt += 1) {
+            try {
+              const uploaded = await uploadDocuments(token, created.id, document.type, [document.file], document.extractedData);
+              if (uploaded.length !== 1 || uploaded[0].productId !== created.id) throw new Error("The server did not confirm the asset link.");
+              uploadedCount += 1;
+              lastError = undefined;
+              break;
+            } catch (uploadError) {
+              lastError = uploadError;
+            }
+          }
+          if (lastError) {
+            failedUploads.push(`${document.file.name}: ${lastError instanceof Error ? lastError.message : "upload failed"}`);
           }
         }
-        toast.success(uploadedCount > 0 ? `Asset added with ${uploadedCount} document${uploadedCount === 1 ? "" : "s"}.` : "Asset added successfully.");
+        if (failedUploads.length > 0) {
+          await dialog.warning("Asset saved, but some files need attention", `${uploadedCount} of ${documents.length} files were linked. ${failedUploads.join(" ")}`);
+        } else {
+          toast.success(documents.length > 0 ? `Asset added with all ${uploadedCount} related file${uploadedCount === 1 ? "" : "s"}.` : "Asset added successfully.");
+        }
       } else {
         await updateAsset(token, formAsset.id, input);
         toast.success("Asset updated successfully.");

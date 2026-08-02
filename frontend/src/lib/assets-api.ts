@@ -47,7 +47,15 @@ export type Asset = {
   updatedAt: string;
   category: Category;
   brandReference?: Brand | null;
-  documents?: Array<{ id: string; fileName: string }>;
+  documents?: Array<{
+    id: string;
+    fileName: string;
+    fileType: string;
+    fileUrl: string;
+    fileSize: number | null;
+    ocrProcessed: boolean;
+    createdAt: string;
+  }>;
   claims?: Array<{ id: string; claimNumber: string; title: string; status: import("@/lib/claims-api").ClaimStatus; updatedAt: string; _count?: { documents: number } }>;
   _count?: { claims: number; documents: number };
 };
