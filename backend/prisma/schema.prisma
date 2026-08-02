@@ -23,6 +23,12 @@ enum UserPlan {
   PRO
 }
 
+enum AvatarSource {
+  NONE
+  GOOGLE
+  CUSTOM
+}
+
 enum WarrantyStatus {
   NO_WARRANTY
   ACTIVE
@@ -133,6 +139,10 @@ model User {
 
   photoURL String?
 
+  avatarPublicId String?
+
+  avatarSource AvatarSource @default(NONE)
+
   emailVerified Boolean @default(false)
 
   role UserRole @default(USER)
@@ -161,10 +171,26 @@ model User {
 
   claims Claim[]
 
+  preferences UserPreference?
+
   @@index([role])
   @@index([status])
   @@index([plan])
   @@index([createdAt])
+}
+
+model UserPreference {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  warrantyReminders Boolean  @default(true)
+  claimUpdates      Boolean  @default(true)
+  reminderDays      Int[]    @default([30, 14, 3])
+  timezone          String   @default("UTC")
+  currency          String   @default("USD")
+  dateFormat        String   @default("MMM_D_YYYY")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Category {

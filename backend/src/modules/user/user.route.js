@@ -4,6 +4,7 @@ const controller = require("./user.controller");
 
 const auth = require("../../middlewares/auth.middleware");
 const verifyFirebaseToken = require("../../middlewares/verifyFirebaseToken.middleware");
+const upload = require("../../middlewares/upload.middleware");
 const validate = require("../../middlewares/validate.middleware");
 
 const { syncUserSchema, updateProfileSchema } = require("./user.validation");
@@ -15,5 +16,6 @@ router.post("/sync", verifyFirebaseToken, validate(syncUserSchema), controller.s
 router.get("/profile", auth, controller.getProfile);
 
 router.patch("/profile", auth, validate(updateProfileSchema), controller.updateProfile);
+router.post("/profile/avatar", auth, upload.single, controller.updateAvatar);
 
 module.exports = router;
