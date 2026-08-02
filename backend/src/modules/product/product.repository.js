@@ -1,6 +1,6 @@
 const prisma = require("../../config/prisma");
 
-const ACTIVE_CLAIM_STATUSES = ["DRAFT", "SUBMITTED", "UNDER_REVIEW", "APPROVED"];
+const ACTIVE_CLAIM_STATUSES = ["SUBMITTED", "IN_PROGRESS"];
 
 const claimSummary = {
     documents: {
