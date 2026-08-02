@@ -3,6 +3,20 @@ const prisma = require("../../config/prisma");
 const ACTIVE_CLAIM_STATUSES = ["DRAFT", "SUBMITTED", "UNDER_REVIEW", "APPROVED"];
 
 const claimSummary = {
+    documents: {
+        where: { fileType: "PRODUCT_IMAGE" },
+        orderBy: { createdAt: "asc" },
+        take: 1,
+        select: {
+            id: true,
+            fileName: true,
+            fileType: true,
+            fileUrl: true,
+            fileSize: true,
+            ocrProcessed: true,
+            createdAt: true,
+        },
+    },
     claims: {
         where: {
             status: { in: ACTIVE_CLAIM_STATUSES },
@@ -49,7 +63,10 @@ const findById = (id) => {
         include: {
             category: true,
             brandReference: true,
-            documents: true,
+            documents: {
+                orderBy: { createdAt: "desc" },
+                include: { _count: { select: { claims: true } } },
+            },
             claims: {
                 orderBy: { updatedAt: "desc" },
                 include: {
@@ -201,7 +218,7 @@ const findExpiringProducts = (fromDate, toDate) => {
             isDeleted: false,
         },
         include: {
-            user: true,
+            user: { include: { preferences: true } },
         },
     });
 };
@@ -219,7 +236,7 @@ const findExpiredProducts = (date) => {
             isDeleted: false,
         },
         include: {
-            user: true,
+            user: { include: { preferences: true } },
         },
     });
 };

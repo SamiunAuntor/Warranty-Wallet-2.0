@@ -147,8 +147,8 @@ const broadcastNotification = async ({ title, message, type, }) => {
 
 };
 
-const notifyWarrantyExpiry = async ({ userId, productId, productName, expiryDate, expired = false }) => {
-    const eventKey = `${expired ? "expired" : "expiring"}:${new Date(expiryDate).toISOString().slice(0, 10)}`;
+const notifyWarrantyExpiry = async ({ userId, productId, productName, expiryDate, expired = false, daysRemaining }) => {
+    const eventKey = `${expired ? "expired" : `expiring-${daysRemaining}`}:${new Date(expiryDate).toISOString().slice(0, 10)}`;
     const existing = await notificationRepository.findByEvent({
         userId,
         type: "REMINDER",
@@ -167,7 +167,7 @@ const notifyWarrantyExpiry = async ({ userId, productId, productName, expiryDate
         message:
             expired
                 ? `Your warranty for "${productName}" has expired.`
-                : `Your warranty for "${productName}" is expiring soon.`,
+                : `Your warranty for "${productName}" expires in ${daysRemaining} day${daysRemaining === 1 ? "" : "s"}.`,
 
         type:
             "REMINDER",
@@ -199,24 +199,24 @@ const notifyPaymentSuccess = async ({ userId, amount, planName, }) => {
 
 };
 
+const notifyClaimStatus = async ({ userId, claimId, claimNumber, status }) => {
+    const preferences = await userRepository.getPreferences(userId);
+    if (!preferences.claimUpdates) return null;
+    const eventKey = `claim-status:${status}`;
+    const existing = await notificationRepository.findByEvent({ userId, type: "SYSTEM", entityId: claimId, eventKey });
+    if (existing) return existing;
+    return notificationRepository.create({ userId, title: "Claim status updated", message: `${claimNumber} is now ${status.replaceAll("_", " ").toLowerCase()}.`, type: "SYSTEM", entityId: claimId, eventKey });
+};
+
 module.exports = {
-
     createNotification,
-
     getNotifications,
-
     getUnreadCount,
-
     markAsRead,
-
     markAllAsRead,
-
     deleteNotification,
-
     broadcastNotification,
-
     notifyWarrantyExpiry,
-
     notifyPaymentSuccess,
-
+    notifyClaimStatus,
 };
