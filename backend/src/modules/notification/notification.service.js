@@ -199,6 +199,9 @@ const notifyPaymentSuccess = async ({ userId, amount, planName, }) => {
 
 };
 
+const markReminderEmailSent = (notificationId) =>
+    notificationRepository.markEmailSent(notificationId);
+
 module.exports = {
     createNotification,
     getNotifications,
@@ -209,4 +212,5 @@ module.exports = {
     broadcastNotification,
     notifyWarrantyExpiry,
     notifyPaymentSuccess,
+    markReminderEmailSent,
 };

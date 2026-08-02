@@ -213,7 +213,7 @@ const findExpiringProducts = (fromDate, toDate) => {
                 gte: fromDate,
                 lte: toDate,
             },
-            warrantyStatus: "ACTIVE",
+            warrantyStatus: { in: ["ACTIVE", "EXPIRING_SOON"] },
             hasWarranty: true,
             isDeleted: false,
         },

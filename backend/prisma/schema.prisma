@@ -423,6 +423,8 @@ model Notification {
 
   eventKey String?
 
+  emailSentAt DateTime?
+
   isRead Boolean @default(false)
 
   createdAt DateTime @default(now())
