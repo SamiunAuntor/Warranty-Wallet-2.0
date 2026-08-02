@@ -199,15 +199,6 @@ const notifyPaymentSuccess = async ({ userId, amount, planName, }) => {
 
 };
 
-const notifyClaimStatus = async ({ userId, claimId, claimNumber, status }) => {
-    const preferences = await userRepository.getPreferences(userId);
-    if (!preferences.claimUpdates) return null;
-    const eventKey = `claim-status:${status}`;
-    const existing = await notificationRepository.findByEvent({ userId, type: "SYSTEM", entityId: claimId, eventKey });
-    if (existing) return existing;
-    return notificationRepository.create({ userId, title: "Claim status updated", message: `${claimNumber} is now ${status.replaceAll("_", " ").toLowerCase()}.`, type: "SYSTEM", entityId: claimId, eventKey });
-};
-
 module.exports = {
     createNotification,
     getNotifications,
@@ -218,5 +209,4 @@ module.exports = {
     broadcastNotification,
     notifyWarrantyExpiry,
     notifyPaymentSuccess,
-    notifyClaimStatus,
 };

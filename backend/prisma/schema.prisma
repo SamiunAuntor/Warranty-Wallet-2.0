@@ -183,7 +183,6 @@ model UserPreference {
   id                String   @id @default(cuid())
   userId            String   @unique
   warrantyReminders Boolean  @default(true)
-  claimUpdates      Boolean  @default(true)
   reminderDays      Int[]    @default([30, 14, 3])
   timezone          String   @default("UTC")
   currency          String   @default("USD")
