@@ -24,10 +24,7 @@ const claimSummary = {
                     status: { in: ACTIVE_CLAIM_STATUSES },
                 },
             },
-            documents: {
-                orderBy: { createdAt: "desc" },
-                include: { _count: { select: { claims: true } } },
-            },
+            documents: true,
         },
     },
 };
@@ -52,7 +49,10 @@ const findById = (id) => {
         include: {
             category: true,
             brandReference: true,
-            documents: true,
+            documents: {
+                orderBy: { createdAt: "desc" },
+                include: { _count: { select: { claims: true } } },
+            },
             claims: {
                 orderBy: { updatedAt: "desc" },
                 include: {
