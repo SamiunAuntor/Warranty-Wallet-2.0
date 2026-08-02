@@ -268,6 +268,6 @@ function AssetsPageContent() {
 
     {formAsset === "new" && <AssetOnboardingModal categories={categories} brands={brands} pending={saving} onClose={() => setFormAsset(null)} onSubmit={saveAsset}/>}
     {formAsset && formAsset !== "new" && <AssetFormModal asset={formAsset} categories={categories} brands={brands} pending={saving} onClose={() => setFormAsset(null)} onSubmit={saveAsset}/>}
-    {selectedAsset && <AssetDetailsModal asset={selectedAsset} onClose={() => setSelectedAsset(null)} onEdit={() => { setFormAsset(selectedAsset); setSelectedAsset(null); }} onDelete={() => void removeAsset(selectedAsset)} onRaiseClaim={() => router.push(`/dashboard/claims?assetId=${selectedAsset.id}`)}/>}
+    {selectedAsset && <AssetDetailsModal asset={selectedAsset} onClose={() => setSelectedAsset(null)} onEdit={() => { setFormAsset(selectedAsset); setSelectedAsset(null); }} onDelete={() => void removeAsset(selectedAsset)} onRaiseClaim={() => router.push(`/dashboard/claims?assetId=${selectedAsset.id}`)} onFilesChanged={async () => { if (!firebaseUser) return; setSelectedAsset(await getAsset(await firebaseUser.getIdToken(), selectedAsset.id)); refresh(); }}/>} 
   </div>;
 }

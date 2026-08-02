@@ -24,7 +24,10 @@ const claimSummary = {
                     status: { in: ACTIVE_CLAIM_STATUSES },
                 },
             },
-            documents: true,
+            documents: {
+                orderBy: { createdAt: "desc" },
+                include: { _count: { select: { claims: true } } },
+            },
         },
     },
 };

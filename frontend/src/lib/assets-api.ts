@@ -55,6 +55,7 @@ export type Asset = {
     fileSize: number | null;
     ocrProcessed: boolean;
     createdAt: string;
+    _count?: { claims: number };
   }>;
   claims?: Array<{ id: string; claimNumber: string; title: string; status: import("@/lib/claims-api").ClaimStatus; updatedAt: string; _count?: { documents: number } }>;
   _count?: { claims: number; documents: number };
