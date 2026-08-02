@@ -204,7 +204,7 @@ const findExpiringProducts = (fromDate, toDate) => {
             isDeleted: false,
         },
         include: {
-            user: true,
+            user: { include: { preferences: true } },
         },
     });
 };
@@ -222,7 +222,7 @@ const findExpiredProducts = (date) => {
             isDeleted: false,
         },
         include: {
-            user: true,
+            user: { include: { preferences: true } },
         },
     });
 };

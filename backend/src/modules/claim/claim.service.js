@@ -4,6 +4,7 @@ const productRepository = require("../product/product.repository");
 const ApiError = require("../../utils/ApiError");
 const { pagination } = require("../../utils/query");
 const { CLAIM_TRANSITIONS, TERMINAL_CLAIM_STATUSES } = require("./claim.constant");
+const notificationService = require("../notification/notification.service");
 const EVIDENCE_EDITABLE_STATUSES = ["DRAFT", "SUBMITTED"];
 
 const claimNumber = () =>
@@ -174,6 +175,9 @@ const updateClaim = async (id, user, payload) => {
         ),
     };
     await claimRepository.update(claim, update);
+    if (payload.status && payload.status !== claim.status && user.role === "ADMIN") {
+        await notificationService.notifyClaimStatus({ userId: claim.userId, claimId: claim.id, claimNumber: claim.claimNumber, status: payload.status });
+    }
     return assertClaimOwnership(id, user);
 };
 
@@ -198,6 +202,9 @@ const addTimelineEvent = async (id, user, payload) => {
         throw new ApiError(403, "Only an administrator can update claim progress.");
     }
     await claimRepository.addTimelineEvent(id, payload);
+    if (payload.status && payload.status !== claim.status && user.role === "ADMIN") {
+        await notificationService.notifyClaimStatus({ userId: claim.userId, claimId: claim.id, claimNumber: claim.claimNumber, status: payload.status });
+    }
     return assertClaimOwnership(id, user);
 };
 
