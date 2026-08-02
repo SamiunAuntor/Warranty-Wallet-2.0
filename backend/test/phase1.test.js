@@ -118,3 +118,35 @@ test("builds correct Plus and Pro subscription checkout sessions", async (t) => 
         (error) => error.statusCode === 400
     );
 });
+
+test("checkout confirmation verifies ownership and paid status", async (t) => {
+    const originalFindPayment = paymentRepository.findPaymentBySessionId;
+    const originalRetrieve = stripe.checkout.sessions.retrieve;
+
+    t.after(() => {
+        paymentRepository.findPaymentBySessionId = originalFindPayment;
+        stripe.checkout.sessions.retrieve = originalRetrieve;
+    });
+
+    paymentRepository.findPaymentBySessionId = async () => null;
+    await assert.rejects(
+        paymentService.confirmCheckoutSession({ id: "user-id" }, "cs_missing"),
+        (error) => error.statusCode === 404
+    );
+
+    paymentRepository.findPaymentBySessionId = async () => ({
+        id: "payment-id",
+        userId: "user-id",
+        status: "PENDING",
+    });
+    stripe.checkout.sessions.retrieve = async () => ({
+        id: "cs_pending",
+        status: "open",
+        payment_status: "unpaid",
+    });
+
+    await assert.rejects(
+        paymentService.confirmCheckoutSession({ id: "user-id" }, "cs_pending"),
+        (error) => error.statusCode === 409
+    );
+});

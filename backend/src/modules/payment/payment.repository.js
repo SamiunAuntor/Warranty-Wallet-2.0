@@ -58,6 +58,13 @@ const paymentCount = (userId) => {
     });
 };
 
+const findLatestPendingPayment = (userId) => {
+    return prisma.payment.findFirst({
+        where: { userId, status: "PENDING" },
+        orderBy: { createdAt: "desc" },
+    });
+};
+
 const findSubscription = (userId) => {
     return prisma.subscription.findUnique({
         where: {
@@ -127,6 +134,8 @@ module.exports = {
     paymentHistory,
 
     paymentCount,
+
+    findLatestPendingPayment,
 
     findSubscription,
 
