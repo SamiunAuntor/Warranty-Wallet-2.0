@@ -12,7 +12,12 @@ const confirmCheckoutSchema = z.object({
     }),
 });
 
+const changePlanSchema = z.object({
+    body: z.object({ plan: z.enum(["PLUS", "PRO"]) }),
+});
+
 module.exports = {
     checkoutSchema,
     confirmCheckoutSchema,
+    changePlanSchema,
 };

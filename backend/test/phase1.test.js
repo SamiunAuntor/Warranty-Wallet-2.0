@@ -150,3 +150,101 @@ test("checkout confirmation verifies ownership and paid status", async (t) => {
         (error) => error.statusCode === 409
     );
 });
+
+test("paid plan downgrades are scheduled without changing current access", async (t) => {
+    const originalFind = paymentRepository.findSubscription;
+    const originalUpdate = paymentRepository.updateSubscription;
+    const originalRetrieve = stripe.subscriptions.retrieve;
+    const originalUpdateRemote = stripe.subscriptions.update;
+    const originalCreatePrice = stripe.prices.create;
+    const local = {
+        userId: "user-id",
+        plan: "PRO",
+        isActive: true,
+        scheduledPlan: null,
+        stripeSubscriptionId: "sub_1",
+    };
+    let saved;
+    let remoteUpdate;
+    paymentRepository.findSubscription = async () => ({ ...local, ...saved });
+    paymentRepository.updateSubscription = async (_userId, payload) => {
+        saved = payload;
+        return { ...local, ...payload };
+    };
+    stripe.subscriptions.retrieve = async () => ({
+        id: "sub_1",
+        metadata: { plan: "PRO" },
+        items: { data: [{ id: "si_1", price: { product: "prod_1" } }] },
+    });
+    stripe.prices.create = async () => ({ id: "price_plus" });
+    stripe.subscriptions.update = async (_id, payload) => {
+        remoteUpdate = payload;
+        return {};
+    };
+
+    t.after(() => {
+        paymentRepository.findSubscription = originalFind;
+        paymentRepository.updateSubscription = originalUpdate;
+        stripe.subscriptions.retrieve = originalRetrieve;
+        stripe.subscriptions.update = originalUpdateRemote;
+        stripe.prices.create = originalCreatePrice;
+    });
+
+    const result = await paymentService.changePlan({ id: "user-id" }, "PLUS");
+    assert.equal(saved.scheduledPlan, "PLUS");
+    assert.equal(saved.cancelAtPeriodEnd, false);
+    assert.equal(remoteUpdate.proration_behavior, "none");
+    assert.equal(result.subscription.plan, "PRO");
+});
+
+test("subscription cancellation and reversal preserve access until period end", async (t) => {
+    const originalFind = paymentRepository.findSubscription;
+    const originalUpdate = paymentRepository.updateSubscription;
+    const originalRetrieve = stripe.subscriptions.retrieve;
+    const originalUpdateRemote = stripe.subscriptions.update;
+    const originalCreatePrice = stripe.prices.create;
+    const local = {
+        userId: "user-id",
+        plan: "PLUS",
+        isActive: true,
+        cancelAtPeriodEnd: false,
+        stripeSubscriptionId: "sub_1",
+        currentPeriodEnd: new Date("2026-09-01"),
+    };
+    let state = { ...local };
+    const remoteRequests = [];
+    paymentRepository.findSubscription = async () => state;
+    paymentRepository.updateSubscription = async (_userId, payload) => {
+        state = { ...state, ...payload };
+        return state;
+    };
+    stripe.subscriptions.update = async (_id, payload) => {
+        remoteRequests.push(payload);
+        return { current_period_end: 1788220800, items: { data: [] } };
+    };
+    stripe.subscriptions.retrieve = async () => ({
+        id: "sub_1",
+        items: { data: [{ id: "si_1", price: { product: "prod_1" } }] },
+    });
+    stripe.prices.create = async () => ({ id: "price_plus" });
+
+    t.after(() => {
+        paymentRepository.findSubscription = originalFind;
+        paymentRepository.updateSubscription = originalUpdate;
+        stripe.subscriptions.retrieve = originalRetrieve;
+        stripe.subscriptions.update = originalUpdateRemote;
+        stripe.prices.create = originalCreatePrice;
+    });
+
+    const cancelled = await paymentService.cancelSubscription({ id: "user-id" });
+    assert.equal(cancelled.plan, "PLUS");
+    assert.equal(cancelled.scheduledPlan, "BASIC");
+    assert.equal(cancelled.cancelAtPeriodEnd, true);
+    assert.equal(remoteRequests[0].cancel_at_period_end, true);
+
+    const resumed = await paymentService.resumeSubscription({ id: "user-id" });
+    assert.equal(resumed.plan, "PLUS");
+    assert.equal(resumed.scheduledPlan, null);
+    assert.equal(resumed.cancelAtPeriodEnd, false);
+    assert.equal(remoteRequests[1].cancel_at_period_end, false);
+});
