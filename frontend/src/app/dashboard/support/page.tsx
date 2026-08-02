@@ -1,1 +1,5 @@
-export default function SupportPage() { return <div className="mx-auto max-w-3xl pb-10"><header><h1 className="text-3xl font-semibold text-[#111d32]">Support</h1><p className="mt-1 text-sm text-[#626773]">Get help with your assets, claims, documents, or subscription.</p></header><section className="mt-6 rounded-xl border bg-white p-6"><h2 className="text-xl font-semibold">Contact support</h2><p className="mt-2 text-sm leading-6 text-[#626773]">Include your account email and any relevant asset or claim number so the team can help quickly.</p><a href="mailto:support@warrantywallet.app?subject=Warranty%20Wallet%20Support" className="mt-5 inline-flex rounded-lg bg-[#5b47ee] px-5 py-3 text-sm font-semibold text-white">Email support</a></section></div>; }
+import { redirect } from "next/navigation";
+
+export default function SupportRedirectPage() {
+  redirect("/dashboard/settings");
+}
