@@ -9,6 +9,7 @@ const { PRODUCT_LIMIT } = require("./product.constant");
 const { calculateExpiryDate, calculateWarrantyStatus, } = require("./product.utils");
 
 const { pagination, search, sort } = require("../../utils/query");
+const { deliverReminder, calendarDaysBetween } = require("../../jobs/warranty.job");
 
 const warrantyFields = (payload, product = null) => {
     const hasWarranty = payload.hasWarranty ?? product?.hasWarranty ?? true;
@@ -95,13 +96,24 @@ const createProduct = async (user, payload) => {
 
     const warranty = warrantyFields(payload);
 
-    return productRepository.create({
+    const product = await productRepository.create({
         ...payload,
 
         userId: user.id,
 
         ...warranty,
     });
+
+    if (product.expiryDate) {
+        const daysRemaining = calendarDaysBetween(new Date(), product.expiryDate);
+        if (daysRemaining >= 0 && daysRemaining <= 30) {
+            await deliverReminder({ ...product, user }, daysRemaining).catch((error) => {
+                console.error(`Immediate warranty reminder failed for product ${product.id}:`, error);
+            });
+        }
+    }
+
+    return product;
 };
 
 const getProducts = async (user, query) => {
