@@ -55,25 +55,7 @@ const webhook = async (req, res) => {
 
     }
 
-    switch (event.type) {
-
-        case "checkout.session.completed":
-
-            await paymentService.handleWebhook(
-
-                event.data.object
-
-            );
-
-            break;
-
-        default:
-
-            console.log(
-                `Unhandled event ${event.type}`
-            );
-
-    }
+    await paymentService.processStripeEvent(event);
 
     res.status(200).json({
         received: true,
@@ -149,6 +131,21 @@ const plans = asyncHandler(async (req, res) => {
     );
 });
 
+const changePlan = asyncHandler(async (req, res) => {
+    const result = await paymentService.changePlan(req.user, req.body.plan);
+    return res.status(200).json(new ApiResponse(200, result.message, result.subscription));
+});
+
+const cancelSubscription = asyncHandler(async (req, res) => {
+    const result = await paymentService.cancelSubscription(req.user);
+    return res.status(200).json(new ApiResponse(200, "Subscription will end after the current billing period.", result));
+});
+
+const resumeSubscription = asyncHandler(async (req, res) => {
+    const result = await paymentService.resumeSubscription(req.user);
+    return res.status(200).json(new ApiResponse(200, "Subscription renewed successfully.", result));
+});
+
 module.exports = {
     createCheckout,
     confirmCheckout,
@@ -156,4 +153,7 @@ module.exports = {
     paymentHistory,
     subscription,
     plans,
+    changePlan,
+    cancelSubscription,
+    resumeSubscription,
 };

@@ -6,7 +6,7 @@ const controller = require("./payment.controller");
 
 const auth = require("../../middlewares/auth.middleware");
 const validate = require("../../middlewares/validate.middleware");
-const { checkoutSchema, confirmCheckoutSchema } = require("./payment.validation");
+const { checkoutSchema, confirmCheckoutSchema, changePlanSchema } = require("./payment.validation");
 
 router.get("/plans", controller.plans);
 
@@ -17,5 +17,11 @@ router.post("/confirm-checkout", auth, validate(confirmCheckoutSchema), controll
 router.get("/", auth, controller.paymentHistory);
 
 router.get("/subscription", auth, controller.subscription);
+
+router.post("/change-plan", auth, validate(changePlanSchema), controller.changePlan);
+
+router.post("/cancel-subscription", auth, controller.cancelSubscription);
+
+router.post("/resume-subscription", auth, controller.resumeSubscription);
 
 module.exports = router;

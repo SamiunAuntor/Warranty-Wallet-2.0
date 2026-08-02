@@ -55,6 +55,8 @@ enum NotificationType {
 
 enum SubscriptionStatus {
   ACTIVE
+  INCOMPLETE
+  PAST_DUE
   EXPIRED
   CANCELLED
 }
@@ -450,13 +452,25 @@ model Subscription {
 
   stripeSubscriptionId String? @unique
 
+  stripePriceId String?
+
   plan UserPlan
+
+  scheduledPlan UserPlan?
 
   status SubscriptionStatus @default(ACTIVE)
 
   startsAt DateTime
 
   expiresAt DateTime
+
+  currentPeriodStart DateTime?
+
+  currentPeriodEnd DateTime?
+
+  cancelAtPeriodEnd Boolean @default(false)
+
+  cancelledAt DateTime?
 
   isActive Boolean @default(true)
 

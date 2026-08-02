@@ -76,6 +76,23 @@ const findSubscription = (userId) => {
     });
 };
 
+const findSubscriptionByStripeId = (stripeSubscriptionId) =>
+    prisma.subscription.findUnique({
+        where: { stripeSubscriptionId },
+        include: { user: true, latestPayment: true },
+    });
+
+const findWebhookEvent = (stripeEventId) =>
+    prisma.webhookEvent.findUnique({ where: { stripeEventId } });
+
+const createWebhookEvent = (payload) => prisma.webhookEvent.create({ data: payload });
+
+const markWebhookEventProcessed = (stripeEventId) =>
+    prisma.webhookEvent.update({
+        where: { stripeEventId },
+        data: { processed: true, processedAt: new Date() },
+    });
+
 const createSubscription = (payload) => {
     return prisma.subscription.create({
         data: payload,
@@ -138,6 +155,14 @@ module.exports = {
     findLatestPendingPayment,
 
     findSubscription,
+
+    findSubscriptionByStripeId,
+
+    findWebhookEvent,
+
+    createWebhookEvent,
+
+    markWebhookEventProcessed,
 
     createSubscription,
 
