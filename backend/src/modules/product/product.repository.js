@@ -219,6 +219,7 @@ const findExpiringProducts = (fromDate, toDate) => {
         },
         include: {
             user: { include: { preferences: true } },
+            category: true,
         },
     });
 };
