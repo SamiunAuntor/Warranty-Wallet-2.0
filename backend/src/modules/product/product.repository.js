@@ -3,6 +3,20 @@ const prisma = require("../../config/prisma");
 const ACTIVE_CLAIM_STATUSES = ["DRAFT", "SUBMITTED", "UNDER_REVIEW", "APPROVED"];
 
 const claimSummary = {
+    documents: {
+        where: { fileType: "PRODUCT_IMAGE" },
+        orderBy: { createdAt: "asc" },
+        take: 1,
+        select: {
+            id: true,
+            fileName: true,
+            fileType: true,
+            fileUrl: true,
+            fileSize: true,
+            ocrProcessed: true,
+            createdAt: true,
+        },
+    },
     claims: {
         where: {
             status: { in: ACTIVE_CLAIM_STATUSES },

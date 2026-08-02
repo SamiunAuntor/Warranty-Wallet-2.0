@@ -13,6 +13,8 @@ test("asset list uses a valid scalar document count selection", async (t) => {
 
     assert.equal(query.include._count.select.documents, true);
     assert.equal(typeof query.include._count.select.documents, "boolean");
+    assert.equal(query.include.documents.where.fileType, "PRODUCT_IMAGE");
+    assert.equal(query.include.documents.take, 1);
 });
 
 test("asset details load claim counts for document lock controls", async (t) => {
