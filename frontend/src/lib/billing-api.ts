@@ -12,3 +12,4 @@ export type Payment = { id: string; amount: string; currency: string; plan: User
 export const getSubscription = async (token: string) => (await request<Subscription>("/payments/subscription", token)).data;
 export const getPayments = async (token: string) => request<Payment[]>("/payments?page=1&limit=20", token);
 export const createCheckout = async (token: string, plan: "PLUS" | "PRO") => (await request<{ url: string }>("/payments/create-checkout", token, { method: "POST", body: JSON.stringify({ plan }) })).data;
+export const confirmCheckout = async (token: string, sessionId: string) => (await request<{ payment: Payment; subscription: NonNullable<Subscription> }>("/payments/confirm-checkout", token, { method: "POST", body: JSON.stringify({ sessionId }) })).data;

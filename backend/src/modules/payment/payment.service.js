@@ -162,6 +162,26 @@ const handleWebhook = async (session) => {
     }
 };
 
+const confirmCheckoutSession = async (user, sessionId) => {
+    const payment = await paymentRepository.findPaymentBySessionId(sessionId);
+
+    if (!payment || payment.userId !== user.id) {
+        throw new ApiError(404, "Checkout session not found.");
+    }
+
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    if (session.status !== "complete" || session.payment_status !== "paid") {
+        throw new ApiError(409, "Payment has not completed yet.");
+    }
+
+    await handleWebhook(session);
+
+    return {
+        payment: await paymentRepository.findPaymentBySessionId(sessionId),
+        subscription: await paymentRepository.findSubscription(user.id),
+    };
+};
+
 const getPaymentHistory = async (user, query) => {
     const { skip, take, page, limit } = pagination(query);
     const payments = await paymentRepository.paymentHistory({ userId: user.id, skip, take });
@@ -178,7 +198,24 @@ const getPaymentHistory = async (user, query) => {
     };
 };
 
-const getSubscription = (userId) => paymentRepository.findSubscription(userId);
+const getSubscription = async (user) => {
+    const pendingPayment = await paymentRepository.findLatestPendingPayment(user.id);
+
+    if (pendingPayment) {
+        try {
+            const session = await stripe.checkout.sessions.retrieve(
+                pendingPayment.stripeSessionId
+            );
+            if (session.status === "complete" && session.payment_status === "paid") {
+                await handleWebhook(session);
+            }
+        } catch (error) {
+            console.error("Pending checkout reconciliation failed:", error.message);
+        }
+    }
+
+    return paymentRepository.findSubscription(user.id);
+};
 
 const getPlans = () =>
     Object.entries(PLAN_CONFIG).map(([id, config]) => ({
@@ -188,6 +225,7 @@ const getPlans = () =>
 
 module.exports = {
     createCheckoutSession,
+    confirmCheckoutSession,
     handleWebhook,
     getPaymentHistory,
     getSubscription,

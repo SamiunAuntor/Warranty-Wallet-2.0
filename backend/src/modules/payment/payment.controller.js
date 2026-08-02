@@ -110,9 +110,7 @@ const paymentHistory = asyncHandler(async (req, res) => {
 
 const subscription = asyncHandler(async (req, res) => {
 
-    const subscription = await paymentService.getSubscription(
-        req.user.id
-    );
+    const subscription = await paymentService.getSubscription(req.user);
 
     return res.status(200).json(
 
@@ -130,6 +128,17 @@ const subscription = asyncHandler(async (req, res) => {
 
 });
 
+const confirmCheckout = asyncHandler(async (req, res) => {
+    const result = await paymentService.confirmCheckoutSession(
+        req.user,
+        req.body.sessionId
+    );
+
+    return res.status(200).json(
+        new ApiResponse(200, "Subscription activated successfully.", result)
+    );
+});
+
 const plans = asyncHandler(async (req, res) => {
     return res.status(200).json(
         new ApiResponse(
@@ -142,6 +151,7 @@ const plans = asyncHandler(async (req, res) => {
 
 module.exports = {
     createCheckout,
+    confirmCheckout,
     webhook,
     paymentHistory,
     subscription,

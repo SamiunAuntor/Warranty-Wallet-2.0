@@ -6,6 +6,13 @@ const checkoutSchema = z.object({
     }),
 });
 
+const confirmCheckoutSchema = z.object({
+    body: z.object({
+        sessionId: z.string().trim().min(1),
+    }),
+});
+
 module.exports = {
     checkoutSchema,
+    confirmCheckoutSchema,
 };
