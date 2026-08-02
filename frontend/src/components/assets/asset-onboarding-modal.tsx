@@ -154,8 +154,8 @@ export function AssetOnboardingModal({ categories, brands, pending, onClose, onS
   }
 
   const busy = extracting || preparing;
-  return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#111827]/45 p-4" role="dialog" aria-modal="true" aria-labelledby="asset-upload-title">
-    <div className="w-full max-w-3xl overflow-hidden rounded-2xl bg-[#f8f9ff] shadow-2xl">
+  return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#111827]/45 p-4 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="asset-upload-title">
+    <div className="max-h-[94vh] w-full max-w-3xl overflow-hidden rounded-l-2xl bg-[#f8f9ff] shadow-2xl">
       <div className="max-h-[94vh] overflow-y-auto">
       <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#e1e4ec] bg-white px-6 py-4">
         <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-[#4b41e1]">Step 1 of 2</p><h2 id="asset-upload-title" className="mt-1 text-xl font-semibold text-[#111d32]">Add documents and photos</h2><p className="mt-1 text-sm text-[#686d77]">Add what you have now. You can review all details on the next step.</p></div>

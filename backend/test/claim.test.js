@@ -29,9 +29,12 @@ test("users can update the status of their own claim", async (t) => {
     await claimService.updateClaim("claim-1", user, { status: "IN_PROGRESS" }); assert.equal(received.status, "IN_PROGRESS");
 });
 
-test("closing a claim requires a note", async (t) => {
-    const find = claimRepository.findById; claimRepository.findById = async () => ({ id: "claim-1", userId: user.id, status: "IN_PROGRESS", resolution: null, documents: [] }); t.after(() => { claimRepository.findById = find; });
-    await assert.rejects(claimService.updateClaim("claim-1", user, { status: "RESOLVED" }), (error) => error.statusCode === 400);
+test("users can close their claim without a mandatory note", async (t) => {
+    const find = claimRepository.findById; const update = claimRepository.update; let received;
+    claimRepository.findById = async () => ({ id: "claim-1", userId: user.id, status: "IN_PROGRESS", resolution: null, documents: [] });
+    claimRepository.update = async (_claim, payload) => { received = payload; return payload; };
+    t.after(() => { claimRepository.findById = find; claimRepository.update = update; });
+    await claimService.updateClaim("claim-1", user, { status: "RESOLVED" }); assert.equal(received.status, "RESOLVED");
 });
 
 test("claim evidence must belong to the selected asset", async (t) => {

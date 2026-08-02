@@ -33,11 +33,7 @@ const claimSummary = {
     },
     _count: {
         select: {
-            claims: {
-                where: {
-                    status: { in: ACTIVE_CLAIM_STATUSES },
-                },
-            },
+            claims: true,
             documents: true,
         },
     },
@@ -82,11 +78,7 @@ const findById = (id) => {
             _count: {
                 select: {
                     documents: true,
-                    claims: {
-                        where: {
-                            status: { in: ACTIVE_CLAIM_STATUSES },
-                        },
-                    },
+                    claims: true,
                 },
             },
         },

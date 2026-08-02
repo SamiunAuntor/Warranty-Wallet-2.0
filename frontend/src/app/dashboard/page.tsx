@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { Icon } from "@/components/icons";
 import { Loading } from "@/components/ui/loading";
@@ -16,16 +16,14 @@ function Panel({ children, className = "" }: { children: React.ReactNode; classN
 
 export default function DashboardPage() {
   const { firebaseUser } = useAuth();
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [error, setError] = useState("");
+  const { data = null, error, isPending } = useQuery<DashboardData>({
+    queryKey: ["dashboard", firebaseUser?.uid],
+    enabled: Boolean(firebaseUser),
+    queryFn: async () => getDashboard(await firebaseUser!.getIdToken()),
+  });
 
-  useEffect(() => {
-    if (!firebaseUser) return;
-    firebaseUser.getIdToken().then(getDashboard).then(setData).catch((reason) => setError(reason instanceof Error ? reason.message : "Could not load dashboard."));
-  }, [firebaseUser]);
-
-  if (!data && !error) return <Loading label="Loading dashboard"/>;
-  if (error) return <div className="rounded-xl border border-red-200 bg-white p-8 text-center text-sm text-red-700">{error}</div>;
+  if (isPending) return <Loading label="Loading dashboard"/>;
+  if (error) return <div className="rounded-xl border border-red-200 bg-white p-8 text-center text-sm text-red-700">{error instanceof Error ? error.message : "Could not load dashboard."}</div>;
   if (!data) return null;
 
   const stats = [

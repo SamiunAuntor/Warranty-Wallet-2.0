@@ -37,7 +37,6 @@ const createClaim = async (user, payload) => {
     const evidence = payload.evidence || (payload.documentIds || []).map((documentId) => ({ documentId, evidenceType: "SUPPORTING_DOCUMENT" }));
     const validEvidence = await validateEvidence(evidence, payload.productId, user);
     const status = payload.status || "SUBMITTED";
-    if (TERMINAL_CLAIM_STATUSES.includes(status) && !payload.resolution?.trim()) throw new ApiError(400, "Add a note before closing a claim.");
     return claimRepository.create({
         claimNumber: createClaimNumber(),
         userId: user.id,
@@ -78,9 +77,6 @@ const getClaim = (id, user) => assertClaimOwnership(id, user);
 
 const updateClaim = async (id, user, payload) => {
     const claim = await assertClaimOwnership(id, user);
-    if (payload.status && TERMINAL_CLAIM_STATUSES.includes(payload.status) && !payload.resolution?.trim() && !claim.resolution?.trim()) {
-        throw new ApiError(400, "Add a note before closing a claim.");
-    }
     return claimRepository.update(claim, {
         ...payload,
         ...(payload.status && TERMINAL_CLAIM_STATUSES.includes(payload.status) && { resolvedAt: new Date() }),
