@@ -16,7 +16,7 @@ export type AppUser = {
 };
 
 export type UserPreferences = {
-  id: string; userId: string; warrantyReminders: boolean; claimUpdates: boolean;
+  id: string; userId: string; warrantyReminders: boolean;
   reminderDays: number[]; timezone: string;
   currency: "USD" | "BDT" | "EUR" | "GBP" | "CAD" | "AUD";
   dateFormat: "MMM_D_YYYY" | "DD_MM_YYYY" | "MM_DD_YYYY";

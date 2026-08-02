@@ -428,7 +428,7 @@ const getProductGrowth = async (year) => {
 const getOpenClaimsCount = (userId) => prisma.claim.count({
     where: {
         userId,
-        status: { in: ["DRAFT", "SUBMITTED", "UNDER_REVIEW", "APPROVED"] },
+        status: { in: ["SUBMITTED", "IN_PROGRESS"] },
     },
 });
 

@@ -1,323 +1,105 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ClaimFormModal } from "@/components/claims/claim-form-modal";
 import { Icon } from "@/components/icons";
 import { Loading } from "@/components/ui/loading";
 import { useAuth } from "@/contexts/auth-context";
-import { getAssets, type Asset } from "@/lib/assets-api";
-import {
-  addTimelineEvent,
-  attachClaimDocument,
-  createClaim,
-  deleteClaim,
-  detachClaimDocument,
-  getAssetDocuments,
-  getClaim,
-  getClaims,
-  updateClaim,
-  uploadClaimEvidence,
-  claimTransitions,
-  terminalClaimStatuses,
-  type AssetDocument,
-  type Claim,
-  type ClaimInput,
-  type ClaimList,
-  type ClaimRecordType,
-  type ClaimStatus,
-  type ClaimUpdate,
-} from "@/lib/claims-api";
-import { dialog, toast } from "@/lib/notifications";
 import { positivePage, useUrlQuerySync } from "@/hooks/use-url-query-sync";
-import { claimOutcomeLabels, claimStatusLabels } from "@/lib/claim-display";
+import { getAssets, type Asset } from "@/lib/assets-api";
+import { claimStatusLabels, claimStatusStyles } from "@/lib/claim-display";
+import { claimStatuses, createClaim, deleteClaim, getAssetDocuments, getClaim, getClaims, updateClaim, type AssetDocument, type Claim, type ClaimInput, type ClaimList, type ClaimStatus, type ClaimUpdate } from "@/lib/claims-api";
+import { dialog, toast } from "@/lib/notifications";
+import { useQueryClient } from "@tanstack/react-query";
+import { Eye, Pencil, Trash2 } from "lucide-react";
+import { ActionIconButton } from "@/components/ui/action-icon-button";
 
-const PAGE_SIZE = 8;
-const dateTime = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" });
-const statusLabel = (status: ClaimStatus) => claimStatusLabels[status];
-const badges: Record<ClaimStatus, string> = {
-  DRAFT: "border-[#d4d6de] bg-[#f0f1f4] text-[#626773]",
-  SUBMITTED: "border-[#cad4e9] bg-[#e9eefb] text-[#33445e]",
-  UNDER_REVIEW: "border-[#f2d7b4] bg-[#fff3e3] text-[#b45c13]",
-  APPROVED: "border-[#d0ead5] bg-[#eaf8ed] text-[#397849]",
-  REJECTED: "border-[#f0c6c9] bg-[#fdecef] text-[#a83e4c]",
-  RESOLVED: "border-[#c8e7dc] bg-[#e5f7ed] text-[#2c7652]",
-  CANCELLED: "border-[#d4d6de] bg-[#f0f1f4] text-[#70747d]",
-};
+const PAGE_SIZE = 10;
+const date = new Intl.DateTimeFormat("en-US", { dateStyle: "medium" });
 
 export default function ClaimsPage() {
-  return <Suspense fallback={<Loading label="Loading claim filters"/>}><ClaimsPageContent/></Suspense>;
+  return <Suspense fallback={<Loading label="Loading claims"/>}><ClaimsPageContent/></Suspense>;
 }
 
 function ClaimsPageContent() {
-  const { firebaseUser, appUser } = useAuth();
+  const queryClient = useQueryClient();
+  const { firebaseUser } = useAuth();
   const query = useSearchParams();
-  const statusQuery = query.get("status");
+  const openedFromAsset = useRef(false);
   const [result, setResult] = useState<ClaimList | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
-  const [assetDocuments, setAssetDocuments] = useState<AssetDocument[]>([]);
-  const [selectedClaim, setSelectedClaim] = useState<Claim | null>(null);
+  const [documents, setDocuments] = useState<AssetDocument[]>([]);
   const [formClaim, setFormClaim] = useState<Claim | "new" | null>(null);
+  const [viewClaim, setViewClaim] = useState<Claim | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
   const [initialAssetId, setInitialAssetId] = useState("");
-  const [initialParentClaimId, setInitialParentClaimId] = useState("");
-  const openedAssetClaim = useRef(false);
   const [searchInput, setSearchInput] = useState(query.get("search") ?? "");
   const [search, setSearch] = useState(query.get("search") ?? "");
-  const [status, setStatus] = useState<ClaimStatus | "">(statusQuery && statusQuery in badges ? statusQuery as ClaimStatus : "");
-  const [recordType, setRecordType] = useState<ClaimRecordType | "">(query.get("recordType") === "SERVICE_RECORD" ? "SERVICE_RECORD" : query.get("recordType") === "WARRANTY_CLAIM" ? "WARRANTY_CLAIM" : "");
+  const initialStatus = query.get("status");
+  const [status, setStatus] = useState<ClaimStatus | "">(initialStatus && claimStatuses.includes(initialStatus as ClaimStatus) ? initialStatus as ClaimStatus : "");
   const [page, setPage] = useState(() => positivePage(query.get("page")));
-  const [reloadKey, setReloadKey] = useState(0);
+  const [reload, setReload] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [attachId, setAttachId] = useState("");
-  const selectedClaimId = selectedClaim?.id;
 
-  useUrlQuerySync({ search, status, recordType, page });
-
+  useUrlQuerySync({ search, status, page });
+  useLayoutEffect(() => {
+    if (!firebaseUser) return;
+    const cachedClaims = queryClient.getQueryData<ClaimList>(["claims", firebaseUser.uid, page, search, status]);
+    const cachedAssets = queryClient.getQueryData<{ data: Asset[] }>(["claim-assets", firebaseUser.uid]);
+    if (cachedClaims) { setResult(cachedClaims); setLoading(false); setError(""); }
+    if (cachedAssets) setAssets(cachedAssets.data);
+  }, [firebaseUser, page, queryClient, search, status]);
+  useEffect(() => { const timer = window.setTimeout(() => { const nextSearch = searchInput.trim(); if (nextSearch === search) return; setSearch(nextSearch); setPage(1); }, 350); return () => window.clearTimeout(timer); }, [search, searchInput]);
+  useEffect(() => { if (!firebaseUser) return; firebaseUser.getIdToken().then((token) => queryClient.fetchQuery({ queryKey: ["claim-assets", firebaseUser.uid], queryFn: () => getAssets(token, { page: 1, limit: 100 }), staleTime: Infinity })).then((data) => setAssets(data.data)).catch((cause) => toast.error(cause instanceof Error ? cause.message : "Could not load assets.")); }, [firebaseUser, queryClient, reload]);
+  useEffect(() => {
+    if (!firebaseUser) return; let cancelled = false; setLoading(true); setError("");
+    firebaseUser.getIdToken().then((token) => queryClient.fetchQuery({ queryKey: ["claims", firebaseUser.uid, page, search, status], queryFn: () => getClaims(token, { page, limit: PAGE_SIZE, search: search || undefined, status: status || undefined }), staleTime: Infinity })).then((data) => { if (!cancelled) setResult(data); }).catch((cause) => { if (!cancelled) setError(cause instanceof Error ? cause.message : "Could not load claims."); }).finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [firebaseUser, page, queryClient, reload, search, status]);
   useEffect(() => {
     const assetId = query.get("assetId");
-    if (!firebaseUser || !assetId || openedAssetClaim.current || !assets.some((asset) => asset.id === assetId)) return;
-    openedAssetClaim.current = true;
-    setInitialAssetId(assetId);
-    setFormClaim("new");
-    firebaseUser.getIdToken().then((token) => getAssetDocuments(token, assetId)).then(setAssetDocuments).catch((error) => toast.error(error instanceof Error ? error.message : "Could not load asset documents."));
+    if (!firebaseUser || !assetId || openedFromAsset.current || !assets.some((asset) => asset.id === assetId)) return;
+    openedFromAsset.current = true; setInitialAssetId(assetId); setFormClaim("new");
+    firebaseUser.getIdToken().then((token) => getAssetDocuments(token, assetId)).then(setDocuments).catch(() => setDocuments([]));
   }, [assets, firebaseUser, query]);
 
-  useEffect(() => {
-    if (!firebaseUser) return;
-    let cancelled = false;
-
-    firebaseUser.getIdToken()
-      .then((token) => Promise.all([
-        getClaims(token, {
-          page,
-          limit: PAGE_SIZE,
-          search: search || undefined,
-          status: status || undefined,
-          recordType: recordType || undefined,
-        }),
-        getAssets(token, { page: 1, limit: 500 }),
-      ]))
-      .then(async ([claims, assetResult]) => {
-        if (cancelled) return;
-        setResult(claims);
-        setAssets(assetResult.data);
-
-        if (selectedClaimId && claims.data.some((claim) => claim.id === selectedClaimId)) {
-          const token = await firebaseUser.getIdToken();
-          const refreshed = await getClaim(token, selectedClaimId);
-          if (!cancelled) {
-            setSelectedClaim(refreshed);
-            setAssetDocuments(await getAssetDocuments(token, refreshed.productId));
-          }
-        } else if (claims.data[0]) {
-          const token = await firebaseUser.getIdToken();
-          const first = await getClaim(token, claims.data[0].id);
-          if (!cancelled) {
-            setSelectedClaim(first);
-            setAssetDocuments(await getAssetDocuments(token, first.productId));
-          }
-        } else {
-          setSelectedClaim(null);
-          setAssetDocuments([]);
-        }
-      })
-      .catch((loadError) => {
-        if (!cancelled) setError(loadError instanceof Error ? loadError.message : "Could not load claims.");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [firebaseUser, page, recordType, reloadKey, search, selectedClaimId, status]);
-
-  useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      setLoading(true);
-      setError("");
-      setPage(1);
-      setSearch(searchInput.trim());
-    }, 350);
-    return () => window.clearTimeout(timeout);
-  }, [searchInput]);
+  const refresh = () => { void queryClient.invalidateQueries({ queryKey: ["claims", firebaseUser?.uid] }); void queryClient.invalidateQueries({ queryKey: ["claim-assets", firebaseUser?.uid] }); void queryClient.invalidateQueries({ queryKey: ["assets", firebaseUser?.uid] }); void queryClient.invalidateQueries({ queryKey: ["asset", firebaseUser?.uid] }); void queryClient.invalidateQueries({ queryKey: ["dashboard", firebaseUser?.uid] }); setReload((value) => value + 1); };
+  const loadDocuments = async (assetId: string) => { if (!firebaseUser || !assetId) return setDocuments([]); try { setDocuments(await getAssetDocuments(await firebaseUser.getIdToken(), assetId)); } catch { setDocuments([]); } };
+  const save = async (input: ClaimInput | ClaimUpdate) => {
+    if (!firebaseUser || !formClaim) return; setSaving(true);
+    try { const token = await firebaseUser.getIdToken(); const saved = formClaim === "new" ? await createClaim(token, input as ClaimInput) : await updateClaim(token, formClaim.id, input as ClaimUpdate); toast.success(formClaim === "new" ? "Claim created." : "Claim updated."); setFormClaim(null); setViewClaim(saved); refresh(); }
+    catch (cause) { toast.error(cause instanceof Error ? cause.message : "Could not save claim."); } finally { setSaving(false); }
+  };
+  const changeStatus = async (claim: Claim, next: ClaimStatus) => {
+    if (!firebaseUser || next === claim.status) return;
+    try { const updated = await updateClaim(await firebaseUser.getIdToken(), claim.id, { status: next }); toast.success(`Claim marked ${claimStatusLabels[next].toLowerCase()}.`); if (viewClaim?.id === claim.id) setViewClaim(updated); refresh(); }
+    catch (cause) { toast.error(cause instanceof Error ? cause.message : "Could not update status."); }
+  };
+  const view = async (claim: Claim) => { if (!firebaseUser) return; const detailKey = ["claim", firebaseUser.uid, claim.id] as const; const cachedClaim = queryClient.getQueryData<Claim>(detailKey); setViewClaim(cachedClaim ?? claim); setDetailsLoading(!cachedClaim); try { const detailedClaim = await queryClient.fetchQuery({ queryKey: detailKey, queryFn: async () => getClaim(await firebaseUser.getIdToken(), claim.id), staleTime: Infinity }); setViewClaim((current) => current?.id === claim.id ? detailedClaim : current); } catch (cause) { toast.error(cause instanceof Error ? cause.message : "Could not load claim."); } finally { setDetailsLoading(false); } };
+  const remove = async (claim: Claim) => {
+    if (!firebaseUser) return; const confirmation = await dialog.confirm("Delete this claim?", `Claim #${claim.claimNumber} and its history will be permanently deleted.`); if (!confirmation.isConfirmed) return;
+    try { await deleteClaim(await firebaseUser.getIdToken(), claim.id); if (viewClaim?.id === claim.id) setViewClaim(null); toast.success("Claim deleted."); refresh(); } catch (cause) { toast.error(cause instanceof Error ? cause.message : "Could not delete claim."); }
+  };
 
   const claims = result?.data ?? [];
-  const attachedIds = useMemo(
-    () => new Set(selectedClaim?.documents.map((item) => item.documentId) ?? []),
-    [selectedClaim],
-  );
-  const availableDocuments = assetDocuments.filter((document) => !attachedIds.has(document.id));
-
-  const refresh = () => {
-    setLoading(true);
-    setError("");
-    setReloadKey((value) => value + 1);
-  };
-
-  const selectClaim = async (claim: Claim) => {
-    if (!firebaseUser) return;
-    try {
-      const token = await firebaseUser.getIdToken();
-      const detail = await getClaim(token, claim.id);
-      setSelectedClaim(detail);
-      setAssetDocuments(await getAssetDocuments(token, detail.productId));
-      setAttachId("");
-    } catch (selectError) {
-      toast.error(selectError instanceof Error ? selectError.message : "Could not load claim details.");
-    }
-  };
-
-  const loadDocuments = async (assetId: string) => {
-    if (!firebaseUser) return;
-    try {
-      setAssetDocuments(await getAssetDocuments(await firebaseUser.getIdToken(), assetId));
-    } catch (documentError) {
-      toast.error(documentError instanceof Error ? documentError.message : "Could not load asset documents.");
-    }
-  };
-
-  const saveClaim = async (input: ClaimInput | ClaimUpdate) => {
-    if (!firebaseUser || !formClaim) return;
-    setSaving(true);
-    try {
-      const token = await firebaseUser.getIdToken();
-      if (formClaim === "new") {
-        const created = await createClaim(token, input as ClaimInput);
-        setSelectedClaim(created);
-        toast.success("Claim created successfully.");
-      } else {
-        const updated = await updateClaim(token, formClaim.id, input as ClaimUpdate);
-        setSelectedClaim(updated);
-        toast.success("Claim updated successfully.");
-      }
-      setFormClaim(null);
-      setInitialParentClaimId("");
-      refresh();
-    } catch (saveError) {
-      toast.error(saveError instanceof Error ? saveError.message : "Could not save the claim.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const removeClaim = async () => {
-    if (!firebaseUser || !selectedClaim) return;
-    const confirmation = await dialog.confirm("Delete this claim?", `Claim #${selectedClaim.claimNumber} and its timeline will be permanently deleted.`);
-    if (!confirmation.isConfirmed) return;
-    try {
-      await deleteClaim(await firebaseUser.getIdToken(), selectedClaim.id);
-      setSelectedClaim(null);
-      toast.success("Claim deleted.");
-      refresh();
-    } catch (deleteError) {
-      toast.error(deleteError instanceof Error ? deleteError.message : "Could not delete the claim.");
-    }
-  };
-
-  const submitTimeline = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!firebaseUser || !selectedClaim) return;
-    const form = new FormData(event.currentTarget);
-    setSaving(true);
-    try {
-      const updated = await addTimelineEvent(
-        await firebaseUser.getIdToken(),
-        selectedClaim.id,
-        {
-          title: String(form.get("title")).trim(),
-          description: String(form.get("description")).trim() || undefined,
-          status: (String(form.get("status")) || undefined) as ClaimStatus | undefined,
-        },
-      );
-      setSelectedClaim(updated);
-      event.currentTarget.reset();
-      toast.success("Timeline updated.");
-      refresh();
-    } catch (timelineError) {
-      toast.error(timelineError instanceof Error ? timelineError.message : "Could not update the timeline.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const attachDocument = async () => {
-    if (!firebaseUser || !selectedClaim || !attachId) return;
-    try {
-      const updated = await attachClaimDocument(await firebaseUser.getIdToken(), selectedClaim.id, attachId);
-      setSelectedClaim(updated);
-      setAttachId("");
-      toast.success("Document attached.");
-      refresh();
-    } catch (attachError) {
-      toast.error(attachError instanceof Error ? attachError.message : "Could not attach the document.");
-    }
-  };
-
-  const detachDocument = async (documentId: string) => {
-    if (!firebaseUser || !selectedClaim) return;
-    try {
-      const updated = await detachClaimDocument(await firebaseUser.getIdToken(), selectedClaim.id, documentId);
-      setSelectedClaim(updated);
-      toast.success("Document detached.");
-      refresh();
-    } catch (detachError) {
-      toast.error(detachError instanceof Error ? detachError.message : "Could not detach the document.");
-    }
-  };
-
-  const addEvidence = async (file: File, conditionPhoto: boolean) => {
-    if (!firebaseUser || !selectedClaim) return;
-    setSaving(true);
-    try {
-      const updated = await uploadClaimEvidence(await firebaseUser.getIdToken(), selectedClaim, file, conditionPhoto);
-      setSelectedClaim(updated);
-      toast.success(conditionPhoto ? "Condition photo added." : "Supporting evidence added.");
-      refresh();
-    } catch (uploadError) {
-      toast.error(uploadError instanceof Error ? uploadError.message : "Could not add claim evidence.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   return <div className="mx-auto w-full max-w-[1440px] pb-10">
-    <div className="mb-6 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><header><h1 className="text-3xl font-semibold tracking-[-.035em] text-[#111d32]">Claims & Service History</h1><p className="mt-1 max-w-[680px] text-base leading-6 text-[#555b67]">Track formal claims, repairs, inspections, and their supporting evidence.</p></header><button onClick={() => { setInitialAssetId(""); setAssetDocuments([]); setFormClaim("new"); }} disabled={assets.length === 0} className="flex h-11 items-center justify-center gap-2 rounded-lg bg-[#5b47ee] px-5 text-sm font-semibold text-white hover:bg-[#6e5cf5] disabled:cursor-not-allowed disabled:bg-[#aaa6c7]"><Icon name="plus" className="h-4 w-4"/>Add record</button></div>
-
-    <section className="mb-6 flex flex-col gap-3 rounded-xl border border-[#d8dbe4] bg-white p-4 sm:flex-row"><div className="relative flex-1"><Icon name="search" className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#737985]"/><input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Search claims, service records, assets, or reference numbers…" className="h-11 w-full rounded-lg bg-[#eef2ff] pl-11 pr-4 text-sm outline-none focus:ring-2 focus:ring-[#d9d2ff]"/></div><select value={recordType} onChange={(event) => { setRecordType(event.target.value as ClaimRecordType | ""); setPage(1); }} className="h-11 rounded-lg border border-[#c9ccd5] bg-white px-3 text-sm"><option value="">All records</option><option value="WARRANTY_CLAIM">Formal claims</option><option value="SERVICE_RECORD">Service history</option></select><select value={status} onChange={(event) => { setLoading(true); setError(""); setStatus(event.target.value as ClaimStatus | ""); setPage(1); }} className="h-11 rounded-lg border border-[#c9ccd5] bg-white px-3 text-sm outline-none"><option value="">All statuses</option>{Object.keys(badges).map((value) => <option key={value} value={value}>{statusLabel(value as ClaimStatus)}</option>)}</select></section>
-
-    {loading ? <Loading fullScreen={false} className="min-h-96 rounded-xl" label="Loading claims"/> : error ? <section className="rounded-xl border border-[#f0c6c9] bg-white p-10 text-center"><Icon name="warning" className="mx-auto h-8 w-8 text-[#a83e4c]"/><p className="mt-3 text-sm text-[#555b67]">{error}</p><button onClick={refresh} className="mt-4 rounded-lg bg-[#5b47ee] px-4 py-2 text-sm font-semibold text-white">Try again</button></section> : claims.length === 0 ? <section className="rounded-xl border border-dashed border-[#c9ccd5] bg-white p-12 text-center"><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#eeeaff] text-[#5b47ee]"><Icon name="claims" className="h-7 w-7"/></div><h2 className="mt-4 text-lg font-semibold text-[#172033]">No claims found</h2><p className="mt-2 text-sm text-[#626773]">{assets.length === 0 ? "Add an asset before creating a warranty claim." : search || status ? "Try changing your search or status filter." : "Create a claim when one of your registered products needs service."}</p>{assets.length > 0 && !search && !status && <button onClick={() => setFormClaim("new")} className="mt-5 rounded-lg bg-[#5b47ee] px-4 py-2 text-sm font-semibold text-white">Create your first claim</button>}</section> :
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <section className="space-y-4">{claims.map((claim) => <button key={claim.id} onClick={() => void selectClaim(claim)} className={`w-full rounded-xl border bg-white p-4 text-left shadow-[0_2px_6px_rgba(24,32,56,.05)] transition hover:border-[#8b7dff] ${selectedClaim?.id === claim.id ? "border-2 border-[#7363ff]" : "border-[#d4d6de]"}`}><div className="flex flex-col gap-4 sm:flex-row"><div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg border border-[#d7dbe4] bg-gradient-to-br from-white to-[#dce1e4] text-[#4d5664]"><Icon name="products" className="h-10 w-10"/></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-start justify-between gap-2"><div><h2 className="text-lg font-semibold text-[#182237]">{claim.product.name}</h2><p className="mt-1 text-sm text-[#5c616c]">{claim.title} · #{claim.claimNumber}</p></div><span className={`rounded-full border px-3 py-1 text-[10px] font-bold ${badges[claim.status]}`}>{statusLabel(claim.status)}</span></div><div className="mt-4 grid gap-3 border-t border-[#e1e3e9] pt-3 sm:grid-cols-2"><div><p className="text-xs font-semibold text-[#8a8d96]">Service Center</p><p className="mt-1 text-sm font-medium text-[#273247]">{claim.serviceCenter || "Not assigned"}</p></div><div><p className="text-xs font-semibold text-[#8a8d96]">Last Update</p><p className="mt-1 text-sm font-medium text-[#273247]">{dateTime.format(new Date(claim.updatedAt))}</p></div></div></div></div></button>)}
-          {result && result.meta.totalPages > 1 && <div className="flex items-center justify-between rounded-xl border border-[#d8dbe4] bg-white p-3"><span className="text-sm text-[#626773]">Page {page} of {result.meta.totalPages}</span><div className="flex gap-2"><button disabled={page === 1} onClick={() => { setLoading(true); setPage((value) => value - 1); }} className="rounded-lg border px-3 py-2 text-sm disabled:opacity-40">Previous</button><button disabled={page === result.meta.totalPages} onClick={() => { setLoading(true); setPage((value) => value + 1); }} className="rounded-lg border px-3 py-2 text-sm disabled:opacity-40">Next</button></div></div>}
-        </section>
-
-        {selectedClaim && <aside className="h-fit rounded-xl border border-[#d4d6de] bg-white p-5 shadow-[0_2px_6px_rgba(24,32,56,.05)] xl:sticky xl:top-5"><div className="flex items-start justify-between gap-3"><div><span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold ${badges[selectedClaim.status]}`}>{statusLabel(selectedClaim.status)}</span><h2 className="mt-3 text-xl font-semibold text-[#172033]">Claim #{selectedClaim.claimNumber}</h2><p className="mt-1 text-sm text-[#626773]">{selectedClaim.product.name} · {selectedClaim.title}</p></div><button onClick={() => setFormClaim(selectedClaim)} className="rounded-lg bg-[#eeeaff] px-3 py-2 text-xs font-semibold text-[#5b47ee]">Edit</button></div>
-          <p className="mt-4 rounded-lg bg-[#f7f8fc] p-3 text-sm leading-6 text-[#4f5663]">{selectedClaim.issueDescription}</p>
-          <button onClick={() => { setInitialAssetId(selectedClaim.productId); setInitialParentClaimId(selectedClaim.id); void loadDocuments(selectedClaim.productId); setFormClaim("new"); }} className="mt-3 w-full rounded-lg border border-[#c9c3ff] bg-[#f7f5ff] px-3 py-2 text-xs font-semibold text-[#4b41e1]">Create a follow-up record for this issue</button>
-          <div className="mt-3 grid gap-2 rounded-lg border border-[#e1e4ec] bg-white p-3 text-xs sm:grid-cols-2"><div><span className="font-semibold text-[#777d88]">Record type</span><p className="mt-1 font-medium text-[#273247]">{selectedClaim.recordType === "SERVICE_RECORD" ? "Service or repair record" : "Formal warranty claim"}</p></div>{selectedClaim.servicePurpose && <div><span className="font-semibold text-[#777d88]">Purpose</span><p className="mt-1 font-medium capitalize text-[#273247]">{selectedClaim.servicePurpose.replaceAll("_", " ").toLowerCase()}</p></div>}{selectedClaim.serviceDate && <div><span className="font-semibold text-[#777d88]">Service date</span><p className="mt-1 font-medium text-[#273247]">{dateTime.format(new Date(selectedClaim.serviceDate))}</p></div>}{selectedClaim.providerReference && <div><span className="font-semibold text-[#777d88]">Provider reference</span><p className="mt-1 font-medium text-[#273247]">{selectedClaim.providerReference}</p></div>}{selectedClaim.submittedCondition && <div className="sm:col-span-2"><span className="font-semibold text-[#777d88]">Condition before submission/service</span><p className="mt-1 leading-5 text-[#273247]">{selectedClaim.submittedCondition}</p></div>}</div>
-          {selectedClaim.resolution && <div className="mt-3 rounded-lg border border-[#c8e7dc] bg-[#f0faf6] p-3"><p className="text-xs font-semibold uppercase tracking-wide text-[#2c7652]">{selectedClaim.resolutionOutcome ? claimOutcomeLabels[selectedClaim.resolutionOutcome] : selectedClaim.status === "REJECTED" ? "Reason declined" : "Resolution"}</p><p className="mt-1 text-sm leading-6 text-[#375548]">{selectedClaim.resolution}</p></div>}
-
-          <div className="mt-5"><h3 className="font-semibold text-[#172033]">Evidence & documents</h3>{selectedClaim.documents.length > 0 ? <div className="mt-2 space-y-2">{selectedClaim.documents.map(({ document, evidenceType, claimStage }) => <div key={document.id} className="flex items-center gap-2 rounded-lg border border-[#e0e2e8] p-2"><Icon name="documents" className="h-4 w-4 text-[#5b47ee]"/><div className="min-w-0 flex-1"><a href={document.fileUrl} target="_blank" rel="noreferrer" className="block truncate text-xs font-medium text-[#38445a] hover:underline">{document.fileName}</a><span className="text-[10px] text-[#777d88]">{evidenceType.replaceAll("_", " ").toLowerCase()}{claimStage ? ` · added during ${claimStatusLabels[claimStage].toLowerCase()}` : ""}</span></div>{selectedClaim.status === "DRAFT" && <button onClick={() => void detachDocument(document.id)} className="text-xs font-semibold text-[#a83e4c]">Remove</button>}</div>)}</div> : <p className="mt-2 text-xs text-[#7c818b]">No evidence attached.</p>}
-            {availableDocuments.length > 0 && <div className="mt-3 flex gap-2"><select value={attachId} onChange={(event) => setAttachId(event.target.value)} className="h-9 min-w-0 flex-1 rounded-lg border border-[#c9ccd5] px-2 text-xs"><option value="">Select asset document</option>{availableDocuments.map((document) => <option key={document.id} value={document.id}>{document.fileName}</option>)}</select><button onClick={() => void attachDocument()} disabled={!attachId} className="rounded-lg bg-[#5b47ee] px-3 text-xs font-semibold text-white disabled:opacity-40">Attach</button></div>}</div>
-
-          <div className="mt-4 grid gap-2 sm:grid-cols-2"><label className="cursor-pointer rounded-lg border border-dashed border-[#bfc4d2] p-3 text-center text-xs font-semibold text-[#5b47ee]">Add supporting evidence<input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" disabled={saving} onChange={(event) => { const file = event.target.files?.[0]; if (file) void addEvidence(file, false); event.target.value = ""; }} className="sr-only"/></label><label className="cursor-pointer rounded-lg border border-dashed border-[#bfc4d2] p-3 text-center text-xs font-semibold text-[#5b47ee]">Add current condition photo<input type="file" accept="image/jpeg,image/png,image/webp" disabled={saving} onChange={(event) => { const file = event.target.files?.[0]; if (file) void addEvidence(file, true); event.target.value = ""; }} className="sr-only"/></label></div>
-
-          <div className="mt-6 border-t border-[#d8dbe2] pt-5"><h3 className="text-lg font-semibold text-[#172033]">Timeline</h3><div className="mt-4">{selectedClaim.timeline.map((event, index) => <TimelineItem key={event.id} event={event} active={index === 0}/>)}</div></div>
-
-          {!terminalClaimStatuses.includes(selectedClaim.status) && <form onSubmit={submitTimeline} className="mt-5 space-y-2 rounded-xl border border-[#ded9ff] bg-[#faf9ff] p-3"><h3 className="text-sm font-semibold text-[#372a91]">Add timeline update</h3><input name="title" required minLength={2} placeholder="Update title" className="h-9 w-full rounded-lg border border-[#d4d0e8] px-3 text-xs outline-none"/><textarea name="description" rows={2} placeholder="What happened?" className="w-full rounded-lg border border-[#d4d0e8] px-3 py-2 text-xs outline-none"/><select name="status" defaultValue="" className="h-9 w-full rounded-lg border border-[#d4d0e8] px-2 text-xs"><option value="">Keep current status</option>{(appUser?.role === "ADMIN" ? claimTransitions[selectedClaim.status] : ["CANCELLED"] as ClaimStatus[]).map((value) => <option key={value} value={value}>{statusLabel(value)}</option>)}</select><button disabled={saving} className="h-9 w-full rounded-lg bg-[#5b47ee] text-xs font-semibold text-white disabled:opacity-50">{saving ? "Saving…" : "Add update"}</button></form>}
-          {(appUser?.role === "ADMIN" || ["DRAFT", "CANCELLED"].includes(selectedClaim.status)) && <button onClick={() => void removeClaim()} className="mt-4 w-full rounded-lg px-3 py-2 text-xs font-semibold text-[#a83e4c] hover:bg-[#fff0f1]">Delete claim</button>}
-        </aside>}
-      </div>
-    }
-
-    {formClaim && <ClaimFormModal claim={formClaim === "new" ? null : formClaim} assets={assets} documents={assetDocuments} pending={saving} isAdmin={appUser?.role === "ADMIN"} initialAssetId={initialAssetId} initialParentClaimId={initialParentClaimId} onAssetChange={(assetId) => void loadDocuments(assetId)} onClose={() => { setFormClaim(null); setInitialParentClaimId(""); }} onSubmit={saveClaim}/>}
+    <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><h1 className="text-3xl font-semibold tracking-[-.035em] text-[#111d32]">Claims</h1><p className="mt-1 text-sm text-[#596170]">Record and track issues for your assets.</p></div><button onClick={() => { setInitialAssetId(""); setDocuments([]); setFormClaim("new"); }} disabled={!assets.length} className="flex h-11 items-center justify-center gap-2 rounded-lg bg-[#5b47ee] px-5 text-sm font-semibold text-white disabled:opacity-45"><Icon name="plus" className="h-4 w-4"/>Create claim</button></header>
+    <section className="mt-6 flex flex-col gap-3 rounded-xl border border-[#dfe2ea] bg-white p-4 sm:flex-row"><div className="relative flex-1"><Icon name="search" className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#737985]"/><input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Search claims or assets" className="h-11 w-full rounded-lg bg-[#f1f3fb] pl-11 pr-4 text-sm outline-none focus:ring-2 focus:ring-[#ddd7ff]"/></div><select value={status} onChange={(event) => { setStatus(event.target.value as ClaimStatus | ""); setPage(1); }} className="h-11 rounded-lg border border-[#d2d5de] bg-white px-3 text-sm"><option value="">All statuses</option>{claimStatuses.map((value) => <option key={value} value={value}>{claimStatusLabels[value]}</option>)}</select></section>
+    {loading ? <Loading fullScreen={false} className="mt-6 min-h-80 rounded-xl"/> : error ? <div className="mt-6 rounded-xl border border-[#efc9cc] bg-white p-10 text-center"><p className="text-sm text-[#a23843]">{error}</p><button onClick={refresh} className="mt-4 rounded-lg bg-[#5b47ee] px-4 py-2 text-sm font-semibold text-white">Try again</button></div> : !claims.length ? <div className="mt-6 rounded-xl border border-dashed border-[#cbd0dc] bg-white p-12 text-center"><Icon name="claims" className="mx-auto h-9 w-9 text-[#5b47ee]"/><h2 className="mt-3 text-lg font-semibold">No claims found</h2><p className="mt-1 text-sm text-[#686d77]">{assets.length ? "Create a claim when an asset has an issue." : "Add an asset before creating a claim."}</p></div> :
+      <section className="mt-6 overflow-hidden rounded-xl border border-[#dfe2ea] bg-white shadow-sm"><div className="overflow-x-auto"><table className="w-full min-w-[1050px] text-left"><thead className="border-b border-[#e4e6ed] bg-[#f6f7fb] text-xs font-semibold uppercase tracking-wide text-[#687080]"><tr><th className="px-5 py-4">Claim</th><th className="px-4 py-4">Asset</th><th className="px-4 py-4">Created</th><th className="px-4 py-4">Updated</th><th className="px-4 py-4">Status</th><th className="w-px whitespace-nowrap px-4 py-4 text-center">Actions</th></tr></thead><tbody className="divide-y divide-[#e8eaf0]">{claims.map((claim) => <ClaimRow key={claim.id} claim={claim} onView={() => void view(claim)} onEdit={() => { setFormClaim(claim); setDocuments([]); }} onDelete={() => void remove(claim)} onStatus={(next) => void changeStatus(claim, next)}/>)}</tbody></table></div>
+      {result && result.meta.totalPages > 1 && <footer className="flex items-center justify-between border-t border-[#e4e6ed] px-5 py-3"><span className="text-sm text-[#686d77]">Page {page} of {result.meta.totalPages}</span><div className="flex gap-2"><button disabled={page === 1} onClick={() => setPage((value) => value - 1)} className="rounded-lg border px-3 py-2 text-sm disabled:opacity-40">Previous</button><button disabled={page === result.meta.totalPages} onClick={() => setPage((value) => value + 1)} className="rounded-lg border px-3 py-2 text-sm disabled:opacity-40">Next</button></div></footer>}</section>}
+    {formClaim && <ClaimFormModal claim={formClaim === "new" ? null : formClaim} assets={assets} documents={documents} pending={saving} initialAssetId={initialAssetId} onAssetChange={(id) => void loadDocuments(id)} onClose={() => setFormClaim(null)} onSubmit={save}/>} 
+    {viewClaim && <ClaimViewDrawer claim={viewClaim} loading={detailsLoading} onClose={() => setViewClaim(null)} onEdit={() => { setFormClaim(viewClaim); setViewClaim(null); }} onStatus={(next) => void changeStatus(viewClaim, next)}/>}
   </div>;
 }
 
-function TimelineItem({ event, active }: { event: Claim["timeline"][number]; active: boolean }) {
-  return <div className="relative border-l-2 border-[#e0e2e8] pb-7 pl-7 last:pb-1"><span className={`absolute -left-[9px] top-0 h-4 w-4 rounded-full border-2 bg-white ${active ? "border-[#5b47ee]" : "border-[#c9ccd4] bg-[#c9ccd4]"}`}/><div className="flex items-start justify-between gap-3"><h4 className={`text-sm font-medium ${active ? "text-[#5b47ee]" : "text-[#273247]"}`}>{event.title}</h4><span className="text-[10px] font-semibold text-[#777d88]">{dateTime.format(new Date(event.createdAt))}</span></div>{event.status && <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-[#777d88]">{statusLabel(event.status)}</p>}{event.description && <p className="mt-2 text-xs leading-5 text-[#555b67]">{event.description}</p>}</div>;
+function ClaimRow({ claim, onView, onEdit, onDelete, onStatus }: { claim: Claim; onView: () => void; onEdit: () => void; onDelete: () => void; onStatus: (status: ClaimStatus) => void }) {
+  return <tr className="transition hover:bg-[#fafaff]"><td className="px-5 py-4"><p className="text-sm font-semibold text-[#172033]">{claim.title}</p><p className="mt-1 text-xs text-[#686d77]">#{claim.claimNumber}</p></td><td className="px-4 py-4"><p className="text-sm font-medium text-[#273247]">{claim.product.name}</p><p className="text-xs text-[#747986]">{claim.product.brand}</p></td><td className="px-4 py-4 text-sm text-[#4f5663]">{date.format(new Date(claim.createdAt))}</td><td className="px-4 py-4 text-sm text-[#4f5663]">{date.format(new Date(claim.updatedAt))}</td><td className="px-4 py-4"><select value={claim.status} onChange={(event) => onStatus(event.target.value as ClaimStatus)} className={`h-9 rounded-lg border-0 px-3 text-xs font-semibold outline-none ${claimStatusStyles[claim.status]}`}>{claimStatuses.map((value) => <option key={value} value={value}>{claimStatusLabels[value]}</option>)}</select></td><td className="w-px whitespace-nowrap px-4 py-4"><div className="flex justify-center gap-1"><ActionIconButton icon={Eye} label="View claim" onClick={onView}/><ActionIconButton icon={Pencil} label="Edit claim" tone="primary" onClick={onEdit}/><ActionIconButton icon={Trash2} label="Delete claim" tone="danger" onClick={onDelete}/></div></td></tr>;
+}
+
+function ClaimViewDrawer({ claim, loading, onClose, onEdit, onStatus }: { claim: Claim; loading: boolean; onClose: () => void; onEdit: () => void; onStatus: (status: ClaimStatus) => void }) {
+  return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#111827]/45 p-4 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="claim-view-title"><aside className="relative max-h-[94vh] w-full max-w-2xl overflow-y-auto rounded-l-2xl bg-[#f8f9ff] shadow-2xl">{loading && <div className="absolute inset-x-0 bottom-0 top-28 z-20 flex min-h-72 items-center justify-center bg-white/90 backdrop-blur-[1px]"><Loading fullScreen={false} label="Loading current claim details"/></div>}<header className="sticky top-0 z-10 flex items-start justify-between border-b border-[#e3e5ec] bg-white p-6"><div><span className={`inline-flex rounded-lg px-3 py-1 text-xs font-semibold ${claimStatusStyles[claim.status]}`}>{claimStatusLabels[claim.status]}</span><h2 id="claim-view-title" className="mt-3 text-2xl font-semibold text-[#172033]">{claim.title}</h2><p className="mt-1 text-sm text-[#686d77]">#{claim.claimNumber} · {claim.product.name}</p></div><button onClick={onClose} className="p-2 text-xl text-[#596170] hover:bg-[#eef1f8]" aria-label="Close claim details">×</button></header><div className="space-y-6 p-6"><section><h3 className="text-xs font-semibold uppercase tracking-wide text-[#777d88]">Issue</h3><p className="mt-2 text-sm leading-6 text-[#30394a]">{claim.issueDescription}</p></section>{claim.submittedCondition && <section><h3 className="text-xs font-semibold uppercase tracking-wide text-[#777d88]">Product condition</h3><p className="mt-2 text-sm leading-6 text-[#30394a]">{claim.submittedCondition}</p></section>}<section className="grid gap-4 border-y border-[#e2e5ec] py-5 sm:grid-cols-2"><div><p className="text-xs text-[#777d88]">Provider</p><p className="mt-1 text-sm font-medium">{claim.serviceCenter || "Not provided"}</p></div><div><p className="text-xs text-[#777d88]">Reference</p><p className="mt-1 text-sm font-medium">{claim.providerReference || "Not provided"}</p></div><div><p className="text-xs text-[#777d88]">Created</p><p className="mt-1 text-sm font-medium">{date.format(new Date(claim.createdAt))}</p></div><div><p className="text-xs text-[#777d88]">Status</p><select value={claim.status} onChange={(event) => onStatus(event.target.value as ClaimStatus)} className={`mt-1 h-9 rounded-lg border-0 px-3 text-xs font-semibold ${claimStatusStyles[claim.status]}`}>{claimStatuses.map((value) => <option key={value} value={value}>{claimStatusLabels[value]}</option>)}</select></div></section>{claim.resolution && <section><h3 className="text-xs font-semibold uppercase tracking-wide text-[#777d88]">Result</h3><p className="mt-2 text-sm leading-6 text-[#30394a]">{claim.resolution}</p></section>}<section><h3 className="text-xs font-semibold uppercase tracking-wide text-[#777d88]">Documents</h3><div className="mt-2 space-y-2">{claim.documents?.length ? claim.documents.map(({ document }) => <a key={document.id} href={document.fileUrl} target="_blank" rel="noreferrer" className="block truncate border border-[#e0e3eb] bg-white px-3 py-3 text-sm text-[#4b41e1] hover:underline">{document.fileName}</a>) : <p className="text-sm text-[#777d88]">No documents attached.</p>}</div></section>{claim.timeline?.length ? <section><h3 className="text-xs font-semibold uppercase tracking-wide text-[#777d88]">History</h3><div className="mt-3 space-y-2">{claim.timeline.map((event) => <div key={event.id} className="border-l-2 border-[#dcd8ff] bg-white px-4 py-3"><p className="text-sm font-medium">{event.title}</p><p className="mt-1 text-xs text-[#777d88]">{date.format(new Date(event.createdAt))}</p></div>)}</div></section> : null}</div><footer className="sticky bottom-0 flex justify-end gap-2 border-t border-[#e3e5ec] bg-white p-4"><button onClick={onClose} className="h-10 border border-[#d2d5de] px-4 text-sm font-semibold">Close</button><button onClick={onEdit} className="h-10 bg-[#5b47ee] px-4 text-sm font-semibold text-white">Edit claim</button></footer></aside></div>;
 }

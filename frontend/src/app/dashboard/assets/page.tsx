@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AssetDetailsModal } from "@/components/assets/asset-details-modal";
@@ -30,6 +30,9 @@ import { dialog, toast } from "@/lib/notifications";
 import { uploadDocuments, type PendingAssetDocument } from "@/lib/documents-api";
 import { positivePage, useUrlQuerySync } from "@/hooks/use-url-query-sync";
 import { usePreferences } from "@/contexts/preferences-context";
+import { useQueryClient } from "@tanstack/react-query";
+import { Eye, Pencil, Trash2 } from "lucide-react";
+import { ActionIconButton } from "@/components/ui/action-icon-button";
 
 const PAGE_SIZE = 8;
 const date = new Intl.DateTimeFormat("en-US", { dateStyle: "medium" });
@@ -56,6 +59,7 @@ export default function AssetsPage() {
 }
 
 function AssetsPageContent() {
+  const queryClient = useQueryClient();
   const router = useRouter();
   const { formatMoney } = usePreferences();
   const { firebaseUser, appUser } = useAuth();
@@ -76,6 +80,7 @@ function AssetsPageContent() {
   const [reloadKey, setReloadKey] = useState(0);
   const [formAsset, setFormAsset] = useState<Asset | "new" | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const plan = appUser ? plans[appUser.plan] : plans.BASIC;
@@ -84,14 +89,22 @@ function AssetsPageContent() {
 
   useUrlQuerySync({ search, status, category: categoryId, page });
 
+  useLayoutEffect(() => {
+    if (!firebaseUser) return;
+    const cachedAssets = queryClient.getQueryData<AssetList>(["assets", firebaseUser.uid, page, search, status, categoryId]);
+    const cachedUsage = queryClient.getQueryData<number>(["asset-usage", firebaseUser.uid]);
+    if (cachedAssets) { setResult(cachedAssets); setLoading(false); setError(""); }
+    if (cachedUsage !== undefined) setUsage(cachedUsage);
+  }, [categoryId, firebaseUser, page, queryClient, search, status]);
+
   useEffect(() => {
-    getCategories()
+    queryClient.fetchQuery({ queryKey: ["categories"], queryFn: getCategories, staleTime: Infinity })
       .then(setCategories)
       .catch((categoryError) => toast.error(categoryError instanceof Error ? categoryError.message : "Could not load categories."));
-    getBrands()
+    queryClient.fetchQuery({ queryKey: ["brands"], queryFn: getBrands, staleTime: Infinity })
       .then(setBrands)
       .catch((brandError) => toast.error(brandError instanceof Error ? brandError.message : "Could not load brands."));
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
     if (!firebaseUser) return;
@@ -99,14 +112,14 @@ function AssetsPageContent() {
 
     firebaseUser.getIdToken()
       .then((token) => Promise.all([
-        getAssets(token, {
+        queryClient.fetchQuery({ queryKey: ["assets", firebaseUser.uid, page, search, status, categoryId], queryFn: () => getAssets(token, {
           page,
           limit: PAGE_SIZE,
           search: search || undefined,
           warrantyStatus: status || undefined,
           categoryId: categoryId || undefined,
-        }),
-        getAssetUsage(token),
+        }), staleTime: Infinity }),
+        queryClient.fetchQuery({ queryKey: ["asset-usage", firebaseUser.uid], queryFn: () => getAssetUsage(token), staleTime: Infinity }),
       ]))
       .then(([assets, currentUsage]) => {
         if (cancelled) return;
@@ -123,17 +136,19 @@ function AssetsPageContent() {
     return () => {
       cancelled = true;
     };
-  }, [categoryId, firebaseUser, page, reloadKey, search, status]);
+  }, [categoryId, firebaseUser, page, queryClient, reloadKey, search, status]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
+      const nextSearch = searchInput.trim();
+      if (nextSearch === search) return;
       setLoading(true);
       setError("");
       setPage(1);
-      setSearch(searchInput.trim());
+      setSearch(nextSearch);
     }, 350);
     return () => window.clearTimeout(timeout);
-  }, [searchInput]);
+  }, [search, searchInput]);
 
   const assets = result?.data ?? [];
   const hasFilters = Boolean(search || status || categoryId);
@@ -145,6 +160,9 @@ function AssetsPageContent() {
   }, [result]);
 
   const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ["assets", firebaseUser?.uid] });
+    void queryClient.invalidateQueries({ queryKey: ["asset-usage", firebaseUser?.uid] });
+    void queryClient.invalidateQueries({ queryKey: ["dashboard", firebaseUser?.uid] });
     setLoading(true);
     setError("");
     setReloadKey((value) => value + 1);
@@ -152,11 +170,22 @@ function AssetsPageContent() {
 
   const openDetails = async (asset: Asset) => {
     if (!firebaseUser) return;
+    const detailKey = ["asset", firebaseUser.uid, asset.id] as const;
+    const cachedAsset = queryClient.getQueryData<Asset>(detailKey);
+    setSelectedAsset(cachedAsset ?? asset);
+    setDetailsLoading(!cachedAsset);
     try {
       const token = await firebaseUser.getIdToken();
-      setSelectedAsset(await getAsset(token, asset.id));
+      const detailedAsset = await queryClient.fetchQuery({
+        queryKey: detailKey,
+        queryFn: () => getAsset(token, asset.id),
+        staleTime: Infinity,
+      });
+      setSelectedAsset((current) => current?.id === asset.id ? detailedAsset : current);
     } catch (detailsError) {
       toast.error(detailsError instanceof Error ? detailsError.message : "Could not load asset details.");
+    } finally {
+      setDetailsLoading(false);
     }
   };
 
@@ -259,7 +288,7 @@ function AssetsPageContent() {
           return <article key={asset.id} className={`group overflow-hidden rounded-xl border border-[#dfe2ea] border-t-4 bg-white shadow-[0_2px_7px_rgba(24,32,56,.06)] transition hover:-translate-y-0.5 hover:shadow-md ${style.border}`}>
             <button onClick={() => void openDetails(asset)} className="flex w-full min-w-0 gap-3.5 bg-[#f8f9fd] p-4 text-left">
               <AssetThumbnail asset={asset}/>
-              <div className="min-w-0 flex-1"><h2 className="truncate text-lg font-semibold text-[#172033]">{asset.name}</h2><p className="truncate text-sm text-[#686d77]">{asset.brand} · {asset.category.name}</p><span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${style.badge}`}>{statusLabels[asset.warrantyStatus]}</span>{Boolean(asset._count?.claims) && <span className="ml-2 mt-2 inline-flex rounded-full bg-[#eee9ff] px-2.5 py-1 text-[10px] font-semibold text-[#5942d6]">{asset._count?.claims} active claim{asset._count?.claims === 1 ? "" : "s"}</span>}</div>
+              <div className="min-w-0 flex-1"><h2 className="truncate text-lg font-semibold text-[#172033]">{asset.name}</h2><p className="truncate text-sm text-[#686d77]">{asset.brand} · {asset.category.name}</p><span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${style.badge}`}>{statusLabels[asset.warrantyStatus]}</span>{Boolean(asset._count?.claims) && <span className="ml-2 mt-2 inline-flex rounded-full bg-[#eee9ff] px-2.5 py-1 text-[10px] font-semibold text-[#5942d6]">{asset._count?.claims} claim{asset._count?.claims === 1 ? "" : "s"}</span>}</div>
             </button>
             <div className="border-t border-[#e5e7ee] p-4">
               <button onClick={() => void openDetails(asset)} className="grid w-full grid-cols-2 gap-4 text-left"><div><p className="text-[11px] font-medium uppercase tracking-wide text-[#747b88]">{asset.hasWarranty ? asset.warrantyStatus === "EXPIRED" ? "Expired" : "Warranty ends" : "Warranty"}</p><p className={`mt-1 text-sm font-semibold ${asset.warrantyStatus === "ACTIVE" ? "text-[#17243a]" : "text-[#b55245]"}`}>{asset.expiryDate ? date.format(new Date(asset.expiryDate)) : asset.hasWarranty ? "Not provided" : "Not included"}</p></div><div><p className="text-[11px] font-medium uppercase tracking-wide text-[#747b88]">Purchase value</p><p className="mt-1 truncate text-sm font-semibold text-[#17243a]">{formatMoney(Number(asset.purchasePrice))}</p></div></button>
@@ -267,13 +296,13 @@ function AssetsPageContent() {
             </div>
           </article>;
         })}
-      </section> : <section className="mt-6 overflow-hidden rounded-xl border border-[#dfe2ea] bg-white shadow-sm"><div className="overflow-x-auto"><table className="w-full min-w-[1050px] text-left"><thead className="border-b border-[#dfe2ea] bg-[#f5f6fb] text-xs font-semibold uppercase tracking-wide text-[#626b7a]"><tr><th className="px-5 py-4">Asset</th><th className="px-4 py-4">Status</th><th className="px-4 py-4">Category</th><th className="px-4 py-4">Purchased</th><th className="px-4 py-4">Warranty</th><th className="px-4 py-4 text-right">Value</th><th className="px-4 py-4 text-center">Claims</th><th className="px-5 py-4 text-right">Actions</th></tr></thead><tbody className="divide-y divide-[#e8eaf0]">{assets.map((asset) => { const style = statusStyles[asset.warrantyStatus]; return <tr key={asset.id} className="transition hover:bg-[#fafaff]"><td className="px-5 py-4"><button onClick={() => void openDetails(asset)} className="flex max-w-64 items-center gap-3 text-left"><AssetThumbnail asset={asset} className="h-12 w-12"/><span className="min-w-0"><span className="block truncate text-sm font-semibold text-[#172033]">{asset.name}</span><span className="mt-0.5 block truncate text-xs text-[#686d77]">{asset.brand}{asset.model ? ` · ${asset.model}` : ""}</span></span></button></td><td className="px-4 py-4"><span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-semibold ${style.badge}`}>{statusLabels[asset.warrantyStatus]}</span></td><td className="px-4 py-4 text-sm text-[#394254]">{asset.category.name}</td><td className="px-4 py-4 text-sm text-[#394254]">{date.format(new Date(asset.purchaseDate))}</td><td className="px-4 py-4 text-sm text-[#394254]">{asset.hasWarranty ? asset.expiryDate ? date.format(new Date(asset.expiryDate)) : "No date" : "No warranty"}</td><td className="px-4 py-4 text-right text-sm font-medium text-[#172033]">{formatMoney(Number(asset.purchasePrice))}</td><td className="px-4 py-4 text-center text-sm text-[#394254]">{asset._count?.claims ?? 0}</td><td className="px-5 py-4"><div className="flex justify-end gap-1"><button onClick={() => void openDetails(asset)} className="rounded-lg px-3 py-2 text-xs font-semibold text-[#27364b] hover:bg-[#eef0f5]">View</button><button onClick={() => setFormAsset(asset)} className="rounded-lg px-3 py-2 text-xs font-semibold text-[#4b41e1] hover:bg-[#eeecff]">Edit</button><button onClick={() => void removeAsset(asset)} className="rounded-lg px-3 py-2 text-xs font-semibold text-[#ba1a1a] hover:bg-[#fff0f0]">Delete</button></div></td></tr>; })}</tbody></table></div></section>
+      </section> : <section className="mt-6 overflow-hidden rounded-xl border border-[#dfe2ea] bg-white shadow-sm"><div className="overflow-x-auto"><table className="w-full min-w-[1050px] text-left"><thead className="border-b border-[#dfe2ea] bg-[#f5f6fb] text-xs font-semibold uppercase tracking-wide text-[#626b7a]"><tr><th className="px-5 py-4">Asset</th><th className="px-4 py-4">Status</th><th className="px-4 py-4">Category</th><th className="px-4 py-4">Purchased</th><th className="px-4 py-4">Warranty</th><th className="px-4 py-4 text-right">Value</th><th className="px-4 py-4 text-center">Claims</th><th className="w-px whitespace-nowrap px-4 py-4 text-center">Actions</th></tr></thead><tbody className="divide-y divide-[#e8eaf0]">{assets.map((asset) => { const style = statusStyles[asset.warrantyStatus]; return <tr key={asset.id} className="transition hover:bg-[#fafaff]"><td className="px-5 py-4"><button onClick={() => void openDetails(asset)} className="flex max-w-64 items-center gap-3 text-left"><AssetThumbnail asset={asset} className="h-12 w-12"/><span className="min-w-0"><span className="block truncate text-sm font-semibold text-[#172033]">{asset.name}</span><span className="mt-0.5 block truncate text-xs text-[#686d77]">{asset.brand}{asset.model ? ` · ${asset.model}` : ""}</span></span></button></td><td className="px-4 py-4"><span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-semibold ${style.badge}`}>{statusLabels[asset.warrantyStatus]}</span></td><td className="px-4 py-4 text-sm text-[#394254]">{asset.category.name}</td><td className="px-4 py-4 text-sm text-[#394254]">{date.format(new Date(asset.purchaseDate))}</td><td className="px-4 py-4 text-sm text-[#394254]">{asset.hasWarranty ? asset.expiryDate ? date.format(new Date(asset.expiryDate)) : "No date" : "No warranty"}</td><td className="px-4 py-4 text-right text-sm font-medium text-[#172033]">{formatMoney(Number(asset.purchasePrice))}</td><td className="px-4 py-4 text-center text-sm text-[#394254]">{asset._count?.claims ?? 0}</td><td className="w-px whitespace-nowrap px-4 py-4"><div className="flex justify-center gap-1"><ActionIconButton icon={Eye} label={`View ${asset.name}`} onClick={() => void openDetails(asset)}/><ActionIconButton icon={Pencil} label={`Edit ${asset.name}`} tone="primary" onClick={() => setFormAsset(asset)}/><ActionIconButton icon={Trash2} label={`Delete ${asset.name}`} tone="danger" onClick={() => void removeAsset(asset)}/></div></td></tr>; })}</tbody></table></div></section>
     }
 
     {result && result.meta.totalPages > 1 && <div className="mt-7 flex items-center justify-between rounded-xl border border-[#e0e3eb] bg-white px-4 py-3"><p className="text-sm text-[#686d77]">{pageSummary}</p><div className="flex items-center gap-2"><button onClick={() => { setLoading(true); setPage((value) => Math.max(1, value - 1)); }} disabled={page === 1} className="rounded-lg border border-[#c9ccd5] px-3 py-2 text-sm font-semibold disabled:opacity-40">Previous</button><span className="px-2 text-sm font-medium">Page {page} of {result.meta.totalPages}</span><button onClick={() => { setLoading(true); setPage((value) => Math.min(result.meta.totalPages, value + 1)); }} disabled={page === result.meta.totalPages} className="rounded-lg border border-[#c9ccd5] px-3 py-2 text-sm font-semibold disabled:opacity-40">Next</button></div></div>}
 
     {formAsset === "new" && <AssetOnboardingModal categories={categories} brands={brands} pending={saving} onClose={() => setFormAsset(null)} onSubmit={saveAsset}/>}
     {formAsset && formAsset !== "new" && <AssetFormModal asset={formAsset} categories={categories} brands={brands} pending={saving} onClose={() => setFormAsset(null)} onSubmit={saveAsset}/>}
-    {selectedAsset && <AssetDetailsModal asset={selectedAsset} onClose={() => setSelectedAsset(null)} onEdit={() => { setFormAsset(selectedAsset); setSelectedAsset(null); }} onDelete={() => void removeAsset(selectedAsset)} onRaiseClaim={() => router.push(`/dashboard/claims?assetId=${selectedAsset.id}`)} onFilesChanged={async () => { if (!firebaseUser) return; setSelectedAsset(await getAsset(await firebaseUser.getIdToken(), selectedAsset.id)); refresh(); }}/>} 
+    {selectedAsset && <AssetDetailsModal asset={selectedAsset} loading={detailsLoading} onClose={() => setSelectedAsset(null)} onEdit={() => { setFormAsset(selectedAsset); setSelectedAsset(null); }} onDelete={() => void removeAsset(selectedAsset)} onRaiseClaim={() => router.push(`/dashboard/claims?assetId=${selectedAsset.id}`)} onFilesChanged={async () => { if (!firebaseUser) return; await queryClient.invalidateQueries({ queryKey: ["asset", firebaseUser.uid, selectedAsset.id] }); setSelectedAsset(await queryClient.fetchQuery({ queryKey: ["asset", firebaseUser.uid, selectedAsset.id], queryFn: async () => getAsset(await firebaseUser.getIdToken(), selectedAsset.id) })); refresh(); }}/>} 
   </div>;
 }

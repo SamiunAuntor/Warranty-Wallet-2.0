@@ -4,6 +4,8 @@ const create = (data) => prisma.notification.create({ data });
 const findById = (id) => prisma.notification.findUnique({ where: { id } });
 const findByEvent = ({ userId, type, entityId, eventKey }) =>
     prisma.notification.findFirst({ where: { userId, type, entityId, eventKey } });
+const markEmailSent = (id, emailSentAt = new Date()) =>
+    prisma.notification.update({ where: { id }, data: { emailSentAt } });
 const findManyByUser = (userId, skip, take) => prisma.notification.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
@@ -23,6 +25,7 @@ module.exports = {
     create,
     findById,
     findByEvent,
+    markEmailSent,
     findManyByUser,
     countUnread,
     markAsRead,

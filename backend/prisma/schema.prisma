@@ -67,37 +67,11 @@ enum PaymentStatus {
 }
 
 enum ClaimStatus {
-  DRAFT
   SUBMITTED
-  UNDER_REVIEW
-  APPROVED
-  REJECTED
+  IN_PROGRESS
   RESOLVED
+  REJECTED
   CANCELLED
-}
-
-enum ClaimResolutionOutcome {
-  REPAIRED
-  REPLACED
-  REFUNDED
-  STORE_CREDIT
-  NO_FAULT_FOUND
-  OTHER
-}
-
-enum ClaimRecordType {
-  WARRANTY_CLAIM
-  SERVICE_RECORD
-}
-
-enum ClaimServicePurpose {
-  REPAIR
-  INSPECTION
-  MAINTENANCE
-  INSTALLATION
-  DAMAGE_ASSESSMENT
-  WARRANTY_CONSULTATION
-  OTHER
 }
 
 enum ActivityType {
@@ -183,7 +157,6 @@ model UserPreference {
   id                String   @id @default(cuid())
   userId            String   @unique
   warrantyReminders Boolean  @default(true)
-  claimUpdates      Boolean  @default(true)
   reminderDays      Int[]    @default([30, 14, 3])
   timezone          String   @default("UTC")
   currency          String   @default("USD")
@@ -358,31 +331,19 @@ model Claim {
 
   productId String
 
-  recordType ClaimRecordType @default(WARRANTY_CLAIM)
-
-  parentClaimId String?
-
   title String
 
   issueDescription String
 
   serviceCenter String?
 
-  servicePurpose ClaimServicePurpose?
-
-  serviceDate DateTime?
-
   providerReference String?
 
   submittedCondition String?
 
-  userCost Decimal? @db.Decimal(12, 2)
-
   resolution String?
 
-  resolutionOutcome ClaimResolutionOutcome?
-
-  status ClaimStatus @default(DRAFT)
+  status ClaimStatus @default(SUBMITTED)
 
   filedAt DateTime?
 
@@ -396,18 +357,12 @@ model Claim {
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  parentClaim Claim? @relation("ClaimFollowUps", fields: [parentClaimId], references: [id], onDelete: SetNull)
-
-  followUpClaims Claim[] @relation("ClaimFollowUps")
-
   timeline ClaimTimelineEvent[]
 
   documents ClaimDocument[]
 
   @@index([userId])
   @@index([productId])
-  @@index([parentClaimId])
-  @@index([recordType])
   @@index([status])
   @@index([updatedAt])
   @@index([userId, status])
@@ -467,6 +422,8 @@ model Notification {
   entityId String?
 
   eventKey String?
+
+  emailSentAt DateTime?
 
   isRead Boolean @default(false)
 

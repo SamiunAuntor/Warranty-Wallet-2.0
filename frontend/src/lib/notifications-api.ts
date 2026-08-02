@@ -7,7 +7,7 @@ async function request<T>(path: string, token: string, method = "GET") {
   if (!response.ok || !payload) throw new Error(payload?.message || "Notification request failed.");
   return payload.data;
 }
-export const getNotifications = (token: string) => request<{ data: Notification[]; meta: { total: number } }>("/notifications?page=1&limit=10", token);
+export const getNotifications = (token: string) => request<Notification[]>("/notifications?page=1&limit=10", token);
 export const getUnreadCount = (token: string) => request<{ unread: number }>("/notifications/unread-count", token);
 export const readNotification = (token: string, id: string) => request<Notification>(`/notifications/${id}/read`, token, "PATCH");
 export const readAllNotifications = (token: string) => request<null>("/notifications/read-all", token, "PATCH");

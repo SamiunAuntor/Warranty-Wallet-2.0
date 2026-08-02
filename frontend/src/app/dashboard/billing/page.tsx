@@ -1,19 +1,19 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Loading } from "@/components/ui/loading";
 import { plans, type UserPlan } from "@/constants/plans";
 import { useAuth } from "@/contexts/auth-context";
-import { createCheckout, getPayments, getSubscription, type Payment, type Subscription } from "@/lib/billing-api";
+import { createCheckout, getPayments, getSubscription } from "@/lib/billing-api";
 import { toast } from "@/lib/notifications";
 export default function BillingPage() {
   const { firebaseUser, appUser } = useAuth();
-  const [subscription, setSubscription] = useState<Subscription>(null);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [loading, setLoading] = useState(true);
   const [checkoutPlan, setCheckoutPlan] = useState<UserPlan | null>(null);
-  useEffect(() => { if (!firebaseUser) return; firebaseUser.getIdToken().then(async (token) => Promise.all([getSubscription(token), getPayments(token)])).then(([current, history]) => { setSubscription(current); setPayments(history.data); }).catch((error) => toast.error(error instanceof Error ? error.message : "Could not load billing.")).finally(() => setLoading(false)); }, [firebaseUser]);
+  const { data, isPending } = useQuery({ queryKey: ["billing", firebaseUser?.uid], enabled: Boolean(firebaseUser), staleTime: 5 * 60_000, queryFn: async () => { const token = await firebaseUser!.getIdToken(); const [subscription, history] = await Promise.all([getSubscription(token), getPayments(token)]); return { subscription, payments: history.data }; } });
+  const subscription = data?.subscription ?? null;
+  const payments = data?.payments ?? [];
   const checkout = async (plan: "PLUS" | "PRO") => { if (!firebaseUser) return; setCheckoutPlan(plan); try { const { url } = await createCheckout(await firebaseUser.getIdToken(), plan); window.location.assign(url); } catch (error) { toast.error(error instanceof Error ? error.message : "Could not start checkout."); setCheckoutPlan(null); } };
-  if (loading) return <Loading label="Loading billing"/>;
+  if (isPending) return <Loading label="Loading billing"/>;
   const currentPlan = appUser?.plan ?? "BASIC";
   return <div className="mx-auto max-w-[1100px] pb-10"><header><h1 className="text-3xl font-semibold text-[#111d32]">Billing & Subscription</h1><p className="mt-1 text-sm text-[#626773]">Manage your plan and review payment history.</p></header><section className="mt-6 rounded-xl border bg-white p-5"><p className="text-xs font-semibold uppercase text-[#777d88]">Current plan</p><div className="mt-2 flex flex-wrap items-end justify-between gap-4"><div><h2 className="text-2xl font-semibold">{plans[currentPlan].name}</h2><p className="text-sm text-[#626773]">{plans[currentPlan].assetLimit} assets · ${plans[currentPlan].price}/month</p></div>{subscription && <p className="text-sm text-[#626773]">Renews/ends {new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(subscription.expiresAt))}</p>}</div></section><div className="mt-6 grid gap-5 md:grid-cols-3">{(Object.keys(plans) as UserPlan[]).map((id) => <article key={id} className={`rounded-xl border bg-white p-5 ${id === currentPlan ? "border-[#5b47ee] ring-1 ring-[#5b47ee]" : "border-[#dfe2ea]"}`}><h2 className="text-xl font-semibold">{plans[id].name}</h2><p className="mt-2 text-3xl font-bold">${plans[id].price}<span className="text-sm font-normal text-[#626773]">/mo</span></p><p className="mt-3 text-sm text-[#626773]">Up to {plans[id].assetLimit} assets</p>{id === currentPlan ? <button disabled className="mt-6 h-10 w-full rounded-lg bg-[#eef0f5] text-sm font-semibold">Current plan</button> : id !== "BASIC" && currentPlan === "BASIC" ? <button onClick={() => void checkout(id)} disabled={checkoutPlan !== null} className="mt-6 h-10 w-full rounded-lg bg-[#5b47ee] text-sm font-semibold text-white disabled:opacity-50">{checkoutPlan === id ? "Opening checkout…" : `Choose ${plans[id].name}`}</button> : <p className="mt-6 text-xs text-[#777d88]">Contact support to change an active subscription.</p>}</article>)}</div><section className="mt-7 overflow-hidden rounded-xl border bg-white"><h2 className="border-b p-5 font-semibold">Payment history</h2>{payments.length ? <div className="divide-y">{payments.map((payment) => <div key={payment.id} className="grid grid-cols-2 gap-3 p-4 text-sm sm:grid-cols-4"><span>{new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(payment.createdAt))}</span><span>{plans[payment.plan].name}</span><span>${Number(payment.amount).toFixed(2)} {payment.currency.toUpperCase()}</span><span className="font-semibold">{payment.status}</span></div>)}</div> : <p className="p-8 text-center text-sm text-[#626773]">No payments yet.</p>}</section></div>;
 }

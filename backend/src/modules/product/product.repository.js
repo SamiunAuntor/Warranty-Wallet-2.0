@@ -1,6 +1,6 @@
 const prisma = require("../../config/prisma");
 
-const ACTIVE_CLAIM_STATUSES = ["DRAFT", "SUBMITTED", "UNDER_REVIEW", "APPROVED"];
+const ACTIVE_CLAIM_STATUSES = ["SUBMITTED", "IN_PROGRESS"];
 
 const claimSummary = {
     documents: {
@@ -33,11 +33,7 @@ const claimSummary = {
     },
     _count: {
         select: {
-            claims: {
-                where: {
-                    status: { in: ACTIVE_CLAIM_STATUSES },
-                },
-            },
+            claims: true,
             documents: true,
         },
     },
@@ -82,11 +78,7 @@ const findById = (id) => {
             _count: {
                 select: {
                     documents: true,
-                    claims: {
-                        where: {
-                            status: { in: ACTIVE_CLAIM_STATUSES },
-                        },
-                    },
+                    claims: true,
                 },
             },
         },
@@ -213,12 +205,13 @@ const findExpiringProducts = (fromDate, toDate) => {
                 gte: fromDate,
                 lte: toDate,
             },
-            warrantyStatus: "ACTIVE",
+            warrantyStatus: { in: ["ACTIVE", "EXPIRING_SOON"] },
             hasWarranty: true,
             isDeleted: false,
         },
         include: {
             user: { include: { preferences: true } },
+            category: true,
         },
     });
 };

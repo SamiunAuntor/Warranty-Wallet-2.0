@@ -5,7 +5,6 @@ const updateProfileSchema = z.object({ body: z.object({ name: z.string().trim().
 const updatePreferencesSchema = z.object({
     body: z.object({
         warrantyReminders: z.boolean().optional(),
-        claimUpdates: z.boolean().optional(),
         reminderDays: z.array(z.number().int().min(1).max(365)).min(1).max(5).transform((days) => [...new Set(days)].sort((a, b) => b - a)).optional(),
         timezone: z.string().trim().min(1).max(100).refine((value) => { try { Intl.DateTimeFormat("en-US", { timeZone: value }); return true; } catch { return false; } }, "Choose a valid IANA timezone.").optional(),
         currency: z.enum(["USD", "BDT", "EUR", "GBP", "CAD", "AUD"]).optional(),

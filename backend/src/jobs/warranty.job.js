@@ -4,6 +4,35 @@ const activityService = require("../modules/activity/activity.service");
 const emailService = require("../services/email.service");
 const warrantyReminderTemplate = require("../templates/warrantyReminder.template");
 
+const dashboardUrl = () => {
+    const clientUrl = process.env.CLIENT_URL?.split(",").map((value) => value.trim()).find(Boolean) || "http://localhost:3000";
+    return `${clientUrl.replace(/\/$/, "")}/dashboard/assets`;
+};
+
+const startOfUtcDay = (value) => {
+    const date = new Date(value);
+    return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+};
+
+const calendarDaysBetween = (from, to) =>
+    Math.round((startOfUtcDay(to) - startOfUtcDay(from)) / 86400000);
+
+const shouldSendImmediateReminder = (daysRemaining, preferences) => {
+    if (preferences?.warrantyReminders === false || daysRemaining < 0) return false;
+    const reminderDays = preferences?.reminderDays?.length ? preferences.reminderDays : [30, 14, 3];
+    return daysRemaining < Math.max(...reminderDays);
+};
+
+const deliverReminder = async (product, daysRemaining) => {
+    const notification = await notificationService.notifyWarrantyExpiry({ userId: product.userId, productId: product.id, productName: product.name, expiryDate: product.expiryDate, daysRemaining });
+    if (product.user && !notification.emailSentAt) {
+        await emailService.sendEmail({ to: product.user.email, subject: `⚠️ Warranty Expiring Soon: ${product.name}`, html: warrantyReminderTemplate({ userName: product.user.name, productName: product.name, brand: product.brand, category: product.category?.name, expiryDate: product.expiryDate.toDateString(), daysRemaining, dashboardUrl: dashboardUrl() }) });
+        await notificationService.markReminderEmailSent(notification.id);
+        await activityService.logActivity({ userId: product.userId, type: "PRODUCT_UPDATED", entity: "PRODUCT", entityId: product.id, title: "Warranty Reminder", description: `Warranty for "${product.name}" expires in ${daysRemaining} days.` });
+    }
+    return notification;
+};
+
 const processExpiringSoon = async () => {
     const today = new Date();
     const reminderWindow = new Date(today);
@@ -14,13 +43,11 @@ const processExpiringSoon = async () => {
         try {
             const preferences = product.user?.preferences;
             const reminderDays = preferences?.reminderDays || [30, 14, 3];
-            const daysRemaining = Math.ceil((product.expiryDate.getTime() - today.getTime()) / 86400000);
+            const daysRemaining = calendarDaysBetween(today, product.expiryDate);
             if (daysRemaining <= 30) await productRepository.updateWarrantyStatus(product.id, "EXPIRING_SOON");
             if (preferences?.warrantyReminders === false || !reminderDays.includes(daysRemaining)) continue;
 
-            await notificationService.notifyWarrantyExpiry({ userId: product.userId, productId: product.id, productName: product.name, expiryDate: product.expiryDate, daysRemaining });
-            await activityService.logActivity({ userId: product.userId, type: "PRODUCT_UPDATED", entity: "PRODUCT", entityId: product.id, title: "Warranty Reminder", description: `Warranty for "${product.name}" expires in ${daysRemaining} days.` });
-            if (product.user) await emailService.sendEmail({ to: product.user.email, subject: "Your warranty is expiring soon", html: warrantyReminderTemplate({ userName: product.user.name, productName: product.name, expiryDate: product.expiryDate.toDateString() }) });
+            await deliverReminder(product, daysRemaining);
         } catch (error) {
             console.error(`Warranty reminder failed for product ${product.id}:`, error);
         }
@@ -42,4 +69,4 @@ const processExpired = async () => {
 };
 
 const run = async () => { await processExpiringSoon(); await processExpired(); };
-module.exports = { run };
+module.exports = { run, deliverReminder, calendarDaysBetween, shouldSendImmediateReminder };
