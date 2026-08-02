@@ -54,7 +54,8 @@ export function AssetFormModal({ asset, initialValues, categories, brands, pendi
   };
 
   return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#111827]/45 p-4" role="dialog" aria-modal="true" aria-labelledby="asset-form-title">
-    <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-[#f8f9ff] shadow-2xl">
+    <div className="w-full max-w-3xl overflow-hidden rounded-2xl bg-[#f8f9ff] shadow-2xl">
+      <div className="max-h-[92vh] overflow-y-auto">
       <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#e1e4ec] bg-white px-6 py-4">
         <div><h2 id="asset-form-title" className="text-xl font-semibold text-[#111d32]">{asset ? "Edit asset" : "Add a new asset"}</h2><p className="mt-1 text-sm text-[#686d77]">{asset ? "Update warranty and purchase information." : "Store the purchase and warranty details in your portfolio."}</p></div>
         <button type="button" onClick={onClose} className="rounded-lg p-2 text-[#596170] hover:bg-[#eef1f8]" aria-label="Close asset form">×</button>
@@ -83,6 +84,7 @@ export function AssetFormModal({ asset, initialValues, categories, brands, pendi
           <button disabled={pending || categories.length === 0} className="flex h-11 items-center gap-2 rounded-lg bg-[#4b41e1] px-5 text-sm font-semibold text-white hover:bg-[#645efb] disabled:cursor-not-allowed disabled:opacity-60"><Icon name={asset ? "check" : "plus"} className="h-4 w-4"/>{pending ? "Saving…" : asset ? "Save changes" : "Add asset"}</button>
         </div>
       </form>
+      </div>
     </div>
   </div>;
 }

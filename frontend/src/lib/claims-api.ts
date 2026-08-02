@@ -1,4 +1,5 @@
 import type { Asset } from "@/lib/assets-api";
+import { uploadDocuments } from "@/lib/documents-api";
 
 export type ClaimStatus =
   | "DRAFT"
@@ -8,6 +9,17 @@ export type ClaimStatus =
   | "REJECTED"
   | "RESOLVED"
   | "CANCELLED";
+
+export type ClaimResolutionOutcome =
+  | "REPAIRED"
+  | "REPLACED"
+  | "REFUNDED"
+  | "STORE_CREDIT"
+  | "NO_FAULT_FOUND"
+  | "OTHER";
+
+export type ClaimRecordType = "WARRANTY_CLAIM" | "SERVICE_RECORD";
+export type ClaimServicePurpose = "REPAIR" | "INSPECTION" | "MAINTENANCE" | "INSTALLATION" | "DAMAGE_ASSESSMENT" | "WARRANTY_CONSULTATION" | "OTHER";
 
 export const claimTransitions: Record<ClaimStatus, ClaimStatus[]> = {
   DRAFT: ["SUBMITTED", "CANCELLED"],
@@ -45,10 +57,18 @@ export type Claim = {
   claimNumber: string;
   userId: string;
   productId: string;
+  recordType: ClaimRecordType;
+  parentClaimId: string | null;
   title: string;
   issueDescription: string;
   serviceCenter: string | null;
+  servicePurpose: ClaimServicePurpose | null;
+  serviceDate: string | null;
+  providerReference: string | null;
+  submittedCondition: string | null;
+  userCost: string | null;
   resolution: string | null;
+  resolutionOutcome: ClaimResolutionOutcome | null;
   status: ClaimStatus;
   filedAt: string | null;
   resolvedAt: string | null;
@@ -60,6 +80,9 @@ export type Claim = {
     claimId: string;
     documentId: string;
     attachedAt: string;
+    evidenceType: string;
+    claimStage: ClaimStatus | null;
+    note: string | null;
     document: AssetDocument;
   }>;
   _count?: {
@@ -70,11 +93,21 @@ export type Claim = {
 
 export type ClaimInput = {
   productId: string;
+  recordType: ClaimRecordType;
+  parentClaimId?: string;
   title: string;
   issueDescription: string;
   serviceCenter?: string;
-  status?: "DRAFT" | "SUBMITTED";
+  servicePurpose?: ClaimServicePurpose;
+  serviceDate?: string;
+  providerReference?: string;
+  submittedCondition?: string;
+  userCost?: number;
+  resolution?: string;
+  resolutionOutcome?: ClaimResolutionOutcome;
+  status?: "DRAFT" | "SUBMITTED" | "RESOLVED";
   documentIds?: string[];
+  pendingEvidence?: Array<{ file: File; kind: "CLAIM_EVIDENCE" | "CLAIM_CONDITION" }>;
 };
 
 export type ClaimUpdate = {
@@ -82,6 +115,7 @@ export type ClaimUpdate = {
   issueDescription?: string;
   serviceCenter?: string | null;
   resolution?: string | null;
+  resolutionOutcome?: ClaimResolutionOutcome | null;
   status?: ClaimStatus;
 };
 
@@ -122,13 +156,14 @@ async function request<T>(path: string, token: string, init?: RequestInit): Prom
   return (payload as ApiEnvelope<T>).data;
 }
 
-export function getClaims(token: string, query: { page: number; limit: number; search?: string; status?: ClaimStatus }) {
+export function getClaims(token: string, query: { page: number; limit: number; search?: string; status?: ClaimStatus; recordType?: ClaimRecordType }) {
   const params = new URLSearchParams({
     page: String(query.page),
     limit: String(query.limit),
   });
   if (query.search) params.set("search", query.search);
   if (query.status) params.set("status", query.status);
+  if (query.recordType) params.set("recordType", query.recordType);
   return request<ClaimList>(`/claims?${params.toString()}`, token);
 }
 
@@ -136,10 +171,16 @@ export function getClaim(token: string, id: string) {
   return request<Claim>(`/claims/${id}`, token);
 }
 
-export function createClaim(token: string, input: ClaimInput) {
+export async function createClaim(token: string, input: ClaimInput) {
+  const { pendingEvidence = [], documentIds = [], ...payload } = input;
+  const evidence: Array<{ documentId: string; evidenceType: string }> = documentIds.map((documentId) => ({ documentId, evidenceType: "SUPPORTING_DOCUMENT" }));
+  for (const item of pendingEvidence) {
+    const [uploaded] = await uploadDocuments(token, input.productId, item.kind, [item.file]);
+    evidence.push({ documentId: uploaded.id, evidenceType: item.kind === "CLAIM_CONDITION" ? "CONDITION_PHOTO" : "SUPPORTING_DOCUMENT" });
+  }
   return request<Claim>("/claims", token, {
     method: "POST",
-    body: JSON.stringify(input),
+    body: JSON.stringify({ ...payload, evidence }),
   });
 }
 
@@ -165,11 +206,16 @@ export function addTimelineEvent(
   });
 }
 
-export function attachClaimDocument(token: string, id: string, documentId: string) {
+export function attachClaimDocument(token: string, id: string, documentId: string, evidenceType = "SUPPORTING_DOCUMENT", note?: string) {
   return request<Claim>(`/claims/${id}/documents`, token, {
     method: "POST",
-    body: JSON.stringify({ documentId }),
+    body: JSON.stringify({ documentId, evidenceType, note }),
   });
+}
+
+export async function uploadClaimEvidence(token: string, claim: Claim, file: File, conditionPhoto: boolean) {
+  const [document] = await uploadDocuments(token, claim.productId, conditionPhoto ? "CLAIM_CONDITION" : "CLAIM_EVIDENCE", [file]);
+  return attachClaimDocument(token, claim.id, document.id, conditionPhoto ? "CONDITION_PHOTO" : "SUPPORTING_DOCUMENT");
 }
 
 export function detachClaimDocument(token: string, id: string, documentId: string) {

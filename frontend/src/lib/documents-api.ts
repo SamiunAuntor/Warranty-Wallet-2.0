@@ -5,7 +5,9 @@ export type DocumentType =
   | "WARRANTY_CARD"
   | "PRODUCT_IMAGE"
   | "RECEIPT"
-  | "OTHER";
+  | "OTHER"
+  | "CLAIM_EVIDENCE"
+  | "CLAIM_CONDITION";
 
 export type DocumentRecord = {
   id: string;
@@ -66,7 +68,7 @@ export type ExtractedAssetData = {
 
 export type PendingAssetDocument = {
   file: File;
-  type: Extract<DocumentType, "INVOICE" | "RECEIPT" | "WARRANTY_CARD">;
+  type: DocumentType;
   extractedData?: ExtractedAssetData;
 };
 

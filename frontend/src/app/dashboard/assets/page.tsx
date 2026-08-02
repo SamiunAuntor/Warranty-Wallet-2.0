@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AssetDetailsModal } from "@/components/assets/asset-details-modal";
 import { AssetFormModal } from "@/components/assets/asset-form-modal";
 import { AssetOnboardingModal } from "@/components/assets/asset-onboarding-modal";
@@ -27,6 +28,7 @@ import {
 } from "@/lib/assets-api";
 import { dialog, toast } from "@/lib/notifications";
 import { uploadDocuments, type PendingAssetDocument } from "@/lib/documents-api";
+import { positivePage, useUrlQuerySync } from "@/hooks/use-url-query-sync";
 
 const PAGE_SIZE = 8;
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -45,16 +47,23 @@ const statusStyles: Record<WarrantyStatus, { border: string; badge: string }> = 
 };
 
 export default function AssetsPage() {
+  return <Suspense fallback={<Loading label="Loading asset filters"/>}><AssetsPageContent/></Suspense>;
+}
+
+function AssetsPageContent() {
+  const router = useRouter();
   const { firebaseUser, appUser } = useAuth();
+  const query = useSearchParams();
+  const statusQuery = query.get("status");
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [result, setResult] = useState<AssetList | null>(null);
   const [usage, setUsage] = useState(0);
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<WarrantyStatus | "">("");
-  const [categoryId, setCategoryId] = useState("");
-  const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState(query.get("search") ?? "");
+  const [search, setSearch] = useState(query.get("search") ?? "");
+  const [status, setStatus] = useState<WarrantyStatus | "">(statusQuery && statusQuery in statusLabels ? statusQuery as WarrantyStatus : "");
+  const [categoryId, setCategoryId] = useState(query.get("category") ?? "");
+  const [page, setPage] = useState(() => positivePage(query.get("page")));
   const [view, setView] = useState<"grid" | "list">("grid");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -66,6 +75,8 @@ export default function AssetsPage() {
   const plan = appUser ? plans[appUser.plan] : plans.BASIC;
   const atLimit = usage >= plan.assetLimit;
   const usagePercent = Math.min(100, (usage / plan.assetLimit) * 100);
+
+  useUrlQuerySync({ search, status, category: categoryId, page });
 
   useEffect(() => {
     getCategories()
@@ -151,15 +162,29 @@ export default function AssetsPage() {
       if (formAsset === "new") {
         const created = await createAsset(token, input);
         let uploadedCount = 0;
+        const failedUploads: string[] = [];
         for (const document of documents) {
-          try {
-            await uploadDocuments(token, created.id, document.type, [document.file], document.extractedData);
-            uploadedCount += 1;
-          } catch (uploadError) {
-            toast.warning(`Asset created, but ${document.file.name} was not attached: ${uploadError instanceof Error ? uploadError.message : "upload failed"}`);
+          let lastError: unknown;
+          for (let attempt = 0; attempt < 2; attempt += 1) {
+            try {
+              const uploaded = await uploadDocuments(token, created.id, document.type, [document.file], document.extractedData);
+              if (uploaded.length !== 1 || uploaded[0].productId !== created.id) throw new Error("The server did not confirm the asset link.");
+              uploadedCount += 1;
+              lastError = undefined;
+              break;
+            } catch (uploadError) {
+              lastError = uploadError;
+            }
+          }
+          if (lastError) {
+            failedUploads.push(`${document.file.name}: ${lastError instanceof Error ? lastError.message : "upload failed"}`);
           }
         }
-        toast.success(uploadedCount > 0 ? `Asset added with ${uploadedCount} document${uploadedCount === 1 ? "" : "s"}.` : "Asset added successfully.");
+        if (failedUploads.length > 0) {
+          await dialog.warning("Asset saved, but some files need attention", `${uploadedCount} of ${documents.length} files were linked. ${failedUploads.join(" ")}`);
+        } else {
+          toast.success(documents.length > 0 ? `Asset added with all ${uploadedCount} related file${uploadedCount === 1 ? "" : "s"}.` : "Asset added successfully.");
+        }
       } else {
         await updateAsset(token, formAsset.id, input);
         toast.success("Asset updated successfully.");
@@ -243,6 +268,6 @@ export default function AssetsPage() {
 
     {formAsset === "new" && <AssetOnboardingModal categories={categories} brands={brands} pending={saving} onClose={() => setFormAsset(null)} onSubmit={saveAsset}/>}
     {formAsset && formAsset !== "new" && <AssetFormModal asset={formAsset} categories={categories} brands={brands} pending={saving} onClose={() => setFormAsset(null)} onSubmit={saveAsset}/>}
-    {selectedAsset && <AssetDetailsModal asset={selectedAsset} onClose={() => setSelectedAsset(null)} onEdit={() => { setFormAsset(selectedAsset); setSelectedAsset(null); }} onDelete={() => void removeAsset(selectedAsset)}/>}
+    {selectedAsset && <AssetDetailsModal asset={selectedAsset} onClose={() => setSelectedAsset(null)} onEdit={() => { setFormAsset(selectedAsset); setSelectedAsset(null); }} onDelete={() => void removeAsset(selectedAsset)} onRaiseClaim={() => router.push(`/dashboard/claims?assetId=${selectedAsset.id}`)}/>}
   </div>;
 }

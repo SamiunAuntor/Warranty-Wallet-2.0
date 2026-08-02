@@ -62,6 +62,7 @@ const findMany = ({ where, skip, take }) =>
             _count: {
                 select: { claims: true },
             },
+            _count: { select: { claims: true } },
         },
     });
 
@@ -80,6 +81,15 @@ const countByType = async (  productId,  fileType) => {
         where: {
             productId,
             fileType,
+        },
+    });
+};
+
+const countByTypes = async (productId, fileTypes) => {
+    return prisma.document.count({
+        where: {
+            productId,
+            fileType: { in: fileTypes },
         },
     });
 };
@@ -145,6 +155,8 @@ module.exports = {
     countByProduct,
 
     countByType,
+
+    countByTypes,
 
     update,
 

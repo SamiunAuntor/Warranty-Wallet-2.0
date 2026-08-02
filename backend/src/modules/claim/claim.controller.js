@@ -33,7 +33,7 @@ const addTimelineEvent = asyncHandler(async (req, res) => {
 });
 
 const attachDocument = asyncHandler(async (req, res) => {
-    const claim = await claimService.attachDocument(req.params.id, req.user, req.body.documentId);
+    const claim = await claimService.attachDocument(req.params.id, req.user, req.body);
     res.status(201).json(new ApiResponse(201, "Document attached successfully.", claim));
 });
 

@@ -10,6 +10,10 @@ const uploadFile = (buffer, folder) => {
 
             {
                 folder,
+                resource_type: "auto",
+                use_filename: true,
+                unique_filename: true,
+                overwrite: false,
             },
 
             (error, result) => {

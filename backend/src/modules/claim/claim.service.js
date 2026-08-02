@@ -4,6 +4,7 @@ const productRepository = require("../product/product.repository");
 const ApiError = require("../../utils/ApiError");
 const { pagination } = require("../../utils/query");
 const { CLAIM_TRANSITIONS, TERMINAL_CLAIM_STATUSES } = require("./claim.constant");
+const EVIDENCE_EDITABLE_STATUSES = ["DRAFT", "SUBMITTED"];
 
 const claimNumber = () =>
     `CLM-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(2).toString("hex").toUpperCase()}`;
@@ -66,19 +67,44 @@ const assertStatusTransition = (claim, nextStatus, user) => {
 
 const createClaim = async (user, payload) => {
     await assertProductOwnership(payload.productId, user);
-    const documentIds = await validateDocuments(payload.documentIds || [], payload.productId, user);
-    const status = payload.status || "DRAFT";
+    if (payload.recordType === "SERVICE_RECORD" && !payload.servicePurpose) {
+        throw new ApiError(400, "Service purpose is required.");
+    }
+    if (payload.recordType === "SERVICE_RECORD" && (!payload.resolutionOutcome || !payload.resolution?.trim())) {
+        throw new ApiError(400, "A service record requires its outcome and summary.");
+    }
+    if (payload.recordType === "WARRANTY_CLAIM" && payload.status === "RESOLVED") {
+        throw new ApiError(400, "A formal claim cannot be completed when it is first created.");
+    }
+    if (payload.parentClaimId) {
+        const parent = await assertClaimOwnership(payload.parentClaimId, user);
+        if (parent.productId !== payload.productId) throw new ApiError(400, "A follow-up must belong to the same asset as the original record.");
+    }
+    const evidence = payload.evidence || (payload.documentIds || []).map((documentId) => ({ documentId, evidenceType: "SUPPORTING_DOCUMENT" }));
+    const documentIds = await validateDocuments(evidence.map((item) => item.documentId), payload.productId, user);
+    const uniqueEvidence = documentIds.map((documentId) => evidence.find((item) => item.documentId === documentId));
+    const status = payload.status || (payload.recordType === "SERVICE_RECORD" ? "RESOLVED" : "DRAFT");
 
     return claimRepository.create({
         claimNumber: claimNumber(),
         userId: user.id,
         productId: payload.productId,
+        recordType: payload.recordType,
+        parentClaimId: payload.parentClaimId,
         title: payload.title,
         issueDescription: payload.issueDescription,
         serviceCenter: payload.serviceCenter,
+        servicePurpose: payload.servicePurpose,
+        serviceDate: payload.serviceDate,
+        providerReference: payload.providerReference,
+        submittedCondition: payload.submittedCondition,
+        userCost: payload.userCost,
+        resolution: payload.resolution,
+        resolutionOutcome: payload.resolutionOutcome,
         status,
         ...(status === "SUBMITTED" && { filedAt: new Date() }),
-    }, documentIds);
+        ...(status === "RESOLVED" && { resolvedAt: new Date() }),
+    }, uniqueEvidence);
 };
 
 const getClaims = async (user, query) => {
@@ -87,6 +113,7 @@ const getClaims = async (user, query) => {
         ...(user.role !== "ADMIN" && { userId: user.id }),
         ...(query.status && { status: query.status }),
         ...(query.productId && { productId: query.productId }),
+        ...(query.recordType && { recordType: query.recordType }),
         ...(query.search && {
             OR: [
                 { claimNumber: { contains: query.search, mode: "insensitive" } },
@@ -119,8 +146,18 @@ const updateClaim = async (id, user, payload) => {
     if (TERMINAL_CLAIM_STATUSES.includes(claim.status)) {
         throw new ApiError(409, "A completed claim can no longer be edited.");
     }
-    if (payload.resolution !== undefined && user.role !== "ADMIN") {
+    if ((payload.resolution !== undefined || payload.resolutionOutcome !== undefined) && user.role !== "ADMIN") {
         throw new ApiError(403, "Only an administrator can record a claim resolution.");
+    }
+    if (user.role !== "ADMIN" && !EVIDENCE_EDITABLE_STATUSES.includes(claim.status)) {
+        const changedIssueDetails = ["title", "issueDescription", "serviceCenter"].some((field) => payload[field] !== undefined);
+        if (changedIssueDetails) throw new ApiError(409, "Issue details are locked after claim review begins.");
+    }
+    if (payload.status === "RESOLVED" && (!payload.resolutionOutcome || !payload.resolution?.trim())) {
+        throw new ApiError(400, "A completion outcome and resolution summary are required.");
+    }
+    if (payload.status === "REJECTED" && !payload.resolution?.trim()) {
+        throw new ApiError(400, "A reason is required when declining a claim.");
     }
     const update = {
         ...payload,
@@ -154,6 +191,9 @@ const addTimelineEvent = async (id, user, payload) => {
         throw new ApiError(409, "A completed claim can no longer receive timeline updates.");
     }
     assertStatusTransition(claim, payload.status, user);
+    if (["RESOLVED", "REJECTED"].includes(payload.status)) {
+        throw new ApiError(400, "Complete or decline the claim through the structured resolution action.");
+    }
     if (user.role !== "ADMIN" && payload.status && payload.status !== "CANCELLED") {
         throw new ApiError(403, "Only an administrator can update claim progress.");
     }
@@ -161,20 +201,25 @@ const addTimelineEvent = async (id, user, payload) => {
     return assertClaimOwnership(id, user);
 };
 
-const attachDocument = async (id, user, documentId) => {
+const attachDocument = async (id, user, evidence) => {
     const claim = await assertClaimOwnership(id, user);
+    const normalizedEvidence = typeof evidence === "string" ? { documentId: evidence, evidenceType: "SUPPORTING_DOCUMENT" } : evidence;
+    const { documentId } = normalizedEvidence;
     await validateDocuments([documentId], claim.productId, user);
 
     if (claim.documents.some((item) => item.documentId === documentId)) {
         throw new ApiError(409, "This document is already attached to the claim.");
     }
 
-    await claimRepository.attachDocument(id, documentId);
+    await claimRepository.attachDocument(id, { ...normalizedEvidence, claimStage: claim.status });
     return assertClaimOwnership(id, user);
 };
 
 const detachDocument = async (id, user, documentId) => {
     const claim = await assertClaimOwnership(id, user);
+    if (claim.status !== "DRAFT") {
+        throw new ApiError(409, "Submitted claim evidence is immutable. Add a corrected file instead.");
+    }
     if (!claim.documents.some((item) => item.documentId === documentId)) {
         throw new ApiError(404, "Attached document not found.");
     }

@@ -7,15 +7,29 @@ const deleteImage = require("../../utils/deleteCloudinaryFile");
 const ApiError = require("../../utils/ApiError");
 const { hasValidFileSignature } = require("../../utils/fileValidation");
 
-const { DOCUMENT_TYPE, MAX_FILES_PER_UPLOAD } = require("./document.constant");
+const {
+    DOCUMENT_TYPE,
+    MAX_FILES_PER_UPLOAD,
+    MAX_SUPPORTING_DOCUMENTS_PER_PRODUCT,
+    MAX_PRODUCT_IMAGES_PER_PRODUCT,
+    MAX_CLAIM_FILES_PER_PRODUCT,
+} = require("./document.constant");
 const { pagination } = require("../../utils/query");
 const aiService = require("../ai/ai.service");
+const { getDocumentFolder } = require("./document.storage");
 
 const EXTRACTABLE_TYPES = new Set([
     DOCUMENT_TYPE.INVOICE,
     DOCUMENT_TYPE.RECEIPT,
     DOCUMENT_TYPE.WARRANTY_CARD,
 ]);
+
+const SUPPORTING_DOCUMENT_TYPES = [
+    DOCUMENT_TYPE.INVOICE,
+    DOCUMENT_TYPE.WARRANTY_CARD,
+    DOCUMENT_TYPE.RECEIPT,
+    DOCUMENT_TYPE.OTHER,
+];
 
 const extractMetadata = async (file, type, extractedData) => {
     if (!EXTRACTABLE_TYPES.has(type)) {
@@ -40,25 +54,6 @@ const extractMetadata = async (file, type, extractedData) => {
         ocrConfidence: data.confidence ?? null,
         ocrRaw: data,
     };
-};
-
-const getFolder = (type) => {
-    switch (type) {
-        case DOCUMENT_TYPE.INVOICE:
-            return "WarrantyWallet/invoices";
-
-        case DOCUMENT_TYPE.WARRANTY_CARD:
-            return "WarrantyWallet/warranty_cards";
-
-        case DOCUMENT_TYPE.PRODUCT_IMAGE:
-            return "WarrantyWallet/products";
-
-        case DOCUMENT_TYPE.RECEIPT:
-            return "WarrantyWallet/receipts";
-
-        default:
-            return "WarrantyWallet/others";
-    }
 };
 
 const uploadDocuments = async ({ user, productId, files, type, extractedData, }) => {
@@ -90,6 +85,23 @@ const uploadDocuments = async ({ user, productId, files, type, extractedData, })
         throw new ApiError(400, "A file's contents do not match its declared PDF or image type.");
     }
 
+    if ([DOCUMENT_TYPE.CLAIM_EVIDENCE, DOCUMENT_TYPE.CLAIM_CONDITION].includes(type)) {
+        const claimFileCount = await documentRepository.countByTypes(productId, [DOCUMENT_TYPE.CLAIM_EVIDENCE, DOCUMENT_TYPE.CLAIM_CONDITION]);
+        if (claimFileCount + files.length > MAX_CLAIM_FILES_PER_PRODUCT) {
+            throw new ApiError(409, `Each asset can store up to ${MAX_CLAIM_FILES_PER_PRODUCT} claim evidence files.`);
+        }
+    } else if (type === DOCUMENT_TYPE.PRODUCT_IMAGE) {
+        const imageCount = await documentRepository.countByType(productId, DOCUMENT_TYPE.PRODUCT_IMAGE);
+        if (imageCount + files.length > MAX_PRODUCT_IMAGES_PER_PRODUCT) {
+            throw new ApiError(409, `Each asset can have up to ${MAX_PRODUCT_IMAGES_PER_PRODUCT} condition photos.`);
+        }
+    } else {
+        const documentCount = await documentRepository.countByTypes(productId, SUPPORTING_DOCUMENT_TYPES);
+        if (documentCount + files.length > MAX_SUPPORTING_DOCUMENTS_PER_PRODUCT) {
+            throw new ApiError(409, `Each asset can have up to ${MAX_SUPPORTING_DOCUMENTS_PER_PRODUCT} purchase documents.`);
+        }
+    }
+
     if (type === DOCUMENT_TYPE.INVOICE || type === DOCUMENT_TYPE.WARRANTY_CARD) {
         const existing = await documentRepository.countByType(productId, type);
 
@@ -103,8 +115,11 @@ const uploadDocuments = async ({ user, productId, files, type, extractedData, })
     for (const file of files) {
         const extracted = await extractMetadata(file, type, extractedData);
 
-        const uploaded =
-            await uploadFile(file.buffer, getFolder(type));
+        const uploaded = await uploadFile(file.buffer, getDocumentFolder({
+            mimetype: file.mimetype,
+            productId,
+            type,
+        }));
 
         const document = await documentRepository.create({
             productId,
@@ -129,6 +144,8 @@ const uploadDocuments = async ({ user, productId, files, type, extractedData, })
 
             fileSize:
                 file.size,
+
+            ...extracted,
         });
 
         uploadedDocuments.push(
@@ -214,6 +231,10 @@ const deleteDocument = async (id, user) => {
         );
     }
 
+    if (document._count?.claims > 0) {
+        throw new ApiError(409, "Evidence attached to a claim cannot be deleted. Add a corrected file instead.");
+    }
+
     await deleteImage(
         document.publicId
     );
@@ -247,6 +268,10 @@ const replaceDocument = async ({ id, user, file, }) => {
         throw new ApiError(400, "A replacement file is required.");
     }
 
+    if (document._count?.claims > 0) {
+        throw new ApiError(409, "Evidence attached to a claim cannot be replaced. Add a corrected file instead.");
+    }
+
     if (!hasValidFileSignature(file)) {
         throw new ApiError(400, "The replacement file's contents do not match its declared type.");
     }
@@ -255,7 +280,11 @@ const replaceDocument = async ({ id, user, file, }) => {
 
     const uploaded = await uploadFile(
         file.buffer,
-        getFolder(document.fileType)
+        getDocumentFolder({
+            mimetype: file.mimetype,
+            productId: document.productId,
+            type: document.fileType,
+        })
     );
 
     const updated = await documentRepository.update(id, {

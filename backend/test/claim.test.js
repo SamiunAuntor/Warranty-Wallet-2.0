@@ -97,8 +97,33 @@ test("claim creation records status, ownership, and unique documents", async (t)
     assert.equal(received.payload.userId, user.id);
     assert.equal(received.payload.status, "SUBMITTED");
     assert.match(received.payload.claimNumber, /^CLM-/);
-    assert.deepEqual(received.documentIds, ["document-1"]);
+    assert.deepEqual(received.documentIds, [{ documentId: "document-1", evidenceType: "SUPPORTING_DOCUMENT" }]);
     assert.ok(received.payload.filedAt instanceof Date);
+});
+
+test("completed service visits are stored without forcing a formal claim", async (t) => {
+    const originalFindProduct = productRepository.findById;
+    const originalCreate = claimRepository.create;
+    let received;
+    productRepository.findById = async () => ({ id: "asset-1", userId: user.id });
+    claimRepository.create = async (payload) => { received = payload; return payload; };
+    t.after(() => {
+        productRepository.findById = originalFindProduct;
+        claimRepository.create = originalCreate;
+    });
+
+    await claimService.createClaim(user, {
+        productId: "asset-1",
+        recordType: "SERVICE_RECORD",
+        title: "Walk-in screen repair",
+        issueDescription: "The service center replaced the damaged screen.",
+        servicePurpose: "REPAIR",
+        resolutionOutcome: "REPAIRED",
+        resolution: "Screen replaced during the same visit.",
+    });
+
+    assert.equal(received.status, "RESOLVED");
+    assert.ok(received.resolvedAt instanceof Date);
 });
 
 test("claim details enforce claim ownership", async (t) => {
@@ -174,4 +199,46 @@ test("users can submit their own draft claim", async (t) => {
     await claimService.updateClaim("claim-1", user, { status: "SUBMITTED" });
     assert.equal(received.status, "SUBMITTED");
     assert.ok(received.filedAt instanceof Date);
+});
+
+test("completed claims require a structured outcome and summary", async (t) => {
+    const originalFindClaim = claimRepository.findById;
+    claimRepository.findById = async () => ({
+        id: "claim-1",
+        userId: user.id,
+        status: "APPROVED",
+        documents: [],
+    });
+    t.after(() => {
+        claimRepository.findById = originalFindClaim;
+    });
+
+    await assert.rejects(
+        claimService.updateClaim("claim-1", { id: "admin-1", role: "ADMIN" }, { status: "RESOLVED" }),
+        (error) => error.statusCode === 400
+    );
+});
+
+test("new evidence can be appended after review begins with its claim stage", async (t) => {
+    const originalFindClaim = claimRepository.findById;
+    const originalFindDocuments = claimRepository.findDocuments;
+    const originalAttachDocument = claimRepository.attachDocument;
+    let received;
+    claimRepository.findById = async () => ({
+        id: "claim-1",
+        userId: user.id,
+        productId: "asset-1",
+        status: "UNDER_REVIEW",
+        documents: [],
+    });
+    claimRepository.findDocuments = async () => [{ id: "document-1", userId: user.id, productId: "asset-1" }];
+    claimRepository.attachDocument = async (_claimId, evidence) => { received = evidence; };
+    t.after(() => {
+        claimRepository.findById = originalFindClaim;
+        claimRepository.findDocuments = originalFindDocuments;
+        claimRepository.attachDocument = originalAttachDocument;
+    });
+
+    await claimService.attachDocument("claim-1", user, { documentId: "document-1", evidenceType: "CONDITION_PHOTO" });
+    assert.deepEqual(received, { documentId: "document-1", evidenceType: "CONDITION_PHOTO", claimStage: "UNDER_REVIEW" });
 });

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { useSearchParams } from "next/navigation";
 import { Icon } from "@/components/icons";
 import { Loading } from "@/components/ui/loading";
 import { useAuth } from "@/contexts/auth-context";
@@ -15,12 +16,11 @@ import {
   type DocumentType,
 } from "@/lib/documents-api";
 import { dialog, toast } from "@/lib/notifications";
+import { MAX_PDF_SIZE_MB, MAX_SOURCE_IMAGE_SIZE_MB, prepareUploadFile, prepareUploadFiles } from "@/lib/upload-files";
+import { positivePage, useUrlQuerySync } from "@/hooks/use-url-query-sync";
 
 const PAGE_SIZE = 12;
-const MAX_FILE_SIZE_MB = 4;
-const MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024;
 const MAX_FILES = 5;
-const ALLOWED_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 const documentTypes: DocumentType[] = ["INVOICE", "WARRANTY_CARD", "PRODUCT_IMAGE", "RECEIPT", "OTHER"];
 const typeLabel = (type: DocumentType) => type.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
 const fileSize = (bytes: number | null) => {
@@ -31,23 +31,31 @@ const fileSize = (bytes: number | null) => {
 const addedDate = new Intl.DateTimeFormat("en-US", { dateStyle: "medium" });
 
 export default function DocumentsPage() {
+  return <Suspense fallback={<Loading label="Loading document filters"/>}><DocumentsPageContent/></Suspense>;
+}
+
+function DocumentsPageContent() {
   const { firebaseUser } = useAuth();
+  const query = useSearchParams();
+  const typeQuery = query.get("type");
   const inputRef = useRef<HTMLInputElement>(null);
   const [result, setResult] = useState<DocumentList | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [uploadAssetId, setUploadAssetId] = useState("");
   const [uploadType, setUploadType] = useState<DocumentType>("RECEIPT");
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [type, setType] = useState<DocumentType | "">("");
-  const [productId, setProductId] = useState("");
-  const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState(query.get("search") ?? "");
+  const [search, setSearch] = useState(query.get("search") ?? "");
+  const [type, setType] = useState<DocumentType | "">(typeQuery && documentTypes.includes(typeQuery as DocumentType) ? typeQuery as DocumentType : "");
+  const [productId, setProductId] = useState(query.get("asset") ?? "");
+  const [page, setPage] = useState(() => positivePage(query.get("page")));
   const [reloadKey, setReloadKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
   const [preview, setPreview] = useState<DocumentRecord | null>(null);
+
+  useUrlQuerySync({ search, type, asset: productId, page });
 
   useEffect(() => {
     if (!firebaseUser) return;
@@ -112,10 +120,6 @@ export default function DocumentsPage() {
     if (!uploadAssetId) throw new Error("Select an asset before uploading documents.");
     if (files.length === 0) throw new Error("Choose at least one file.");
     if (files.length > MAX_FILES) throw new Error(`You can upload up to ${MAX_FILES} files at once.`);
-    const invalidType = files.find((file) => !ALLOWED_TYPES.includes(file.type));
-    if (invalidType) throw new Error(`${invalidType.name} is not a supported PDF or image file.`);
-    const tooLarge = files.find((file) => file.size > MAX_FILE_SIZE);
-    if (tooLarge) throw new Error(`${tooLarge.name} exceeds the ${MAX_FILE_SIZE_MB} MB limit.`);
   };
 
   const submitFiles = async (files: File[]) => {
@@ -123,12 +127,13 @@ export default function DocumentsPage() {
     try {
       validateFiles(files);
       setUploading(true);
+      const preparedFiles = await prepareUploadFiles(files);
       const token = await firebaseUser.getIdToken();
 
-      for (const file of files) {
+      for (const file of preparedFiles) {
         await uploadDocuments(token, uploadAssetId, uploadType, [file]);
       }
-      toast.success(`${files.length} document${files.length === 1 ? "" : "s"} uploaded.`);
+      toast.success(`${preparedFiles.length} document${preparedFiles.length === 1 ? "" : "s"} uploaded.`);
       if (inputRef.current) inputRef.current.value = "";
       refresh();
     } catch (uploadError) {
@@ -147,9 +152,8 @@ export default function DocumentsPage() {
   const replace = async (document: DocumentRecord, file: File) => {
     if (!firebaseUser) return;
     try {
-      if (!ALLOWED_TYPES.includes(file.type)) throw new Error("Use a PDF, JPG, PNG, or WebP file.");
-      if (file.size > MAX_FILE_SIZE) throw new Error(`The replacement file exceeds the ${MAX_FILE_SIZE_MB} MB limit.`);
-      await replaceDocument(await firebaseUser.getIdToken(), document.id, file);
+      const preparedFile = await prepareUploadFile(file);
+      await replaceDocument(await firebaseUser.getIdToken(), document.id, preparedFile);
       toast.success("Document replaced successfully.");
       refresh();
     } catch (replaceError) {
@@ -199,7 +203,7 @@ export default function DocumentsPage() {
 
     <section className="mt-7 grid gap-4 rounded-xl border border-[#d6d9e2] bg-white p-4 shadow-sm md:grid-cols-[1fr_220px]">
       <div onDragEnter={(event) => { event.preventDefault(); setDragging(true); }} onDragOver={(event) => event.preventDefault()} onDragLeave={() => setDragging(false)} onDrop={drop} className={`flex min-h-48 flex-col items-center justify-center rounded-xl border-2 border-dashed px-5 text-center transition ${dragging ? "border-[#5141df] bg-[#f0eeff]" : "border-[#c7cad3] bg-[#fafbff]"}`}>
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#e8edff] text-[#5141df]"><Icon name="upload" className="h-7 w-7"/></div><h2 className="mt-4 text-lg font-semibold text-[#172033]">Drop files here</h2><p className="mt-1 text-sm text-[#686d77]">PDF, JPG, PNG, or WebP · {MAX_FILE_SIZE_MB} MB each · up to {MAX_FILES} files</p><input ref={inputRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => void submitFiles(Array.from(event.target.files ?? []))}/><button onClick={() => inputRef.current?.click()} disabled={uploading || assets.length === 0} className="mt-4 rounded-lg bg-[#4b41e1] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#645efb] disabled:cursor-not-allowed disabled:bg-[#aaa6c7]">{uploading ? "Uploading…" : "Browse files"}</button>
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#e8edff] text-[#5141df]"><Icon name="upload" className="h-7 w-7"/></div><h2 className="mt-4 text-lg font-semibold text-[#172033]">Drop files here</h2><p className="mt-1 text-sm text-[#686d77]">Images up to {MAX_SOURCE_IMAGE_SIZE_MB} MB · PDFs up to {MAX_PDF_SIZE_MB} MB · up to {MAX_FILES} files</p><p className="mt-1 text-xs text-[#858a95]">Large phone photos are optimized automatically.</p><input ref={inputRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => void submitFiles(Array.from(event.target.files ?? []))}/><button onClick={() => inputRef.current?.click()} disabled={uploading || assets.length === 0} className="mt-4 rounded-lg bg-[#4b41e1] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#645efb] disabled:cursor-not-allowed disabled:bg-[#aaa6c7]">{uploading ? "Optimizing & uploading…" : "Browse files"}</button>
       </div>
       <div className="space-y-4 rounded-xl bg-[#f6f7fc] p-4"><h3 className="font-semibold text-[#172033]">Upload settings</h3><label className="block space-y-1.5 text-sm font-medium">Asset <span className="text-[#ba1a1a]">*</span><select value={uploadAssetId} onChange={(event) => setUploadAssetId(event.target.value)} className="h-11 w-full rounded-lg border border-[#c9ccd5] bg-white px-3 text-sm"><option value="" disabled>{assets.length ? "Select asset" : "Add an asset first"}</option>{assets.map((asset) => <option key={asset.id} value={asset.id}>{asset.name}</option>)}</select></label><label className="block space-y-1.5 text-sm font-medium">Document type <span className="text-[#ba1a1a]">*</span><select value={uploadType} onChange={(event) => setUploadType(event.target.value as DocumentType)} className="h-11 w-full rounded-lg border border-[#c9ccd5] bg-white px-3 text-sm">{documentTypes.map((value) => <option key={value} value={value}>{typeLabel(value)}</option>)}</select></label>{uploadAsset && <p className="rounded-lg bg-[#e9edff] p-3 text-xs leading-5 text-[#424a63]">Every uploaded file will belong to <strong>{uploadAsset.name}</strong>.</p>}</div>
     </section>
