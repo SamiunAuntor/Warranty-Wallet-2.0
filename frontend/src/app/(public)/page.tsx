@@ -83,7 +83,33 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="mx-auto w-11/12 max-w-[1440px] py-16"><div className="flex flex-col items-center overflow-hidden rounded-3xl border border-[#d3e4fe] bg-[#eff4ff] p-8 text-center shadow-sm md:p-12"><h2 className="max-w-2xl text-3xl font-semibold tracking-[-.02em]">Stop leaving money on the table when things break.</h2><p className="mt-3 max-w-xl text-[#45464d]">Join thousands of smart consumers who use WarrantyWallet to protect their investments.</p><div className="mt-8"><Action>Start Free</Action></div><p className="mt-2 text-xs font-semibold tracking-wide text-[#45464d]">No credit card required for Free tier.</p></div></section>
+      <section className="mx-auto w-11/12 max-w-[1440px] py-16">
+        <div className="relative isolate overflow-hidden rounded-[32px] border border-[#7569ff] bg-[#111a31] px-6 py-8 text-white shadow-[0_28px_80px_rgba(15,24,50,.22)] sm:px-10 sm:py-12 lg:px-14">
+          <div className="pointer-events-none absolute -right-24 -top-32 -z-10 h-96 w-96 rounded-full bg-[#645efb]/35 blur-3xl"/>
+          <div className="pointer-events-none absolute -bottom-40 left-1/4 -z-10 h-80 w-80 rounded-full bg-[#3f8cff]/20 blur-3xl"/>
+          <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(120deg,rgba(255,255,255,.045)_1px,transparent_1px)] bg-[size:28px_28px] [mask-image:linear-gradient(to_right,black,transparent)]"/>
+
+          <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(340px,.85fr)] lg:gap-16">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold tracking-wide text-[#d9d5ff]"><Icon name="shield" className="h-4 w-4"/>Your purchases deserve a memory</div>
+              <h2 className="mt-6 max-w-3xl text-3xl font-semibold leading-tight tracking-[-.035em] sm:text-4xl lg:text-[46px]">When something breaks, your proof should already be ready.</h2>
+              <p className="mt-5 max-w-2xl text-base leading-7 text-[#bfc6d9]">Keep the receipt, original condition, warranty details, claims, and service history together—before you ever need them.</p>
+              <div className="mt-7 flex flex-wrap gap-3">{["AI-assisted setup", "Condition evidence", "Claim-ready history"].map((benefit) => <span key={benefit} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[.07] px-3.5 py-2 text-xs font-medium text-[#e7e9f4]"><span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#6d63ff] text-white"><Icon name="check" className="h-3 w-3"/></span>{benefit}</span>)}</div>
+            </div>
+
+            <div className="rounded-2xl border border-white/15 bg-white/[.08] p-5 shadow-2xl backdrop-blur-sm sm:p-6">
+              <p className="text-xs font-semibold uppercase tracking-[.18em] text-[#aaa3ff]">Start in minutes</p>
+              <div className="mt-5 space-y-4">{[
+                ["01", "Upload a purchase document", "Receipt, invoice, or warranty card"],
+                ["02", "Review the AI-filled details", "Correct anything before it is saved"],
+                ["03", "Build a claim-ready record", "Documents and condition stay together"],
+              ].map(([number, title, description]) => <div key={number} className="flex gap-3 rounded-xl border border-white/10 bg-[#0b1328]/55 p-3.5"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#645efb] text-xs font-bold">{number}</span><div><p className="text-sm font-semibold text-white">{title}</p><p className="mt-1 text-xs leading-5 text-[#aeb6ca]">{description}</p></div></div>)}</div>
+              <Link href="/register" className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-[#191342] shadow-lg transition hover:bg-[#eeeaff] active:scale-[.99]">Create your free wallet <Icon name="arrow" className="h-4 w-4"/></Link>
+              <p className="mt-3 text-center text-[11px] text-[#9da6bb]">Free for up to {plans.BASIC.assetLimit} assets · No credit card required</p>
+            </div>
+          </div>
+        </div>
+      </section>
     </>
   );
 }
