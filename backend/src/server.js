@@ -9,6 +9,11 @@ app.listen(PORT, () => {
 
     console.log(`Server running on ${PORT}`);
 
-    startCronJobs();
+    if (env.NODE_ENV === "development") {
+        startCronJobs();
+        console.log("Development warranty scheduler started with node-cron.");
+    } else {
+        console.log("Production warranty scheduler delegated to Vercel Cron.");
+    }
 
 });
