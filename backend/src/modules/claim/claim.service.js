@@ -54,7 +54,7 @@ const createClaim = async (user, payload) => {
     }, validEvidence);
 };
 
-const listClaims = async (user, query) => {
+const getClaims = async (user, query) => {
     const { page, limit, skip, take } = pagination(query);
     const ownership = user.role === "ADMIN" ? {} : { userId: user.id };
     const where = {
@@ -103,11 +103,11 @@ const attachDocument = async (id, user, evidence) => {
     return claimRepository.findById(id);
 };
 
-const detachDocument = async (id, documentId, user) => {
+const detachDocument = async (id, user, documentId) => {
     const claim = await assertClaimOwnership(id, user);
     if (!claim.documents.some((item) => item.documentId === documentId)) throw new ApiError(404, "Document is not attached to this claim.");
     await claimRepository.detachDocument(id, documentId);
     return claimRepository.findById(id);
 };
 
-module.exports = { createClaim, listClaims, getClaim, updateClaim, deleteClaim, addTimelineEvent, attachDocument, detachDocument };
+module.exports = { createClaim, getClaims, getClaim, updateClaim, deleteClaim, addTimelineEvent, attachDocument, detachDocument };
