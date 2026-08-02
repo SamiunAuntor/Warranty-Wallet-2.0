@@ -21,5 +21,4 @@ module.exports = {
     SMTP_PASSWORD: process.env.SMTP_PASSWORD,
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
     GEMINI_MODEL: process.env.GEMINI_MODEL || "gemini-3.6-flash",
-    CRON_SECRET: process.env.CRON_SECRET,
 };
