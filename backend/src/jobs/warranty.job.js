@@ -17,6 +17,12 @@ const startOfUtcDay = (value) => {
 const calendarDaysBetween = (from, to) =>
     Math.round((startOfUtcDay(to) - startOfUtcDay(from)) / 86400000);
 
+const shouldSendImmediateReminder = (daysRemaining, preferences) => {
+    if (preferences?.warrantyReminders === false || daysRemaining < 0) return false;
+    const reminderDays = preferences?.reminderDays?.length ? preferences.reminderDays : [30, 14, 3];
+    return daysRemaining < Math.max(...reminderDays);
+};
+
 const deliverReminder = async (product, daysRemaining) => {
     const notification = await notificationService.notifyWarrantyExpiry({ userId: product.userId, productId: product.id, productName: product.name, expiryDate: product.expiryDate, daysRemaining });
     if (product.user && !notification.emailSentAt) {
@@ -63,4 +69,4 @@ const processExpired = async () => {
 };
 
 const run = async () => { await processExpiringSoon(); await processExpired(); };
-module.exports = { run, deliverReminder, calendarDaysBetween };
+module.exports = { run, deliverReminder, calendarDaysBetween, shouldSendImmediateReminder };

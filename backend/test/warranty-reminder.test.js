@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { calendarDaysBetween } = require("../src/jobs/warranty.job");
+const { calendarDaysBetween, shouldSendImmediateReminder } = require("../src/jobs/warranty.job");
 const warrantyReminderTemplate = require("../src/templates/warrantyReminder.template");
 
 test("warranty reminder dates use calendar days instead of elapsed hours", () => {
@@ -12,6 +12,19 @@ test("warranty reminder dates use calendar days instead of elapsed hours", () =>
 test("short warranties are detected through the thirty-day boundary", () => {
     const today = new Date("2026-08-02T12:00:00.000Z");
     assert.equal(calendarDaysBetween(today, new Date("2026-09-01T12:00:00.000Z")), 30);
+});
+
+test("new assets inside the largest selected reminder window receive an immediate reminder", () => {
+    const preferences = { warrantyReminders: true, reminderDays: [30, 7, 1] };
+    assert.equal(shouldSendImmediateReminder(25, preferences), true);
+    assert.equal(shouldSendImmediateReminder(30, preferences), false);
+    assert.equal(shouldSendImmediateReminder(31, preferences), false);
+});
+
+test("instant reminders respect disabled reminders and the user's selected window", () => {
+    assert.equal(shouldSendImmediateReminder(5, { warrantyReminders: false, reminderDays: [30, 7, 1] }), false);
+    assert.equal(shouldSendImmediateReminder(25, { warrantyReminders: true, reminderDays: [7, 1] }), false);
+    assert.equal(shouldSendImmediateReminder(6, { warrantyReminders: true, reminderDays: [7, 1] }), true);
 });
 
 test("warranty email contains asset details and escapes user content", () => {

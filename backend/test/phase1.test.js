@@ -6,6 +6,7 @@ require("dotenv").config();
 const categoryRepository = require("../src/modules/category/category.repository");
 const productRepository = require("../src/modules/product/product.repository");
 const productService = require("../src/modules/product/product.service");
+const userRepository = require("../src/modules/user/user.repository");
 const paymentRepository = require("../src/modules/payment/payment.repository");
 const paymentService = require("../src/modules/payment/payment.service");
 const stripe = require("../src/config/stripe");
@@ -25,14 +26,17 @@ test("enforces the 5/100/500 asset limits", async (t) => {
     const originalFindCategory = categoryRepository.findById;
     const originalCountProducts = productRepository.countUserProducts;
     const originalCreateProduct = productRepository.create;
+    const originalFindPreferences = userRepository.findPreferences;
 
     categoryRepository.findById = async () => ({ id: productPayload.categoryId });
     productRepository.create = async (payload) => payload;
+    userRepository.findPreferences = async () => ({ warrantyReminders: true, reminderDays: [30, 7, 1] });
 
     t.after(() => {
         categoryRepository.findById = originalFindCategory;
         productRepository.countUserProducts = originalCountProducts;
         productRepository.create = originalCreateProduct;
+        userRepository.findPreferences = originalFindPreferences;
     });
 
     for (const [plan, config] of Object.entries(PLAN_CONFIG)) {
