@@ -301,6 +301,9 @@ const broadcastNotification = asyncHandler(async (req, res) => {
 
 });
 
+const getClaims = asyncHandler(async (req, res) => { const result = await adminService.getClaims(req.query); return res.status(200).json(new ApiResponse(200, "Claims fetched successfully.", result.data, result.meta)); });
+const updateClaimStatus = asyncHandler(async (req, res) => { const claim = await adminService.updateClaimStatus(req.params.id, req.body.status, req.user); return res.status(200).json(new ApiResponse(200, "Claim updated successfully.", claim)); });
+
 module.exports = {
 
     getDashboard,
@@ -328,5 +331,9 @@ module.exports = {
     getCategories,
 
     broadcastNotification,
+
+    getClaims,
+
+    updateClaimStatus,
 
 };

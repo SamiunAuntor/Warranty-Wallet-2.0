@@ -8,6 +8,7 @@ export type ListResult<T> = { data: T[]; meta: Meta };
 export type AdminUser = AppUser & { createdAt: string; subscription?: { status: string; expiresAt: string } | null };
 export type AdminAsset = Asset & { user: { id: string; name: string; email: string } };
 export type AdminPayment = Payment & { user: { id: string; name: string; email: string } };
+export type AdminClaim = Omit<Claim, "timeline"> & { timeline: NonNullable<Claim["timeline"]>; user: { id: string; name: string; email: string } };
 export type AdminStats = { totalUsers: number; activeUsers: number; blockedUsers: number; paidUsers: number; totalProducts: number; totalCategories: number; totalPayments: number; totalRevenue: string | number };
 export type RevenuePoint = { createdAt?: string; _sum?: { amount?: string | number | null }; month?: number; revenue?: string | number };
 export type GrowthPoint = { createdAt?: string; _count?: { id?: number }; month?: number; count?: number };
@@ -31,8 +32,8 @@ export const setUserBlocked = (token: string, id: string, blocked: boolean) => r
 export const deleteAdminUser = (token: string, id: string) => request<null>(`/admin/users/${id}`, token, { method: "DELETE" });
 export const getAdminAssets = async (token: string, query: Record<string, string | number | undefined>) => { const result = await request<AdminAsset[]>(`/admin/products?${params(query)}`, token); return { data: result.data, meta: result.meta! }; };
 export const deleteAdminAsset = (token: string, id: string) => request<null>(`/admin/products/${id}`, token, { method: "DELETE" });
-export const getAdminClaims = async (token: string, query: Record<string, string | number | undefined>) => (await request<ListResult<Claim>>(`/claims?${params(query)}`, token)).data;
-export const updateAdminClaim = async (token: string, id: string, input: ClaimUpdate) => (await request<Claim>(`/claims/${id}`, token, { method: "PATCH", body: JSON.stringify(input) })).data;
+export const getAdminClaims = async (token: string, query: Record<string, string | number | undefined>) => { const result = await request<AdminClaim[]>(`/admin/claims?${params(query)}`, token); return { data: result.data, meta: result.meta! }; };
+export const updateAdminClaim = async (token: string, id: string, input: ClaimUpdate) => (await request<Claim>(`/admin/claims/${id}/status`, token, { method: "PATCH", body: JSON.stringify(input) })).data;
 export const getAdminCategories = async (token: string) => (await request<Category[]>("/admin/categories", token)).data;
 export const createCategory = (token: string, input: { name: string; description?: string }) => request<Category>("/categories", token, { method: "POST", body: JSON.stringify(input) });
 export const updateCategory = (token: string, id: string, input: Partial<Category>) => request<Category>(`/categories/${id}`, token, { method: "PATCH", body: JSON.stringify(input) });

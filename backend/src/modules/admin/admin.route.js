@@ -39,6 +39,10 @@ router.get("/payments/:id", ...adminMiddleware, validate(idSchema), controller.g
 
 router.get("/categories", ...adminMiddleware, controller.getCategories);
 
+router.get("/claims", ...adminMiddleware, controller.getClaims);
+
+router.patch("/claims/:id/status", ...adminMiddleware, validate(idSchema), controller.updateClaimStatus);
+
 router.post("/notifications", ...adminMiddleware, validate(broadcastNotificationSchema), controller.broadcastNotification);
 
 module.exports = router;
