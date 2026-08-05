@@ -290,33 +290,10 @@ const findPaymentById = (id) => {
 
 };
 
-const findCategories = () => {
-
-    return prisma.category.findMany({
-
-        include: {
-
-            _count: {
-
-                select: {
-
-                    products: true,
-
-                },
-
-            },
-
-        },
-
-        orderBy: {
-
-            name: "asc",
-
-        },
-
-    });
-
-};
+const findCategories = ({ where = {}, orderBy = { name: "asc" }, skip, take } = {}) => prisma.category.findMany({ where, orderBy, skip, take, include: { _count: { select: { products: true } } } });
+const countCategories = (where = {}) => prisma.category.count({ where });
+const findBrands = ({ where = {}, orderBy = { name: "asc" }, skip, take } = {}) => prisma.brand.findMany({ where, orderBy, skip, take, include: { _count: { select: { products: true } } } });
+const countBrands = (where = {}) => prisma.brand.count({ where });
 
 const findClaims = ({ where, skip, take }) => prisma.claim.findMany({ where, skip, take, orderBy: { updatedAt: "desc" }, include: { user: { select: { id: true, name: true, email: true } }, product: { include: { category: true } }, timeline: { orderBy: { createdAt: "desc" } }, documents: { include: { document: true } } } });
 const countClaims = (where) => prisma.claim.count({ where });
@@ -350,6 +327,12 @@ module.exports = {
     findPaymentById,
 
     findCategories,
+
+    countCategories,
+
+    findBrands,
+
+    countBrands,
 
     findClaims,
 

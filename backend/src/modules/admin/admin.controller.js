@@ -263,7 +263,7 @@ const getPayment = asyncHandler(async (req, res) => {
 
 const getCategories = asyncHandler(async (req, res) => {
 
-    const categories = await adminService.getCategories();
+    const result = await adminService.getCategories(req.query);
 
     return res.status(200).json(
 
@@ -273,13 +273,17 @@ const getCategories = asyncHandler(async (req, res) => {
 
             "Categories fetched successfully.",
 
-            categories
+            result.data,
+
+            result.meta
 
         )
 
     );
 
 });
+
+const getBrands = asyncHandler(async (req, res) => { const result = await adminService.getBrands(req.query); return res.status(200).json(new ApiResponse(200, "Brands fetched successfully.", result.data, result.meta)); });
 
 const broadcastNotification = asyncHandler(async (req, res) => {
 
@@ -329,6 +333,8 @@ module.exports = {
     getPayment,
 
     getCategories,
+
+    getBrands,
 
     broadcastNotification,
 

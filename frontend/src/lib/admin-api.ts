@@ -34,11 +34,11 @@ export const getAdminAssets = async (token: string, query: Record<string, string
 export const deleteAdminAsset = (token: string, id: string) => request<null>(`/admin/products/${id}`, token, { method: "DELETE" });
 export const getAdminClaims = async (token: string, query: Record<string, string | number | undefined>) => { const result = await request<AdminClaim[]>(`/admin/claims?${params(query)}`, token); return { data: result.data, meta: result.meta! }; };
 export const updateAdminClaim = async (token: string, id: string, input: ClaimUpdate) => (await request<Claim>(`/admin/claims/${id}/status`, token, { method: "PATCH", body: JSON.stringify(input) })).data;
-export const getAdminCategories = async (token: string) => (await request<Category[]>("/admin/categories", token)).data;
+export const getAdminCategories = async (token: string, query: Record<string, string | number | undefined> = {}) => { const result = await request<Category[]>(`/admin/categories?${params(query)}`, token); return { data: result.data, meta: result.meta! }; };
 export const createCategory = (token: string, input: { name: string; description?: string }) => request<Category>("/categories", token, { method: "POST", body: JSON.stringify(input) });
 export const updateCategory = (token: string, id: string, input: Partial<Category>) => request<Category>(`/categories/${id}`, token, { method: "PATCH", body: JSON.stringify(input) });
 export const deleteCategory = (token: string, id: string) => request<null>(`/categories/${id}`, token, { method: "DELETE" });
-export const getAdminBrands = async (token: string) => (await request<Brand[]>("/brands?includeInactive=true", token)).data;
+export const getAdminBrands = async (token: string, query: Record<string, string | number | undefined> = {}) => { const result = await request<Brand[]>(`/admin/brands?${params(query)}`, token); return { data: result.data, meta: result.meta! }; };
 export const createBrand = (token: string, input: { name: string; description?: string; websiteUrl?: string | null }) => request<Brand>("/brands", token, { method: "POST", body: JSON.stringify(input) });
 export const updateBrand = (token: string, id: string, input: Partial<Brand> & { isActive?: boolean }) => request<Brand>(`/brands/${id}`, token, { method: "PATCH", body: JSON.stringify(input) });
 export const deleteBrand = (token: string, id: string) => request<null>(`/brands/${id}`, token, { method: "DELETE" });
