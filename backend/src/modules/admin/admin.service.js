@@ -2,6 +2,7 @@ const adminRepository = require("./admin.repository");
 
 const activityService = require("../activity/activity.service");
 const notificationService = require("../notification/notification.service");
+const firebaseAdmin = require("../../config/firebase");
 
 const ApiError = require("../../utils/ApiError");
 const { pagination } = require("../../utils/query");
@@ -134,10 +135,10 @@ const blockUser = async (
 
     }
 
-    const updated =
-        await adminRepository.updateUser(id, {
-            status: "BLOCKED",
-        });
+    await firebaseAdmin.auth().updateUser(user.firebaseUid, { disabled: true });
+    await firebaseAdmin.auth().revokeRefreshTokens(user.firebaseUid);
+
+    const updated = await adminRepository.updateUser(id, { status: "BLOCKED" });
 
     await activityService.logActivity({
 
@@ -167,10 +168,9 @@ const unblockUser = async (
     const user =
         await getUser(id);
 
-    const updated =
-        await adminRepository.updateUser(id, {
-            status: "ACTIVE",
-        });
+    await firebaseAdmin.auth().updateUser(user.firebaseUid, { disabled: false });
+
+    const updated = await adminRepository.updateUser(id, { status: "ACTIVE" });
 
     await activityService.logActivity({
 
@@ -209,10 +209,10 @@ const deleteUser = async (
 
     }
 
-    const updated =
-        await adminRepository.updateUser(id, {
-            status: "DELETED",
-        });
+    await firebaseAdmin.auth().updateUser(user.firebaseUid, { disabled: true });
+    await firebaseAdmin.auth().revokeRefreshTokens(user.firebaseUid);
+
+    const updated = await adminRepository.updateUser(id, { status: "DELETED" });
 
     await activityService.logActivity({
 
