@@ -10,7 +10,7 @@ const { pagination } = require("../../utils/query");
 const { PLAN, PLAN_CONFIG, PAID_PLANS } = require("../../constants/plans");
 const { CURRENCY } = require("./payment.constant");
 
-const CLIENT_URL = process.env.CLIENT_URL;
+const CLIENT_URL = (process.env.CLIENT_URL || "http://localhost:3000").split(",")[0].trim();
 
 const stripeDate = (seconds) => (seconds ? new Date(seconds * 1000) : null);
 const subscriptionItem = (subscription) => subscription.items?.data?.[0];
@@ -24,7 +24,7 @@ const localStatus = (status) => ({
     incomplete: "INCOMPLETE",
     incomplete_expired: "EXPIRED",
     past_due: "PAST_DUE",
-    unpaid: "PAST_DUE",
+    unpaid: "EXPIRED",
     canceled: "CANCELLED",
     paused: "EXPIRED",
 }[status] || "EXPIRED");
@@ -161,6 +161,17 @@ const confirmCheckoutSession = async (user, sessionId) => {
 };
 
 const createPlanPrice = async (stripeSubscription, plan) => {
+    const reusable = await paymentRepository.findReusablePlanPrice(plan);
+    if (reusable?.stripePriceId) {
+        try {
+            const price = await stripe.prices.retrieve(reusable.stripePriceId);
+            if (price.active && price.unit_amount === PLAN_CONFIG[plan].price * 100 && price.currency === CURRENCY) {
+                return price;
+            }
+        } catch {
+            // Fall through and create a replacement if a stored Stripe price is stale.
+        }
+    }
     const item = subscriptionItem(stripeSubscription);
     if (!item) throw new ApiError(409, "Stripe subscription has no billable item.");
     const product = typeof item.price.product === "string" ? item.price.product : item.price.product.id;
@@ -189,12 +200,41 @@ const changePlan = async (user, targetPlan) => {
     const isUpgrade = PLAN_CONFIG[targetPlan].price > PLAN_CONFIG[local.plan].price;
 
     if (isUpgrade) {
-        const updated = await stripe.subscriptions.update(remote.id, {
-            items: [{ id: item.id, price: price.id }],
-            proration_behavior: "always_invoice",
-            payment_behavior: "error_if_incomplete",
+        await paymentRepository.updateSubscription(user.id, {
+            pendingPlan: targetPlan,
+            scheduledPlan: null,
+            cancelAtPeriodEnd: false,
+            cancelledAt: null,
+        });
+        let updated;
+        try {
+            updated = await stripe.subscriptions.update(remote.id, {
+                items: [{ id: item.id, price: price.id }],
+                proration_behavior: "always_invoice",
+                payment_behavior: "pending_if_incomplete",
+                expand: ["latest_invoice"],
+            });
+        } catch (error) {
+            await paymentRepository.updateSubscription(user.id, { pendingPlan: null });
+            throw error;
+        }
+        const pendingPayment = Boolean(updated.pending_update);
+        const upgradeInvoice = typeof updated.latest_invoice === "string"
+            ? await stripe.invoices.retrieve(updated.latest_invoice)
+            : updated.latest_invoice;
+        const paymentUrl = upgradeInvoice?.hosted_invoice_url || null;
+
+        if (pendingPayment) {
+            return {
+                message: "Complete the prorated payment to activate your upgrade.",
+                paymentUrl,
+                subscription: await paymentRepository.findSubscription(user.id),
+            };
+        }
+
+        await stripe.subscriptions.update(remote.id, {
             cancel_at_period_end: false,
-            metadata: { ...remote.metadata, plan: targetPlan, scheduledPlan: "" },
+            metadata: { ...remote.metadata, plan: targetPlan, scheduledPlan: "", effectivePlan: targetPlan },
         });
         const start = stripeDate(periodStart(updated));
         const end = stripeDate(periodEnd(updated));
@@ -204,6 +244,7 @@ const changePlan = async (user, targetPlan) => {
                 data: {
                     plan: targetPlan,
                     scheduledPlan: null,
+                    pendingPlan: null,
                     stripePriceId: price.id,
                     status: localStatus(updated.status),
                     currentPeriodStart: start,
@@ -216,7 +257,7 @@ const changePlan = async (user, targetPlan) => {
             }),
             prisma.user.update({ where: { id: user.id }, data: { plan: targetPlan } }),
         ]);
-        return { message: `${PLAN_CONFIG[targetPlan].name} is active now. Stripe applied any prorated charge.`, subscription: await paymentRepository.findSubscription(user.id) };
+        return { message: `${PLAN_CONFIG[targetPlan].name} is active now. Stripe applied the prorated charge.`, paymentUrl: null, subscription: await paymentRepository.findSubscription(user.id) };
     }
 
     await stripe.subscriptions.update(remote.id, {
@@ -227,11 +268,12 @@ const changePlan = async (user, targetPlan) => {
     });
     await paymentRepository.updateSubscription(user.id, {
         scheduledPlan: targetPlan,
+        pendingPlan: null,
         stripePriceId: price.id,
         cancelAtPeriodEnd: false,
         cancelledAt: null,
     });
-    return { message: `${PLAN_CONFIG[targetPlan].name} is scheduled for your next billing date.`, subscription: await paymentRepository.findSubscription(user.id) };
+    return { message: `${PLAN_CONFIG[targetPlan].name} is scheduled for your next billing date.`, paymentUrl: null, subscription: await paymentRepository.findSubscription(user.id) };
 };
 
 const cancelSubscription = async (user) => {
@@ -243,6 +285,7 @@ const cancelSubscription = async (user) => {
     });
     return paymentRepository.updateSubscription(user.id, {
         scheduledPlan: PLAN.BASIC,
+        pendingPlan: null,
         cancelAtPeriodEnd: true,
         cancelledAt: new Date(),
         currentPeriodEnd: stripeDate(periodEnd(remote)) || local.currentPeriodEnd,
@@ -251,7 +294,7 @@ const cancelSubscription = async (user) => {
 
 const resumeSubscription = async (user) => {
     const local = await paymentRepository.findSubscription(user.id);
-    if (!local?.stripeSubscriptionId || !local.scheduledPlan) throw new ApiError(409, "No pending plan change was found.");
+    if (!local?.stripeSubscriptionId || (!local.scheduledPlan && !local.pendingPlan)) throw new ApiError(409, "No pending plan change was found.");
     const remote = await stripe.subscriptions.retrieve(local.stripeSubscriptionId);
     const item = subscriptionItem(remote);
     const price = await createPlanPrice(remote, local.plan);
@@ -263,13 +306,14 @@ const resumeSubscription = async (user) => {
     });
     return paymentRepository.updateSubscription(user.id, {
         scheduledPlan: null,
+        pendingPlan: null,
         stripePriceId: price.id,
         cancelAtPeriodEnd: false,
         cancelledAt: null,
     });
 };
 
-const synchronizeSubscription = async (remote, { renewal = false } = {}) => {
+const synchronizeSubscription = async (remote, { renewal = false, paidPlan = null } = {}) => {
     const local = await paymentRepository.findSubscriptionByStripeId(remote.id);
     if (!local) return;
     const status = localStatus(remote.status);
@@ -277,14 +321,16 @@ const synchronizeSubscription = async (remote, { renewal = false } = {}) => {
     const end = stripeDate(periodEnd(remote));
     const ended = status === "CANCELLED" || status === "EXPIRED";
     const renewalPlan = renewal && local.scheduledPlan ? local.scheduledPlan : null;
-    const effectivePlan = ended ? PLAN.BASIC : (renewalPlan || local.plan);
+    const effectivePlan = ended ? PLAN.BASIC : (paidPlan || renewalPlan || local.plan);
+    const planChanged = Boolean(paidPlan || renewalPlan || ended);
 
     await prisma.$transaction([
         prisma.subscription.update({
             where: { id: local.id },
             data: {
                 plan: effectivePlan,
-                scheduledPlan: renewalPlan || ended ? null : local.scheduledPlan,
+                scheduledPlan: planChanged ? null : local.scheduledPlan,
+                pendingPlan: paidPlan || ended ? null : local.pendingPlan,
                 status,
                 stripePriceId: subscriptionItem(remote)?.price?.id || local.stripePriceId,
                 currentPeriodStart: start,
@@ -303,12 +349,30 @@ const handleInvoicePaid = async (invoice) => {
     const invoiceSubscription = invoice.subscription || invoice.parent?.subscription_details?.subscription;
     const subscriptionId = typeof invoiceSubscription === "string" ? invoiceSubscription : invoiceSubscription?.id;
     if (!subscriptionId) return;
+    const localBefore = await paymentRepository.findSubscriptionByStripeId(subscriptionId);
+    if (!localBefore) return;
+    const renewal = invoice.billing_reason === "subscription_cycle";
+    const paidPlan = localBefore.pendingPlan || null;
+    const effectivePlan = paidPlan || (renewal ? localBefore.scheduledPlan : null) || localBefore.plan;
     const remote = await stripe.subscriptions.retrieve(subscriptionId);
-    await synchronizeSubscription(remote, { renewal: invoice.billing_reason === "subscription_cycle" });
-    const local = await paymentRepository.findSubscriptionByStripeId(subscriptionId);
-    if (local?.scheduledPlan && invoice.billing_reason === "subscription_cycle") {
+    await synchronizeSubscription(remote, { renewal, paidPlan });
+    if (paidPlan || (renewal && localBefore.scheduledPlan)) {
         await stripe.subscriptions.update(subscriptionId, {
-            metadata: { plan: local.plan, scheduledPlan: "", effectivePlan: local.plan },
+            metadata: { plan: effectivePlan, scheduledPlan: "", effectivePlan },
+        });
+    }
+    if (invoice.billing_reason !== "subscription_create") {
+        const paymentIntent = invoice.payment_intent
+            || invoice.payments?.data?.find((entry) => entry.payment?.payment_intent)?.payment?.payment_intent;
+        await paymentRepository.upsertInvoicePayment({
+            stripeInvoiceId: invoice.id,
+            userId: localBefore.userId,
+            stripePaymentIntent: typeof paymentIntent === "string" ? paymentIntent : paymentIntent?.id || null,
+            amount: (invoice.amount_paid || 0) / 100,
+            currency: invoice.currency || CURRENCY,
+            paymentMethod: "STRIPE",
+            plan: effectivePlan,
+            status: "SUCCESS",
         });
     }
 };
@@ -318,7 +382,29 @@ const handleInvoiceFailed = async (invoice) => {
     const subscriptionId = typeof invoiceSubscription === "string" ? invoiceSubscription : invoiceSubscription?.id;
     if (!subscriptionId) return;
     const local = await paymentRepository.findSubscriptionByStripeId(subscriptionId);
-    if (local) await paymentRepository.updateSubscription(local.userId, { status: "PAST_DUE", isActive: true });
+    if (!local) return;
+    const paymentIntent = invoice.payment_intent
+        || invoice.payments?.data?.find((entry) => entry.payment?.payment_intent)?.payment?.payment_intent;
+    await paymentRepository.upsertInvoicePayment({
+        stripeInvoiceId: invoice.id,
+        userId: local.userId,
+        stripePaymentIntent: typeof paymentIntent === "string" ? paymentIntent : paymentIntent?.id || null,
+        amount: (invoice.amount_due || 0) / 100,
+        currency: invoice.currency || CURRENCY,
+        paymentMethod: "STRIPE",
+        plan: local.pendingPlan || local.scheduledPlan || local.plan,
+        status: "FAILED",
+    });
+    if (!local.pendingPlan) {
+        await paymentRepository.updateSubscription(local.userId, { status: "PAST_DUE", isActive: true });
+    }
+};
+
+const handleCheckoutExpired = async (session) => {
+    const payment = await paymentRepository.findPaymentBySessionId(session.id);
+    if (payment?.status === "PENDING") {
+        await paymentRepository.updatePayment(payment.id, { status: "FAILED" });
+    }
 };
 
 const processStripeEvent = async (event) => {
@@ -331,6 +417,9 @@ const processStripeEvent = async (event) => {
     switch (event.type) {
         case "checkout.session.completed":
             await activateCheckout(event.data.object);
+            break;
+        case "checkout.session.expired":
+            await handleCheckoutExpired(event.data.object);
             break;
         case "customer.subscription.updated":
         case "customer.subscription.deleted":
@@ -366,6 +455,7 @@ const getSubscription = async (user) => {
         try {
             const session = await stripe.checkout.sessions.retrieve(pendingPayment.stripeSessionId);
             if (session.status === "complete" && session.payment_status === "paid") await activateCheckout(session);
+            else if (session.status === "expired") await handleCheckoutExpired(session);
         } catch (error) {
             console.error("Pending checkout reconciliation failed:", error.message);
         }
@@ -373,8 +463,14 @@ const getSubscription = async (user) => {
     const local = await paymentRepository.findSubscription(user.id);
     if (local?.stripeSubscriptionId) {
         try {
-            const remote = await stripe.subscriptions.retrieve(local.stripeSubscriptionId);
+            const remote = await stripe.subscriptions.retrieve(local.stripeSubscriptionId, { expand: ["latest_invoice"] });
             await synchronizeSubscription(remote);
+            const refreshed = await paymentRepository.findSubscription(user.id);
+            const invoice = typeof remote.latest_invoice === "object" ? remote.latest_invoice : null;
+            return {
+                ...refreshed,
+                paymentUrl: remote.pending_update ? invoice?.hosted_invoice_url || null : null,
+            };
         } catch (error) {
             console.error("Subscription reconciliation failed:", error.message);
         }

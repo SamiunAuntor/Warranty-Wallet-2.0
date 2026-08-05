@@ -133,7 +133,10 @@ const plans = asyncHandler(async (req, res) => {
 
 const changePlan = asyncHandler(async (req, res) => {
     const result = await paymentService.changePlan(req.user, req.body.plan);
-    return res.status(200).json(new ApiResponse(200, result.message, result.subscription));
+    return res.status(200).json(new ApiResponse(200, result.message, {
+        subscription: result.subscription,
+        paymentUrl: result.paymentUrl,
+    }));
 });
 
 const cancelSubscription = asyncHandler(async (req, res) => {

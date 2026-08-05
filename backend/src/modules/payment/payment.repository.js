@@ -82,6 +82,24 @@ const findSubscriptionByStripeId = (stripeSubscriptionId) =>
         include: { user: true, latestPayment: true },
     });
 
+const findReusablePlanPrice = (plan) =>
+    prisma.subscription.findFirst({
+        where: {
+            plan,
+            scheduledPlan: null,
+            pendingPlan: null,
+            stripePriceId: { not: null },
+        },
+        select: { stripePriceId: true },
+    });
+
+const upsertInvoicePayment = ({ stripeInvoiceId, ...payload }) =>
+    prisma.payment.upsert({
+        where: { stripeInvoiceId },
+        create: { stripeInvoiceId, stripeSessionId: `invoice:${stripeInvoiceId}`, ...payload },
+        update: payload,
+    });
+
 const findWebhookEvent = (stripeEventId) =>
     prisma.webhookEvent.findUnique({ where: { stripeEventId } });
 
@@ -157,6 +175,10 @@ module.exports = {
     findSubscription,
 
     findSubscriptionByStripeId,
+
+    findReusablePlanPrice,
+
+    upsertInvoicePayment,
 
     findWebhookEvent,
 

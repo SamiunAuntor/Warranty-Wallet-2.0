@@ -458,6 +458,8 @@ model Subscription {
 
   scheduledPlan UserPlan?
 
+  pendingPlan UserPlan?
+
   status SubscriptionStatus @default(ACTIVE)
 
   startsAt DateTime
@@ -494,6 +496,8 @@ model Payment {
   stripeSessionId String @unique
 
   stripePaymentIntent String?
+
+  stripeInvoiceId String? @unique
 
   amount Decimal @db.Decimal(10, 2)
 

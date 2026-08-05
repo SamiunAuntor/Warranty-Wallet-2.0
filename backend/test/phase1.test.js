@@ -157,6 +157,7 @@ test("paid plan downgrades are scheduled without changing current access", async
     const originalRetrieve = stripe.subscriptions.retrieve;
     const originalUpdateRemote = stripe.subscriptions.update;
     const originalCreatePrice = stripe.prices.create;
+    const originalReusablePrice = paymentRepository.findReusablePlanPrice;
     const local = {
         userId: "user-id",
         plan: "PRO",
@@ -177,6 +178,7 @@ test("paid plan downgrades are scheduled without changing current access", async
         items: { data: [{ id: "si_1", price: { product: "prod_1" } }] },
     });
     stripe.prices.create = async () => ({ id: "price_plus" });
+    paymentRepository.findReusablePlanPrice = async () => null;
     stripe.subscriptions.update = async (_id, payload) => {
         remoteUpdate = payload;
         return {};
@@ -188,6 +190,7 @@ test("paid plan downgrades are scheduled without changing current access", async
         stripe.subscriptions.retrieve = originalRetrieve;
         stripe.subscriptions.update = originalUpdateRemote;
         stripe.prices.create = originalCreatePrice;
+        paymentRepository.findReusablePlanPrice = originalReusablePrice;
     });
 
     const result = await paymentService.changePlan({ id: "user-id" }, "PLUS");
@@ -203,6 +206,7 @@ test("subscription cancellation and reversal preserve access until period end", 
     const originalRetrieve = stripe.subscriptions.retrieve;
     const originalUpdateRemote = stripe.subscriptions.update;
     const originalCreatePrice = stripe.prices.create;
+    const originalReusablePrice = paymentRepository.findReusablePlanPrice;
     const local = {
         userId: "user-id",
         plan: "PLUS",
@@ -227,6 +231,7 @@ test("subscription cancellation and reversal preserve access until period end", 
         items: { data: [{ id: "si_1", price: { product: "prod_1" } }] },
     });
     stripe.prices.create = async () => ({ id: "price_plus" });
+    paymentRepository.findReusablePlanPrice = async () => null;
 
     t.after(() => {
         paymentRepository.findSubscription = originalFind;
@@ -234,6 +239,7 @@ test("subscription cancellation and reversal preserve access until period end", 
         stripe.subscriptions.retrieve = originalRetrieve;
         stripe.subscriptions.update = originalUpdateRemote;
         stripe.prices.create = originalCreatePrice;
+        paymentRepository.findReusablePlanPrice = originalReusablePrice;
     });
 
     const cancelled = await paymentService.cancelSubscription({ id: "user-id" });
@@ -247,4 +253,51 @@ test("subscription cancellation and reversal preserve access until period end", 
     assert.equal(resumed.scheduledPlan, null);
     assert.equal(resumed.cancelAtPeriodEnd, false);
     assert.equal(remoteRequests[1].cancel_at_period_end, false);
+});
+
+test("paid upgrades return Stripe's payment page when customer action is required", async (t) => {
+    const originalFind = paymentRepository.findSubscription;
+    const originalUpdate = paymentRepository.updateSubscription;
+    const originalReusablePrice = paymentRepository.findReusablePlanPrice;
+    const originalRetrieveSubscription = stripe.subscriptions.retrieve;
+    const originalUpdateRemote = stripe.subscriptions.update;
+    const originalRetrievePrice = stripe.prices.retrieve;
+    const local = {
+        userId: "user-id",
+        plan: "PLUS",
+        isActive: true,
+        stripeSubscriptionId: "sub_1",
+    };
+    let saved;
+    paymentRepository.findSubscription = async () => ({ ...local, ...saved });
+    paymentRepository.updateSubscription = async (_userId, payload) => {
+        saved = payload;
+        return { ...local, ...payload };
+    };
+    paymentRepository.findReusablePlanPrice = async () => ({ stripePriceId: "price_pro" });
+    stripe.prices.retrieve = async () => ({ id: "price_pro", active: true, unit_amount: 2000, currency: "usd" });
+    stripe.subscriptions.retrieve = async () => ({
+        id: "sub_1",
+        metadata: { plan: "PLUS" },
+        items: { data: [{ id: "si_1", price: { product: "prod_1" } }] },
+    });
+    stripe.subscriptions.update = async () => ({
+        id: "sub_1",
+        pending_update: { expires_at: 1 },
+        latest_invoice: { hosted_invoice_url: "https://invoice.test/pay" },
+    });
+
+    t.after(() => {
+        paymentRepository.findSubscription = originalFind;
+        paymentRepository.updateSubscription = originalUpdate;
+        paymentRepository.findReusablePlanPrice = originalReusablePrice;
+        stripe.subscriptions.retrieve = originalRetrieveSubscription;
+        stripe.subscriptions.update = originalUpdateRemote;
+        stripe.prices.retrieve = originalRetrievePrice;
+    });
+
+    const result = await paymentService.changePlan({ id: "user-id" }, "PRO");
+    assert.equal(result.paymentUrl, "https://invoice.test/pay");
+    assert.equal(result.subscription.plan, "PLUS");
+    assert.equal(saved.pendingPlan, "PRO");
 });
