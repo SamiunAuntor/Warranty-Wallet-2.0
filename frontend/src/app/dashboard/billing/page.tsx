@@ -40,7 +40,10 @@ export default function BillingPage() {
     staleTime: 60_000,
     queryFn: async () => {
       const token = await firebaseUser!.getIdToken();
-      const [subscription, history] = await Promise.all([getSubscription(token), getPayments(token)]);
+      // Subscription reconciliation can create/update an invoice payment record,
+      // so history must be loaded after it completes.
+      const subscription = await getSubscription(token);
+      const history = await getPayments(token);
       return { subscription, payments: history.data };
     },
   });
@@ -77,7 +80,13 @@ export default function BillingPage() {
       const token = await firebaseUser.getIdToken();
       if (action === "cancel") await cancelSubscription(token);
       else if (action === "resume") await resumeSubscription(token);
-      else await changePlan(token, action);
+      else {
+        const result = await changePlan(token, action);
+        if (result.paymentUrl) {
+          window.location.assign(result.paymentUrl);
+          return;
+        }
+      }
       await refresh();
       toast.success(action === "cancel" ? "Cancellation scheduled" : action === "resume" ? "Subscription renewed" : "Plan change saved");
     } catch (error) {
@@ -106,12 +115,14 @@ export default function BillingPage() {
             <h2 className="mt-1 text-2xl font-semibold text-[#172033]">{plans[currentPlan].name}</h2>
             <p className="mt-1 text-sm text-[#687080]">Up to {plans[currentPlan].assetLimit} assets · ${plans[currentPlan].price}/month</p>
             {subscription?.status === "PAST_DUE" && <p className="mt-2 text-sm font-medium text-[#ad2831]">Payment failed. Your access is temporarily preserved while payment is retried.</p>}
+            {subscription?.pendingPlan && <p className="mt-2 text-sm font-medium text-[#926300]">Your {plans[subscription.pendingPlan].name} upgrade is waiting for payment.</p>}
             {subscription?.scheduledPlan && periodEnd && <p className="mt-2 text-sm font-medium text-[#5847e8]">{subscription.cancelAtPeriodEnd ? "Switching to Basic" : `Switching to ${plans[subscription.scheduledPlan].name}`} on {date.format(new Date(periodEnd))}.</p>}
           </div>
         </div>
         {subscription && periodEnd && <div className="flex flex-wrap items-center gap-3">
           <div className="rounded-xl bg-white/80 px-4 py-3 text-sm text-[#5d6472]"><span className="block text-xs font-semibold uppercase tracking-wide text-[#7b8190]">{subscription.cancelAtPeriodEnd ? "Access until" : "Next billing date"}</span><span className="mt-1 block font-medium text-[#273247]">{date.format(new Date(periodEnd))}</span></div>
-          {subscription.scheduledPlan ? <button onClick={() => void updateSubscription("resume")} disabled={busy !== null} className="rounded-lg border border-[#cfc9ff] bg-white px-4 py-3 text-sm font-semibold text-[#5847e8] disabled:opacity-50">Keep current plan</button> : <button onClick={() => void updateSubscription("cancel")} disabled={busy !== null} className="rounded-lg border border-[#e1e4ed] bg-white px-4 py-3 text-sm font-semibold text-[#687080] disabled:opacity-50">Cancel plan</button>}
+          {subscription.paymentUrl && <a href={subscription.paymentUrl} className="rounded-lg bg-[#5847e8] px-4 py-3 text-sm font-semibold text-white">Complete payment</a>}
+          {subscription.scheduledPlan || subscription.pendingPlan ? <button onClick={() => void updateSubscription("resume")} disabled={busy !== null} className="rounded-lg border border-[#cfc9ff] bg-white px-4 py-3 text-sm font-semibold text-[#5847e8] disabled:opacity-50">Keep current plan</button> : <button onClick={() => void updateSubscription("cancel")} disabled={busy !== null} className="rounded-lg border border-[#e1e4ed] bg-white px-4 py-3 text-sm font-semibold text-[#687080] disabled:opacity-50">Cancel plan</button>}
         </div>}
       </section>
 

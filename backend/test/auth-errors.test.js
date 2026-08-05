@@ -52,3 +52,17 @@ test("maps invalid Firebase sessions to an authentication response", () => {
         message: "Your authentication session is invalid or expired. Please sign in again.",
     });
 });
+
+test("maps Stripe payment failures to a readable response", () => {
+    const error = {
+        type: "StripeCardError",
+        code: "authentication_required",
+        statusCode: 402,
+        message: "A very long provider error",
+    };
+
+    assert.deepEqual(mapError(error), {
+        statusCode: 402,
+        message: "Stripe could not complete the payment. Please follow the payment link or use another payment method.",
+    });
+});

@@ -21,6 +21,18 @@ const isPrismaError = (error) => (
 );
 
 const mapError = (error) => {
+    if (error?.type?.startsWith("Stripe") || error?.rawType) {
+        const paymentError = error?.code === "card_declined"
+            || error?.code === "authentication_required"
+            || error?.statusCode === 402;
+        return {
+            statusCode: paymentError ? 402 : (error.statusCode >= 400 && error.statusCode < 500 ? error.statusCode : 502),
+            message: paymentError
+                ? "Stripe could not complete the payment. Please follow the payment link or use another payment method."
+                : "Stripe could not update your subscription. Please try again.",
+        };
+    }
+
     if (error?.statusCode) {
         return {
             statusCode: error.statusCode,

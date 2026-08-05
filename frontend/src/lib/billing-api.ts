@@ -7,12 +7,12 @@ async function request<T>(path: string, token: string, init?: RequestInit) {
   if (!response.ok || !payload) throw new Error(payload?.message || "Billing request failed.");
   return payload;
 }
-export type Subscription = { id: string; plan: UserPlan; scheduledPlan: UserPlan | null; status: "ACTIVE" | "INCOMPLETE" | "PAST_DUE" | "EXPIRED" | "CANCELLED"; startsAt: string; expiresAt: string; currentPeriodStart: string | null; currentPeriodEnd: string | null; cancelAtPeriodEnd: boolean; cancelledAt: string | null; isActive: boolean } | null;
+export type Subscription = { id: string; plan: UserPlan; scheduledPlan: UserPlan | null; pendingPlan: UserPlan | null; paymentUrl?: string | null; status: "ACTIVE" | "INCOMPLETE" | "PAST_DUE" | "EXPIRED" | "CANCELLED"; startsAt: string; expiresAt: string; currentPeriodStart: string | null; currentPeriodEnd: string | null; cancelAtPeriodEnd: boolean; cancelledAt: string | null; isActive: boolean } | null;
 export type Payment = { id: string; amount: string; currency: string; plan: UserPlan; status: string; createdAt: string };
 export const getSubscription = async (token: string) => (await request<Subscription>("/payments/subscription", token)).data;
 export const getPayments = async (token: string) => request<Payment[]>("/payments?page=1&limit=20", token);
 export const createCheckout = async (token: string, plan: "PLUS" | "PRO") => (await request<{ url: string }>("/payments/create-checkout", token, { method: "POST", body: JSON.stringify({ plan }) })).data;
 export const confirmCheckout = async (token: string, sessionId: string) => (await request<{ payment: Payment; subscription: NonNullable<Subscription> }>("/payments/confirm-checkout", token, { method: "POST", body: JSON.stringify({ sessionId }) })).data;
-export const changePlan = async (token: string, plan: "PLUS" | "PRO") => (await request<NonNullable<Subscription>>("/payments/change-plan", token, { method: "POST", body: JSON.stringify({ plan }) })).data;
+export const changePlan = async (token: string, plan: "PLUS" | "PRO") => (await request<{ subscription: NonNullable<Subscription>; paymentUrl: string | null }>("/payments/change-plan", token, { method: "POST", body: JSON.stringify({ plan }) })).data;
 export const cancelSubscription = async (token: string) => (await request<NonNullable<Subscription>>("/payments/cancel-subscription", token, { method: "POST" })).data;
 export const resumeSubscription = async (token: string) => (await request<NonNullable<Subscription>>("/payments/resume-subscription", token, { method: "POST" })).data;
