@@ -266,6 +266,10 @@ const getProducts = async (query) => {
 
     }
 
+    const allowedSorts = ["name", "brand", "purchaseDate", "purchasePrice", "expiryDate", "createdAt"];
+    const sortBy = allowedSorts.includes(query.sortBy) ? query.sortBy : "createdAt";
+    const sortOrder = query.sortOrder === "asc" ? "asc" : "desc";
+
     const [products, total] =
         await Promise.all([
 
@@ -273,9 +277,7 @@ const getProducts = async (query) => {
 
                 where,
 
-                orderBy: {
-                    createdAt: "desc",
-                },
+                orderBy: { [sortBy]: sortOrder },
 
                 skip,
 
@@ -370,6 +372,11 @@ const getPayments = async (query) => {
         where.status = query.status;
     }
 
+    if (query.search) where.OR = [{ user: { name: { contains: query.search, mode: "insensitive" } } }, { user: { email: { contains: query.search, mode: "insensitive" } } }, { stripeSessionId: { contains: query.search, mode: "insensitive" } }];
+    const allowedSorts = ["createdAt", "amount", "status", "plan"];
+    const sortBy = allowedSorts.includes(query.sortBy) ? query.sortBy : "createdAt";
+    const sortOrder = query.sortOrder === "asc" ? "asc" : "desc";
+
     const [payments, total] =
         await Promise.all([
 
@@ -377,11 +384,7 @@ const getPayments = async (query) => {
 
                 where,
 
-                orderBy: {
-
-                    createdAt: "desc",
-
-                },
+                orderBy: { [sortBy]: sortOrder },
 
                 skip,
 
@@ -432,11 +435,15 @@ const getPayment = async (id) => {
 
 };
 
-const getCategories = async () => {
-
-    return adminRepository.findCategories();
-
+const catalogWhere = (query) => {
+    const where = query.search ? { OR: [{ name: { contains: query.search, mode: "insensitive" } }, { description: { contains: query.search, mode: "insensitive" } }] } : {};
+    if (query.status === "active") where.isActive = true;
+    if (query.status === "inactive") where.isActive = false;
+    return where;
 };
+const catalogOrder = (query) => { const allowed = ["name", "createdAt", "updatedAt"]; return { [allowed.includes(query.sortBy) ? query.sortBy : "name"]: query.sortOrder === "desc" ? "desc" : "asc" }; };
+const getCategories = async (query = {}) => { const { page, limit, skip, take } = pagination(query); const where = catalogWhere(query); const [data, total] = await Promise.all([adminRepository.findCategories({ where, orderBy: catalogOrder(query), skip, take }), adminRepository.countCategories(where)]); return { data, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } }; };
+const getBrands = async (query = {}) => { const { page, limit, skip, take } = pagination(query); const where = catalogWhere(query); if (query.search) where.OR.push({ websiteUrl: { contains: query.search, mode: "insensitive" } }); const [data, total] = await Promise.all([adminRepository.findBrands({ where, orderBy: catalogOrder(query), skip, take }), adminRepository.countBrands(where)]); return { data, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } }; };
 
 
 const getClaims = async (query) => {
@@ -491,6 +498,8 @@ module.exports = {
     getPayment,
 
     getCategories,
+
+    getBrands,
 
     getClaims,
 

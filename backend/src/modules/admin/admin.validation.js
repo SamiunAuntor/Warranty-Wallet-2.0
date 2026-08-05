@@ -65,6 +65,8 @@ const listProductsSchema = z.object({
 
         sortBy: z.enum([
             "createdAt",
+            "name",
+            "brand",
             "purchaseDate",
             "expiryDate",
             "purchasePrice",
@@ -84,6 +86,8 @@ const listPaymentsSchema = z.object({
 
         limit: z.coerce.number().min(1).max(100).optional(),
 
+        search: z.string().trim().optional(),
+
         status: z.enum([
             "PENDING",
             "SUCCESS",
@@ -93,6 +97,13 @@ const listPaymentsSchema = z.object({
 
         paymentMethod: z.enum([
             "STRIPE",
+        ]).optional(),
+
+        sortBy: z.enum([
+            "createdAt",
+            "amount",
+            "status",
+            "plan",
         ]).optional(),
 
         sortOrder: z.enum([

@@ -19,6 +19,7 @@ export type Brand = {
   description: string | null;
   websiteUrl: string | null;
   isActive: boolean;
+  _count?: { products: number };
 };
 
 export type Asset = {
