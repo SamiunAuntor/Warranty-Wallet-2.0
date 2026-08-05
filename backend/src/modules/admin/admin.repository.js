@@ -318,6 +318,11 @@ const findCategories = () => {
 
 };
 
+const findClaims = ({ where, skip, take }) => prisma.claim.findMany({ where, skip, take, orderBy: { updatedAt: "desc" }, include: { user: { select: { id: true, name: true, email: true } }, product: { include: { category: true } }, timeline: { orderBy: { createdAt: "desc" } }, documents: { include: { document: true } } } });
+const countClaims = (where) => prisma.claim.count({ where });
+const findClaimById = (id) => prisma.claim.findUnique({ where: { id }, include: { user: { select: { id: true, name: true, email: true } }, product: { include: { category: true } }, timeline: { orderBy: { createdAt: "desc" } }, documents: { include: { document: true } } } });
+const updateClaimStatus = (claim, status) => prisma.$transaction(async (tx) => { await tx.claim.update({ where: { id: claim.id }, data: { status, ...(status === "RESOLVED" ? { resolvedAt: new Date() } : {}) } }); if (status !== claim.status) await tx.claimTimelineEvent.create({ data: { claimId: claim.id, status, title: `Status changed to ${status.replaceAll("_", " ").toLowerCase()}` } }); return tx.claim.findUnique({ where: { id: claim.id }, include: { user: { select: { id: true, name: true, email: true } }, product: { include: { category: true } }, timeline: { orderBy: { createdAt: "desc" } }, documents: { include: { document: true } } } }); });
+
 module.exports = {
 
     getDashboardStatistics,
@@ -345,5 +350,13 @@ module.exports = {
     findPaymentById,
 
     findCategories,
+
+    findClaims,
+
+    countClaims,
+
+    findClaimById,
+
+    updateClaimStatus,
 
 };

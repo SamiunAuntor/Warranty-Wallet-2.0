@@ -439,6 +439,25 @@ const getCategories = async () => {
 };
 
 
+const getClaims = async (query) => {
+    const { page, limit, skip, take } = pagination(query);
+    const where = {};
+    if (query.status) where.status = query.status;
+    if (query.search) where.OR = [{ title: { contains: query.search, mode: "insensitive" } }, { claimNumber: { contains: query.search, mode: "insensitive" } }, { product: { name: { contains: query.search, mode: "insensitive" } } }, { user: { email: { contains: query.search, mode: "insensitive" } } }];
+    const [claims, total] = await Promise.all([adminRepository.findClaims({ where, skip, take }), adminRepository.countClaims(where)]);
+    return { data: claims, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+};
+
+const updateClaimStatus = async (id, status, admin) => {
+    const allowed = ["SUBMITTED", "IN_PROGRESS", "RESOLVED", "REJECTED", "CANCELLED"];
+    if (!allowed.includes(status)) throw new ApiError(400, "Invalid claim status.");
+    const claim = await adminRepository.findClaimById(id);
+    if (!claim) throw new ApiError(404, "Claim not found.");
+    const updated = await adminRepository.updateClaimStatus(claim, status);
+    await activityService.logActivity({ userId: admin.id, type: "PROFILE_UPDATED", entity: "CLAIM", entityId: id, title: "Claim status updated", description: `${claim.claimNumber} changed to ${status}.` });
+    return updated;
+};
+
 const broadcastNotification = async (payload) => {
 
     await notificationService.broadcastNotification(
@@ -472,6 +491,10 @@ module.exports = {
     getPayment,
 
     getCategories,
+
+    getClaims,
+
+    updateClaimStatus,
 
     broadcastNotification,
 
