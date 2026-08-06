@@ -27,6 +27,7 @@ const mapError = (error) => {
             || error?.statusCode === 402;
         return {
             statusCode: paymentError ? 402 : (error.statusCode >= 400 && error.statusCode < 500 ? error.statusCode : 502),
+            code: paymentError ? ERROR_CODE.PAYMENT_FAILED : ERROR_CODE.PAYMENT_PROVIDER_ERROR,
             message: paymentError
                 ? "Stripe could not complete the payment. Please follow the payment link or use another payment method."
                 : "Stripe could not update your subscription. Please try again.",
@@ -36,13 +37,16 @@ const mapError = (error) => {
     if (error?.statusCode) {
         return {
             statusCode: error.statusCode,
+            code: error.code || errorCodeForStatus(error.statusCode),
             message: error.message,
+            ...(error.details !== undefined ? { details: error.details } : {}),
         };
     }
 
     if (error?.name === "MulterError") {
         return {
             statusCode: 400,
+            code: ERROR_CODE.UPLOAD_INVALID,
             message: error.code === "LIMIT_FILE_SIZE"
                 ? "The uploaded file is too large."
                 : "The uploaded files are invalid.",
@@ -52,6 +56,7 @@ const mapError = (error) => {
     if (error?.code === "P2002") {
         return {
             statusCode: 409,
+            code: ERROR_CODE.DATABASE_CONFLICT,
             message: "An account or record with these details already exists.",
         };
     }
@@ -59,6 +64,7 @@ const mapError = (error) => {
     if (error?.code === "P2003") {
         return {
             statusCode: 409,
+            code: ERROR_CODE.DATABASE_CONFLICT,
             message: "This operation conflicts with related data.",
         };
     }
@@ -66,6 +72,7 @@ const mapError = (error) => {
     if (error?.code === "P2025") {
         return {
             statusCode: 404,
+            code: ERROR_CODE.NOT_FOUND,
             message: "The requested record was not found.",
         };
     }
@@ -74,6 +81,7 @@ const mapError = (error) => {
         || error?.name === "PrismaClientInitializationError") {
         return {
             statusCode: 503,
+            code: ERROR_CODE.DATABASE_UNAVAILABLE,
             message: "The database is temporarily unavailable. Please try again.",
         };
     }
@@ -81,6 +89,7 @@ const mapError = (error) => {
     if (isPrismaError(error)) {
         return {
             statusCode: 500,
+            code: ERROR_CODE.DATABASE_ERROR,
             message: "A database operation failed. Please try again.",
         };
     }
@@ -88,14 +97,17 @@ const mapError = (error) => {
     if (FIREBASE_AUTH_CODES.has(error?.code) || error?.codePrefix === "auth") {
         return {
             statusCode: 401,
+            code: ERROR_CODE.AUTH_SESSION_INVALID,
             message: "Your authentication session is invalid or expired. Please sign in again.",
         };
     }
 
     return {
         statusCode: 500,
+        code: ERROR_CODE.INTERNAL_ERROR,
         message: "Internal Server Error",
     };
 };
 
 module.exports = mapError;
+const { ERROR_CODE, errorCodeForStatus } = require("../constants/errorCodes");

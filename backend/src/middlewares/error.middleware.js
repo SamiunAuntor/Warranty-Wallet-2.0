@@ -5,6 +5,9 @@ module.exports = (err, req, res, next) => {
     const mapped = mapError(err);
 
     if (err?.name === "MulterError") {
+        mapped.code = err.code === "LIMIT_FILE_SIZE"
+            ? "UPLOAD_TOO_LARGE"
+            : "UPLOAD_INVALID";
         mapped.message = err.code === "LIMIT_FILE_SIZE"
             ? `File size exceeds the ${MAX_FILE_SIZE_MB} MB limit.`
             : err.code === "LIMIT_UNEXPECTED_FILE"
@@ -18,6 +21,8 @@ module.exports = (err, req, res, next) => {
 
     res.status(mapped.statusCode).json({
         success: false,
+        code: mapped.code,
         message: mapped.message,
+        ...(mapped.details !== undefined ? { details: mapped.details } : {}),
     });
 };

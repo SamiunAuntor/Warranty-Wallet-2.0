@@ -7,9 +7,6 @@ module.exports = (schema) => {
                 params: req.params,
             });
 
-            // Zod coercions and transforms only exist on the parsed result.
-            // Pass that normalized data downstream instead of retaining the
-            // original strings supplied by Express.
             if (validated.body !== undefined) req.body = validated.body;
             if (validated.params !== undefined) req.params = validated.params;
 
@@ -24,8 +21,9 @@ module.exports = (schema) => {
         } catch (error) {
             return res.status(400).json({
                 success: false,
+                code: "VALIDATION_FAILED",
                 message: "Validation Failed",
-                errors: error.errors,
+                details: error.issues || error.errors,
             });
         }
     };
