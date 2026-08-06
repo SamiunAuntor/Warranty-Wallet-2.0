@@ -1,0 +1,58 @@
+/webhooks/stripe:
+  post:
+    tags: [Webhooks]
+    operationId: handleStripeWebhook
+    summary: Process a signed Stripe webhook event
+    security: []
+    description: |
+      Receives the raw request body before the ordinary JSON parser. Stripe
+      signature verification and stored event IDs protect authenticity and
+      idempotency. This operation is called by Stripe, not the frontend.
+    parameters:
+      - name: Stripe-Signature
+        in: header
+        required: true
+        schema: { type: string }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: true
+    responses:
+      '200':
+        description: Event accepted or already processed.
+      '400':
+        description: Signature invalid or payload unusable.
+        content:
+          application/json:
+            schema: { $ref: ../components/schemas.yaml#/ApiError }
+      '500': { $ref: ../components/responses.yaml#/ServerError }
+
+/cron/warranty:
+  get:
+    tags: [Operations]
+    operationId: runWarrantyMaintenance
+    summary: Run warranty status and reminder maintenance
+    security: []
+    description: |
+      Executes the same warranty job used by the development scheduler. The
+      current Express route does not enforce an application-user token;
+      production deployments should add a scheduler secret or platform-level
+      protection before exposing it.
+    responses:
+      '200':
+        description: Warranty maintenance completed.
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [success, message]
+              properties:
+                success: { type: boolean, const: true }
+                message: { type: string }
+            example:
+              success: true
+              message: Warranty maintenance completed.
+      '500': { $ref: ../components/responses.yaml#/ServerError }
