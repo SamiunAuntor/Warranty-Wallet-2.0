@@ -1,0 +1,99 @@
+/dashboard:
+  get:
+    tags: [Dashboard]
+    operationId: getUserDashboard
+    summary: Read the authenticated user's dashboard
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200':
+        description: Asset, warranty, document, claim, and activity summary.
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AnalyticsResponse' }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+
+/dashboard/warranty:
+  get:
+    tags: [Dashboard]
+    operationId: getWarrantyAnalytics
+    summary: Read warranty-status analytics for owned assets
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200':
+        description: Warranty totals and expiry trends.
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AnalyticsResponse' }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+
+/dashboard/categories:
+  get:
+    tags: [Dashboard]
+    operationId: getCategoryAnalytics
+    summary: Read category analytics for owned assets
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200':
+        description: Owned asset totals grouped by category.
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AnalyticsResponse' }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+
+/dashboard/admin:
+  get:
+    tags: [Dashboard, Admin]
+    operationId: getAdminDashboardAnalytics
+    summary: Read administrator platform analytics
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200':
+        description: Platform-wide user, asset, warranty, and payment summary.
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AnalyticsResponse' }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+
+/dashboard/admin/revenue:
+  get:
+    tags: [Dashboard, Admin]
+    operationId: getRevenueAnalytics
+    summary: Read administrator revenue analytics
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200':
+        description: Revenue totals and time-series data.
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AnalyticsResponse' }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+
+/dashboard/admin/product-growth:
+  get:
+    tags: [Dashboard, Admin]
+    operationId: getProductGrowthAnalytics
+    summary: Read platform asset-growth analytics
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200':
+        description: Asset creation totals grouped over time.
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AnalyticsResponse' }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+
+components:
+  schemas:
+    AnalyticsResponse:
+      type: object
+      properties:
+        success: { type: boolean, const: true }
+        statusCode: { type: integer }
+        message: { type: string }
+        data:
+          type: object
+          additionalProperties: true
+

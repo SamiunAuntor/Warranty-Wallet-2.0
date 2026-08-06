@@ -1,0 +1,337 @@
+/admin/dashboard:
+  get:
+    tags: [Admin]
+    operationId: getAdminDashboard
+    summary: Read administrator operational overview
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200': { $ref: '#/components/responses/AdminSuccess' }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+
+/admin/users:
+  get:
+    tags: [Admin]
+    operationId: listAdminUsers
+    summary: Search and paginate platform users
+    security: [{ FirebaseBearer: [] }]
+    parameters:
+      - $ref: ../components/parameters.yaml#/Page
+      - $ref: ../components/parameters.yaml#/Limit
+      - $ref: ../components/parameters.yaml#/Search
+      - name: role
+        in: query
+        schema: { type: string, enum: [USER, ADMIN] }
+      - name: plan
+        in: query
+        schema: { type: string, enum: [BASIC, PLUS, PRO] }
+      - name: status
+        in: query
+        schema: { type: string, enum: [ACTIVE, BLOCKED, DELETED] }
+      - name: sortBy
+        in: query
+        schema: { type: string, enum: [createdAt, name, email] }
+      - $ref: ../components/parameters.yaml#/SortOrder
+    responses:
+      '200':
+        description: Paginated user collection.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                data:
+                  type: array
+                  items: { $ref: ../components/schemas.yaml#/User }
+                meta: { $ref: ../components/schemas.yaml#/PaginationMeta }
+      '400': { $ref: ../components/responses.yaml#/BadRequest }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+
+/admin/users/{id}:
+  parameters: [{ $ref: ../components/parameters.yaml#/Id }]
+  get:
+    tags: [Admin]
+    operationId: getAdminUser
+    summary: Read one user with administrator context
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200':
+        description: User details.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                data: { $ref: ../components/schemas.yaml#/User }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+  delete:
+    tags: [Admin]
+    operationId: deleteAdminUser
+    summary: Delete a user according to administrator policy
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200': { description: User deleted. }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+      '409': { $ref: ../components/responses.yaml#/Conflict }
+
+/admin/users/{id}/block:
+  parameters: [{ $ref: ../components/parameters.yaml#/Id }]
+  patch:
+    tags: [Admin]
+    operationId: blockUser
+    summary: Block an active user
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200': { description: User blocked. }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+      '409': { $ref: ../components/responses.yaml#/Conflict }
+
+/admin/users/{id}/unblock:
+  parameters: [{ $ref: ../components/parameters.yaml#/Id }]
+  patch:
+    tags: [Admin]
+    operationId: unblockUser
+    summary: Restore a blocked user
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200': { description: User restored to active status. }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+      '409': { $ref: ../components/responses.yaml#/Conflict }
+
+/admin/products:
+  get:
+    tags: [Admin]
+    operationId: listAdminProducts
+    summary: Search and paginate platform assets
+    security: [{ FirebaseBearer: [] }]
+    parameters:
+      - $ref: ../components/parameters.yaml#/Page
+      - $ref: ../components/parameters.yaml#/Limit
+      - $ref: ../components/parameters.yaml#/Search
+      - name: status
+        in: query
+        schema: { type: string, enum: [ACTIVE, EXPIRING_SOON, EXPIRED] }
+      - name: categoryId
+        in: query
+        schema: { type: string }
+      - name: userId
+        in: query
+        schema: { type: string }
+      - name: sortBy
+        in: query
+        schema: { type: string, enum: [createdAt, name, brand, purchaseDate, expiryDate, purchasePrice] }
+      - $ref: ../components/parameters.yaml#/SortOrder
+    responses:
+      '200':
+        description: Paginated platform assets.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                data:
+                  type: array
+                  items: { $ref: ../components/schemas.yaml#/Product }
+                meta: { $ref: ../components/schemas.yaml#/PaginationMeta }
+      '400': { $ref: ../components/responses.yaml#/BadRequest }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+
+/admin/products/{id}:
+  parameters: [{ $ref: ../components/parameters.yaml#/Id }]
+  get:
+    tags: [Admin]
+    operationId: getAdminProduct
+    summary: Read an asset with owner context
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200':
+        description: Asset details.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                data: { $ref: ../components/schemas.yaml#/Product }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+  delete:
+    tags: [Admin]
+    operationId: deleteAdminProduct
+    summary: Remove an asset as an administrator
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200': { description: Asset removed. }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+
+/admin/payments:
+  get:
+    tags: [Admin]
+    operationId: listAdminPayments
+    summary: Search and paginate platform payments
+    security: [{ FirebaseBearer: [] }]
+    parameters:
+      - $ref: ../components/parameters.yaml#/Page
+      - $ref: ../components/parameters.yaml#/Limit
+      - $ref: ../components/parameters.yaml#/Search
+      - name: status
+        in: query
+        schema: { type: string, enum: [PENDING, SUCCESS, FAILED, REFUNDED] }
+      - name: paymentMethod
+        in: query
+        schema: { type: string, enum: [STRIPE] }
+      - name: sortBy
+        in: query
+        schema: { type: string, enum: [createdAt, amount, status, plan] }
+      - $ref: ../components/parameters.yaml#/SortOrder
+    responses:
+      '200':
+        description: Paginated platform payments.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                data:
+                  type: array
+                  items: { $ref: ../components/schemas.yaml#/Payment }
+                meta: { $ref: ../components/schemas.yaml#/PaginationMeta }
+      '400': { $ref: ../components/responses.yaml#/BadRequest }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+
+/admin/payments/{id}:
+  parameters: [{ $ref: ../components/parameters.yaml#/Id }]
+  get:
+    tags: [Admin]
+    operationId: getAdminPayment
+    summary: Read one payment record
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200':
+        description: Payment details.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                data: { $ref: ../components/schemas.yaml#/Payment }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+
+/admin/categories:
+  get:
+    tags: [Admin]
+    operationId: listAdminCategories
+    summary: List categories with administrator statistics
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200': { $ref: '#/components/responses/AdminSuccess' }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+
+/admin/brands:
+  get:
+    tags: [Admin]
+    operationId: listAdminBrands
+    summary: List brands with administrator statistics
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200': { $ref: '#/components/responses/AdminSuccess' }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+
+/admin/claims:
+  get:
+    tags: [Admin]
+    operationId: listAdminClaims
+    summary: Search and filter platform claims
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200': { $ref: '#/components/responses/AdminSuccess' }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+
+/admin/claims/{id}/status:
+  parameters: [{ $ref: ../components/parameters.yaml#/Id }]
+  patch:
+    tags: [Admin]
+    operationId: updateAdminClaimStatus
+    summary: Update a claim status as an administrator
+    security: [{ FirebaseBearer: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [status]
+            properties:
+              status:
+                type: string
+                enum: [SUBMITTED, IN_PROGRESS, RESOLVED, REJECTED, CANCELLED]
+              resolution: { type: string, maxLength: 3000 }
+    responses:
+      '200': { description: Claim status updated. }
+      '400': { $ref: ../components/responses.yaml#/BadRequest }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+
+/admin/notifications:
+  post:
+    tags: [Admin]
+    operationId: createAdminBroadcast
+    summary: Broadcast a system notification
+    security: [{ FirebaseBearer: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [title, message, type]
+            properties:
+              title: { type: string, minLength: 3, maxLength: 100 }
+              message: { type: string, minLength: 5, maxLength: 1000 }
+              type: { type: string, enum: [SYSTEM] }
+    responses:
+      '201': { description: Broadcast notifications created. }
+      '400': { $ref: ../components/responses.yaml#/BadRequest }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+
+components:
+  responses:
+    AdminSuccess:
+      description: Administrator request completed.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success: { type: boolean, const: true }
+              statusCode: { type: integer }
+              message: { type: string }
+              data:
+                description: Endpoint-specific administrator data.
+
