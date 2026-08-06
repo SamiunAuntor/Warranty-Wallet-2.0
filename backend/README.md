@@ -7,6 +7,7 @@ Backend API for Warranty Wallet, a warranty and purchase-document management pla
 - [Complete API reference](../docs/API_REFERENCE.md)
 - [Copy-ready API examples](../docs/API_EXAMPLES.md)
 - [API error catalog](../docs/ERROR_CATALOG.md)
+- [OpenAPI 3.1 specification](../docs/openapi/openapi.yaml)
 - [Architecture guide](../docs/ARCHITECTURE.md)
 - [Data model guide](../docs/DATA_MODEL.md)
 - [Environment configuration](../docs/ENVIRONMENT.md)

@@ -196,6 +196,13 @@ JSON endpoints use `application/json`. Upload endpoints use `multipart/form-data
 
 List endpoints generally accept `page`, `limit`, `search`, `sortBy`, and `sortOrder`. Responses use shared success and error helpers to maintain a consistent shape.
 
+API documentation is available in several forms:
+
+- [Human-readable route reference](./docs/API_REFERENCE.md)
+- [Copy-ready request examples](./docs/API_EXAMPLES.md)
+- [Client-facing error catalog](./docs/ERROR_CATALOG.md)
+- [Validated OpenAPI 3.1 specification](./docs/openapi/openapi.yaml)
+
 ## Testing
 
 Backend tests use the built-in Node.js test runner. The suites cover validation, repositories, product limits, document rules, claim behavior, payments, warranty reminders, AI failures, and external-service error mapping.

@@ -20,6 +20,7 @@ This directory contains the project documentation that applies across the fronte
 - [API reference](./API_REFERENCE.md) — endpoints, authentication, upload rules, queries, and errors.
 - [API examples](./API_EXAMPLES.md) — copy-ready requests for core user and admin workflows.
 - [Error catalog](./ERROR_CATALOG.md) — expected failure classes and client behavior.
+- [OpenAPI specification](./openapi/README.md) — validated OpenAPI 3.1 source, tooling, and maintenance workflow.
 - [Data model](./DATA_MODEL.md) — Prisma entities, relationships, enums, ownership, and migrations.
 - [Security guide](./SECURITY.md) — trust boundaries, secrets, authorization, uploads, and payments.
 

@@ -21,6 +21,7 @@ Node.js 24.x is the supported runtime.
 - [Complete API reference](../docs/API_REFERENCE.md)
 - [Copy-ready API examples](../docs/API_EXAMPLES.md)
 - [API error catalog](../docs/ERROR_CATALOG.md)
+- [OpenAPI 3.1 specification](../docs/openapi/openapi.yaml)
 - [Architecture guide](../docs/ARCHITECTURE.md)
 - [Environment configuration](../docs/ENVIRONMENT.md)
 - [Testing guide](../docs/TESTING.md)
