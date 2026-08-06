@@ -35,6 +35,21 @@ This directory contains the project documentation that applies across the fronte
 - [Frontend guide](../frontend/README.md) — routes, authentication lifecycle, API clients, styling, and deployment.
 - [Backend guide](../backend/README.md) — modules, endpoints, scheduled jobs, reports, and development notes.
 
+## Workflow guides
+
+- [Authentication](./guides/AUTHENTICATION.md), [user profiles](./guides/USER_PROFILES.md), and [asset lifecycle](./guides/ASSET_LIFECYCLE.md)
+- [Document pipeline](./guides/DOCUMENT_PIPELINE.md), [claim lifecycle](./guides/CLAIM_LIFECYCLE.md), and [billing](./guides/BILLING_SUBSCRIPTIONS.md)
+- [Notifications](./guides/NOTIFICATIONS.md), [activity audit](./guides/ACTIVITY_AUDIT.md), and [dashboard analytics](./guides/DASHBOARD_ANALYTICS.md)
+- [Administration](./guides/ADMINISTRATION.md), [report exports](./guides/REPORT_EXPORTS.md), and [catalog management](./guides/CATALOG_MANAGEMENT.md)
+- [AI extraction](./guides/AI_EXTRACTION.md) and [frontend API contracts](./guides/FRONTEND_API_CONTRACTS.md)
+
+## Engineering playbooks
+
+- [Local development](./guides/LOCAL_DEVELOPMENT.md), [debugging](./guides/DEBUGGING_PLAYBOOK.md), and [test design](./guides/TEST_DESIGN.md)
+- [API contract review](./guides/CONTRACT_REVIEW.md) and [code review](./guides/CODE_REVIEW.md)
+- [Release verification](./guides/RELEASE_VERIFICATION.md) and [operations runbook](./guides/OPERATIONS_RUNBOOK.md)
+- [Data repair](./guides/DATA_REPAIR.md), [privacy](./guides/PRIVACY_DATA_HANDLING.md), and [performance](./guides/PERFORMANCE_GUIDE.md)
+
 ## Documentation maintenance
 
 Documentation should change in the same pull request as the behavior it describes. When adding a feature, review at least the root guide, relevant component guide, API reference, environment guide, and testing guide.
