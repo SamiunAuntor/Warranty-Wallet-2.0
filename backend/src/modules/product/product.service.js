@@ -52,7 +52,6 @@ const warrantyFields = (payload, product = null) => {
 };
 
 const createProduct = async (user, payload) => {
-    // Check category exists
     const category = await categoryRepository.findById(
         payload.categoryId
     );
@@ -64,7 +63,6 @@ const createProduct = async (user, payload) => {
         );
     }
 
-    // Enforce the asset limit for every subscription tier.
     const assetLimit = PRODUCT_LIMIT[user.plan];
     const totalProducts = await productRepository.countUserProducts(user.id);
 
@@ -86,7 +84,6 @@ const createProduct = async (user, payload) => {
         );
     }
 
-    // Check duplicate serial number
     if (payload.serialNumber) {
         const duplicate = await productRepository.findBySerialNumber(user.id, payload.serialNumber);
 
