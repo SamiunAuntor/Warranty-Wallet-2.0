@@ -214,6 +214,11 @@ Those boundaries require provider sandboxes or contract tests and should remain 
 | Dashboard | summary and analytics | Aggregates from seeded records | Admin analytics role checks |
 | Catalog administration | categories and brands | Create, update, conflict, deactivate | Administrator-only mutations |
 | Admin users | list, details, block, unblock | User status transitions | Ordinary-user denial and self-protection |
+| Admin assets | global list, details, delete | Soft deletion and audit activity | Ordinary-user denial |
+| Admin payments | global list and details | Status/search projections | Ordinary-user denial |
+| Admin claims | global list and status update | Timeline and audit activity | Ordinary-user denial |
+| Report exports | user and administrator PDF/Excel routes | Binary document generation | Administrator report role checks |
+| HTTP security | health, errors, and CORS preflights | None | Origin policy and defensive headers |
 
 ## Expected error assertions
 
@@ -238,3 +243,26 @@ The repository workflow separates checks into three jobs:
 3. Backend integration tests receive an isolated PostgreSQL service database.
 
 The integration job synchronizes the Prisma schema into its disposable service database before running the suites. When the repository adopts committed migrations, replace `prisma db push` with `prisma migrate deploy`. Provider credentials remain placeholders because these suites stop at project-owned boundaries.
+
+## External identity boundary
+
+Administrator account mutations normally update Firebase before changing the local user record. Integration tests must not make that provider call because they use synthetic Firebase identifiers and should remain deterministic offline.
+
+The admin service therefore bypasses Firebase only when both conditions are true:
+
+- `NODE_ENV` is exactly `test`.
+- `ENABLE_TEST_AUTH` is exactly `true`.
+
+Production and development retain the provider synchronization behavior. Requiring both flags prevents a single accidental environment setting from disabling identity-provider updates.
+
+## Binary report assertions
+
+Report tests validate the complete HTTP response rather than merely checking that a service returned an object:
+
+- PDF responses use `application/pdf` and begin with the `%PDF` signature.
+- Excel responses use the Open XML spreadsheet media type and begin with the ZIP `PK` signature.
+- `Content-Disposition` supplies the expected download extension.
+- Missing or unsupported formats fail through the shared validation contract.
+- Administrator exports enforce the administrator role before generating data.
+
+These checks catch broken controller piping, incorrect headers, empty output, and authorization regressions without comparing unstable binary snapshots.
