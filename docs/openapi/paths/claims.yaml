@@ -1,0 +1,234 @@
+/claims:
+  get:
+    tags: [Claims]
+    operationId: listClaims
+    summary: List claims owned by the authenticated user
+    security: [{ FirebaseBearer: [] }]
+    parameters:
+      - $ref: ../components/parameters.yaml#/Page
+      - $ref: ../components/parameters.yaml#/Limit
+      - $ref: ../components/parameters.yaml#/Search
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum: [SUBMITTED, IN_PROGRESS, RESOLVED, REJECTED, CANCELLED]
+      - name: productId
+        in: query
+        schema: { type: string }
+    responses:
+      '200':
+        description: Paginated claim collection.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                statusCode: { type: integer }
+                message: { type: string }
+                data:
+                  type: array
+                  items: { $ref: ../components/schemas.yaml#/Claim }
+                meta: { $ref: ../components/schemas.yaml#/PaginationMeta }
+      '400': { $ref: ../components/responses.yaml#/BadRequest }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+  post:
+    tags: [Claims]
+    operationId: createClaim
+    summary: Create a claim for an owned asset
+    security: [{ FirebaseBearer: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/CreateClaimInput' }
+          example:
+            productId: cm12345678901234567890123
+            title: Left speaker stopped working
+            issueDescription: Audio became intermittent and then stopped completely.
+            serviceCenter: Example Authorized Service
+            submittedCondition: No visible physical damage.
+            documentIds: [cm22345678901234567890123]
+    responses:
+      '201':
+        description: Claim created with an initial timeline event.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                statusCode: { type: integer, const: 201 }
+                message: { type: string }
+                data: { $ref: ../components/schemas.yaml#/Claim }
+      '400': { $ref: ../components/responses.yaml#/BadRequest }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+
+/claims/{id}:
+  parameters:
+    - $ref: ../components/parameters.yaml#/Id
+  get:
+    tags: [Claims]
+    operationId: getClaim
+    summary: Read one owned claim
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200':
+        description: Claim with timeline and attached evidence.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                statusCode: { type: integer }
+                message: { type: string }
+                data: { $ref: ../components/schemas.yaml#/Claim }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+  patch:
+    tags: [Claims]
+    operationId: updateClaim
+    summary: Update an owned claim
+    security: [{ FirebaseBearer: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            minProperties: 1
+            properties:
+              title: { type: string, minLength: 3, maxLength: 150 }
+              issueDescription: { type: string, minLength: 10, maxLength: 3000 }
+              serviceCenter: { type: [string, "null"], maxLength: 200 }
+              providerReference: { type: [string, "null"], maxLength: 200 }
+              submittedCondition: { type: [string, "null"], maxLength: 3000 }
+              resolution: { type: [string, "null"], maxLength: 3000 }
+              status:
+                type: string
+                enum: [SUBMITTED, IN_PROGRESS, RESOLVED, REJECTED, CANCELLED]
+    responses:
+      '200': { description: Claim updated and timeline synchronized. }
+      '400': { $ref: ../components/responses.yaml#/BadRequest }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+      '409': { $ref: ../components/responses.yaml#/Conflict }
+  delete:
+    tags: [Claims]
+    operationId: deleteClaim
+    summary: Delete an owned claim when permitted
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200': { description: Claim deleted. }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+      '409': { $ref: ../components/responses.yaml#/Conflict }
+
+/claims/{id}/timeline:
+  parameters:
+    - $ref: ../components/parameters.yaml#/Id
+  post:
+    tags: [Claims]
+    operationId: addClaimTimelineEvent
+    summary: Add a narrative event to an owned claim
+    security: [{ FirebaseBearer: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [title]
+            properties:
+              title: { type: string, minLength: 2, maxLength: 150 }
+              description: { type: string, maxLength: 2000 }
+          example:
+            title: Service center accepted the item
+            description: Inspection is expected within three business days.
+    responses:
+      '201': { description: Timeline event created. }
+      '400': { $ref: ../components/responses.yaml#/BadRequest }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+
+/claims/{id}/documents:
+  parameters:
+    - $ref: ../components/parameters.yaml#/Id
+  post:
+    tags: [Claims]
+    operationId: attachClaimDocument
+    summary: Attach an existing owned document to a claim
+    security: [{ FirebaseBearer: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/EvidenceInput' }
+          example:
+            documentId: cm22345678901234567890123
+            evidenceType: SUPPORTING_DOCUMENT
+            note: Original purchase receipt
+    responses:
+      '201': { description: Evidence attached to the claim. }
+      '400': { $ref: ../components/responses.yaml#/BadRequest }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+      '409': { $ref: ../components/responses.yaml#/Conflict }
+
+/claims/{id}/documents/{documentId}:
+  parameters:
+    - $ref: ../components/parameters.yaml#/Id
+    - name: documentId
+      in: path
+      required: true
+      schema: { type: string }
+  delete:
+    tags: [Claims]
+    operationId: detachClaimDocument
+    summary: Detach evidence from an owned claim
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200': { description: Evidence detached. }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+
+components:
+  schemas:
+    EvidenceInput:
+      type: object
+      required: [documentId]
+      properties:
+        documentId: { type: string }
+        evidenceType:
+          type: string
+          enum: [SUPPORTING_DOCUMENT, CONDITION_PHOTO, DAMAGE_PHOTO, CORRESPONDENCE, OTHER]
+          default: SUPPORTING_DOCUMENT
+        note: { type: string, maxLength: 500 }
+    CreateClaimInput:
+      type: object
+      required: [productId, title, issueDescription]
+      properties:
+        productId: { type: string }
+        title: { type: string, minLength: 3, maxLength: 150 }
+        issueDescription: { type: string, minLength: 10, maxLength: 3000 }
+        serviceCenter: { type: string, maxLength: 200 }
+        providerReference: { type: string, maxLength: 200 }
+        submittedCondition: { type: string, maxLength: 3000 }
+        resolution: { type: string, maxLength: 3000 }
+        status:
+          type: string
+          enum: [SUBMITTED, IN_PROGRESS, RESOLVED, REJECTED, CANCELLED]
+          default: SUBMITTED
+        documentIds:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          items: { type: string }
+        evidence:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/EvidenceInput' }
+
