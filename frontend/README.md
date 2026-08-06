@@ -15,6 +15,18 @@ The Warranty Wallet frontend is a Next.js App Router application for managing pu
 
 Node.js 24.x is the supported runtime.
 
+## Related documentation
+
+- [Root project guide](../README.md)
+- [Complete API reference](../docs/API_REFERENCE.md)
+- [Copy-ready API examples](../docs/API_EXAMPLES.md)
+- [API error catalog](../docs/ERROR_CATALOG.md)
+- [Architecture guide](../docs/ARCHITECTURE.md)
+- [Environment configuration](../docs/ENVIRONMENT.md)
+- [Testing guide](../docs/TESTING.md)
+
+Frontend contributors should read the API reference before adding endpoint calls. Request construction and response types belong in `src/lib`, not directly inside page components.
+
 ## Features
 
 ### Public experience
@@ -164,6 +176,23 @@ If synchronization fails, the frontend signs out the Firebase session to avoid k
 Feature clients live in `src/lib/*-api.ts`. Protected calls accept a Firebase ID token and add it to the `Authorization` header. Shared error handling converts unsuccessful API responses into readable JavaScript errors.
 
 Keep page components focused on view state. Put request construction, response types, and endpoint-specific parsing in the corresponding API client.
+
+### Request checklist
+
+- Build URLs from `NEXT_PUBLIC_API_URL`.
+- Obtain a fresh Firebase ID token for protected operations.
+- Use JSON for ordinary requests and `FormData` for uploads.
+- Do not set a multipart boundary manually; the browser adds it.
+- Treat non-2xx responses as errors even if a JSON body is returned.
+- Preserve form input when a request fails.
+- Avoid automatic retries for payments, uploads, and destructive mutations.
+- Never log bearer tokens or uploaded document contents.
+
+### Response handling
+
+JSON endpoints return a shared success envelope containing `success`, `statusCode`, `message`, `data`, and optional `meta`. Binary report endpoints return a file response instead.
+
+Authentication failures should return the user to a safe signed-out state. Authorization failures should not be retried. Temporary provider and database failures may be retried with a delay when the operation is read-only or explicitly idempotent.
 
 ## Server and client components
 
