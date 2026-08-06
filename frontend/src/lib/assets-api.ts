@@ -1,6 +1,7 @@
-export type WarrantyStatus = "NO_WARRANTY" | "ACTIVE" | "EXPIRING_SOON" | "EXPIRED";
-export type AssetLifecycleStatus = "ADDED" | "ARCHIVED";
-export type WarrantyType = "MANUFACTURER" | "EXTENDED";
+import { apiRequest } from "@/lib/api-client";
+import type { AssetLifecycleStatus, WarrantyStatus, WarrantyType } from "@/lib/api-contracts";
+
+export type { AssetLifecycleStatus, WarrantyStatus, WarrantyType } from "@/lib/api-contracts";
 
 export type Category = {
   id: string;
@@ -92,31 +93,12 @@ export type AssetList = {
   };
 };
 
-type ApiEnvelope<T> = {
-  success: boolean;
-  message: string;
-  data: T;
-};
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api/v1";
-
 async function request<T>(path: string, token?: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, {
+  return apiRequest<T>(path, {
     ...init,
-    cache: "no-store",
-    headers: {
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...init?.headers,
-    },
+    token,
+    fallbackMessage: "The asset request could not be completed.",
   });
-  const payload = (await response.json().catch(() => null)) as ApiEnvelope<T> | { message?: string } | null;
-
-  if (!response.ok) {
-    throw new Error(payload?.message || "The asset request could not be completed.");
-  }
-
-  return (payload as ApiEnvelope<T>).data;
 }
 
 export function getCategories() {

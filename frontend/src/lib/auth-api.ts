@@ -1,5 +1,6 @@
 import type { User } from "firebase/auth";
 import type { UserPlan } from "@/constants/plans";
+import { apiRequest } from "@/lib/api-client";
 
 export type AppUser = {
   id: string;
@@ -22,48 +23,31 @@ export type UserPreferences = {
   dateFormat: "MMM_D_YYYY" | "DD_MM_YYYY" | "MM_DD_YYYY";
 };
 
-type ApiResponse<T> = { success: boolean; message: string; data: T };
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api/v1";
-
 export async function syncUser(firebaseUser: User, preferredName?: string): Promise<AppUser> {
   const token = await firebaseUser.getIdToken();
   const fallbackName = firebaseUser.email?.split("@")[0] ?? "Warranty Wallet User";
-  const response = await fetch(`${API_URL}/users/sync`, {
+  return apiRequest<AppUser>("/users/sync", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    token,
+    fallbackMessage: "Could not synchronize your account with Warranty Wallet.",
     body: JSON.stringify({
       name: preferredName?.trim() || firebaseUser.displayName || fallbackName,
       ...(firebaseUser.photoURL ? { photoURL: firebaseUser.photoURL } : {}),
     }),
   });
-
-  const payload = (await response.json().catch(() => null)) as ApiResponse<AppUser> | { message?: string } | null;
-  if (!response.ok) {
-    throw new Error(payload?.message || "Could not synchronize your account with Warranty Wallet.");
-  }
-  return (payload as ApiResponse<AppUser>).data;
 }
 
 export async function updateAppUser(token: string, input: { name?: string; phone?: string | null }) {
-  const response = await fetch(`${API_URL}/users/profile`, {
+  return apiRequest<AppUser>("/users/profile", {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    token,
+    fallbackMessage: "Could not update profile.",
     body: JSON.stringify(input),
   });
-  const payload = await response.json().catch(() => null) as ApiResponse<AppUser> | { message?: string } | null;
-  if (!response.ok) throw new Error(payload?.message || "Could not update profile.");
-  return (payload as ApiResponse<AppUser>).data;
 }
 
 async function authenticatedRequest<T>(path: string, token: string, init?: RequestInit) {
-  const response = await fetch(`${API_URL}${path}`, { ...init, headers: { Authorization: `Bearer ${token}`, ...init?.headers } });
-  const payload = await response.json().catch(() => null) as ApiResponse<T> | { message?: string } | null;
-  if (!response.ok) throw new Error(payload?.message || "The account request could not be completed.");
-  return (payload as ApiResponse<T>).data;
+  return apiRequest<T>(path, { ...init, token, fallbackMessage: "The account request could not be completed." });
 }
 
 export function uploadProfilePhoto(token: string, file: File) {
