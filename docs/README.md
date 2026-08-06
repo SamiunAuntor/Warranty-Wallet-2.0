@@ -18,6 +18,8 @@ This directory contains the project documentation that applies across the fronte
 ## Backend and data
 
 - [API reference](./API_REFERENCE.md) — endpoints, authentication, upload rules, queries, and errors.
+- [API examples](./API_EXAMPLES.md) — copy-ready requests for core user and admin workflows.
+- [Error catalog](./ERROR_CATALOG.md) — expected failure classes and client behavior.
 - [Data model](./DATA_MODEL.md) — Prisma entities, relationships, enums, ownership, and migrations.
 - [Security guide](./SECURITY.md) — trust boundaries, secrets, authorization, uploads, and payments.
 
