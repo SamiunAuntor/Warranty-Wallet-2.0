@@ -1,13 +1,8 @@
 import type { Asset } from "@/lib/assets-api";
+import { apiRequest } from "@/lib/api-client";
+import type { DocumentType } from "@/lib/api-contracts";
 
-export type DocumentType =
-  | "INVOICE"
-  | "WARRANTY_CARD"
-  | "PRODUCT_IMAGE"
-  | "RECEIPT"
-  | "OTHER"
-  | "CLAIM_EVIDENCE"
-  | "CLAIM_CONDITION";
+export type { DocumentType } from "@/lib/api-contracts";
 
 export type DocumentRecord = {
   id: string;
@@ -72,30 +67,12 @@ export type PendingAssetDocument = {
   extractedData?: ExtractedAssetData;
 };
 
-type ApiEnvelope<T> = {
-  success: boolean;
-  message: string;
-  data: T;
-};
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api/v1";
-
 async function request<T>(path: string, token: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, {
+  return apiRequest<T>(path, {
     ...init,
-    cache: "no-store",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...init?.headers,
-    },
+    token,
+    fallbackMessage: "The document request could not be completed.",
   });
-  const payload = (await response.json().catch(() => null)) as ApiEnvelope<T> | { message?: string } | null;
-
-  if (!response.ok) {
-    throw new Error(payload?.message || "The document request could not be completed.");
-  }
-
-  return (payload as ApiEnvelope<T>).data;
 }
 
 export function getDocuments(

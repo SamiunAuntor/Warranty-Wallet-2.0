@@ -1,7 +1,9 @@
 import type { Asset } from "@/lib/assets-api";
+import { apiRequest } from "@/lib/api-client";
+import type { ClaimStatus } from "@/lib/api-contracts";
 import { uploadDocuments } from "@/lib/documents-api";
 
-export type ClaimStatus = "SUBMITTED" | "IN_PROGRESS" | "RESOLVED" | "REJECTED" | "CANCELLED";
+export type { ClaimStatus } from "@/lib/api-contracts";
 export const claimStatuses: ClaimStatus[] = ["SUBMITTED", "IN_PROGRESS", "RESOLVED", "REJECTED", "CANCELLED"];
 export const terminalClaimStatuses: ClaimStatus[] = ["RESOLVED", "REJECTED", "CANCELLED"];
 
@@ -21,15 +23,10 @@ export type ClaimInput = {
   pendingEvidence?: Array<{ file: File; kind: "CLAIM_EVIDENCE" | "CLAIM_CONDITION" }>;
 };
 export type ClaimUpdate = Partial<Pick<ClaimInput, "title" | "issueDescription" | "serviceCenter" | "providerReference" | "submittedCondition" | "status" | "resolution">>;
-type ApiEnvelope<T> = { success: boolean; message: string; data: T };
 export type ClaimList = { data: Claim[]; meta: { page: number; limit: number; total: number; totalPages: number } };
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api/v1";
 
 async function request<T>(path: string, token: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, { ...init, cache: "no-store", headers: { ...(init?.body ? { "Content-Type": "application/json" } : {}), Authorization: `Bearer ${token}`, ...init?.headers } });
-  const payload = await response.json().catch(() => null) as ApiEnvelope<T> | { message?: string } | null;
-  if (!response.ok) throw new Error(payload?.message || "The claim request could not be completed.");
-  return (payload as ApiEnvelope<T>).data;
+  return apiRequest<T>(path, { ...init, token, fallbackMessage: "The claim request could not be completed." });
 }
 
 export function getClaims(token: string, query: { page: number; limit: number; search?: string; status?: ClaimStatus; productId?: string }) {
