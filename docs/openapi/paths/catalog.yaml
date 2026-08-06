@@ -1,0 +1,175 @@
+/categories:
+  get:
+    tags: [Categories]
+    operationId: listCategories
+    summary: List active categories
+    security: []
+    responses:
+      '200':
+        description: Active category collection.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                statusCode: { type: integer }
+                message: { type: string }
+                data:
+                  type: array
+                  items: { $ref: ../components/schemas.yaml#/Category }
+  post:
+    tags: [Categories]
+    operationId: createCategory
+    summary: Create or reactivate a category
+    security:
+      - FirebaseBearer: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [name]
+            properties:
+              name: { type: string, minLength: 2, maxLength: 100 }
+              icon: { type: string }
+              description: { type: string, maxLength: 500 }
+          example:
+            name: Electronics
+            icon: cpu
+            description: Consumer electronic devices and accessories.
+    responses:
+      '201':
+        description: Category created or restored.
+      '400': { $ref: ../components/responses.yaml#/BadRequest }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+      '409': { $ref: ../components/responses.yaml#/Conflict }
+
+/categories/{id}:
+  parameters:
+    - $ref: ../components/parameters.yaml#/Id
+  patch:
+    tags: [Categories]
+    operationId: updateCategory
+    summary: Update a category
+    security:
+      - FirebaseBearer: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            minProperties: 1
+            properties:
+              name: { type: string, minLength: 2, maxLength: 100 }
+              icon: { type: [string, "null"] }
+              description: { type: [string, "null"], maxLength: 500 }
+              isActive: { type: boolean }
+    responses:
+      '200': { description: Category updated. }
+      '400': { $ref: ../components/responses.yaml#/BadRequest }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+  delete:
+    tags: [Categories]
+    operationId: deleteCategory
+    summary: Deactivate or delete a category
+    security:
+      - FirebaseBearer: []
+    responses:
+      '200': { description: Category removed from active catalog use. }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+      '409': { $ref: ../components/responses.yaml#/Conflict }
+
+/brands:
+  get:
+    tags: [Brands]
+    operationId: listBrands
+    summary: List active brands
+    security: []
+    responses:
+      '200':
+        description: Active brand collection.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                statusCode: { type: integer }
+                message: { type: string }
+                data:
+                  type: array
+                  items: { $ref: ../components/schemas.yaml#/Brand }
+  post:
+    tags: [Brands]
+    operationId: createBrand
+    summary: Create or reactivate a brand
+    security:
+      - FirebaseBearer: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [name]
+            properties:
+              name: { type: string, minLength: 2, maxLength: 100 }
+              description: { type: string, maxLength: 500 }
+              websiteUrl: { type: string, format: uri }
+          example:
+            name: Sony
+            websiteUrl: https://www.sony.com/
+    responses:
+      '201': { description: Brand created or restored. }
+      '400': { $ref: ../components/responses.yaml#/BadRequest }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+      '409': { $ref: ../components/responses.yaml#/Conflict }
+
+/brands/{id}:
+  parameters:
+    - $ref: ../components/parameters.yaml#/Id
+  patch:
+    tags: [Brands]
+    operationId: updateBrand
+    summary: Update a brand
+    security:
+      - FirebaseBearer: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            minProperties: 1
+            properties:
+              name: { type: string, minLength: 2, maxLength: 100 }
+              description: { type: [string, "null"], maxLength: 500 }
+              websiteUrl: { type: [string, "null"], format: uri }
+              isActive: { type: boolean }
+    responses:
+      '200': { description: Brand updated. }
+      '400': { $ref: ../components/responses.yaml#/BadRequest }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+  delete:
+    tags: [Brands]
+    operationId: deleteBrand
+    summary: Deactivate or delete a brand
+    security:
+      - FirebaseBearer: []
+    responses:
+      '200': { description: Brand removed from active catalog use. }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+      '409': { $ref: ../components/responses.yaml#/Conflict }
