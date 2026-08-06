@@ -2,6 +2,19 @@
 
 Backend API for Warranty Wallet, a warranty and purchase-document management platform. The service lets users sync Firebase-authenticated accounts, manage products and warranty data, upload invoice/warranty documents, extract invoice details with Gemini, receive warranty notifications, subscribe to Plus or Pro through Stripe, and export operational reports.
 
+## Related documentation
+
+- [Complete API reference](../docs/API_REFERENCE.md)
+- [Copy-ready API examples](../docs/API_EXAMPLES.md)
+- [API error catalog](../docs/ERROR_CATALOG.md)
+- [Architecture guide](../docs/ARCHITECTURE.md)
+- [Data model guide](../docs/DATA_MODEL.md)
+- [Environment configuration](../docs/ENVIRONMENT.md)
+- [Security guide](../docs/SECURITY.md)
+- [Testing guide](../docs/TESTING.md)
+
+The endpoint tables below provide a backend-oriented overview. Use the complete API reference for the full route inventory and the examples guide for tested request patterns.
+
 ## Table of Contents
 
 - [Tech Stack](#tech-stack)
@@ -213,6 +226,31 @@ Admin-only routes additionally require `req.user.role` to be `ADMIN`.
 
 All endpoints below are mounted under `/api/v1` unless noted otherwise.
 
+### API response contract
+
+Successful JSON responses use the shared `ApiResponse` class:
+
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "Request completed successfully.",
+  "data": {},
+  "meta": null
+}
+```
+
+The `meta` field is included only when pagination or related response metadata exists. Error responses are intentionally smaller:
+
+```json
+{
+  "success": false,
+  "message": "A safe, readable error message."
+}
+```
+
+Clients should use the HTTP status for program behavior and the message for user-facing feedback. Provider error bodies, Prisma details, and stack traces are not part of the public contract.
+
 ### Users
 
 | Method | Endpoint | Auth | Description |
@@ -225,12 +263,12 @@ Example `POST /users/sync` body:
 
 ```json
 {
-  "firebaseUid": "firebase-user-id",
   "name": "Ariyan",
-  "email": "ariyan@example.com",
-  "photo": "https://example.com/photo.png"
+  "photoURL": "https://example.com/photo.png"
 }
 ```
+
+The Firebase UID and email are read from the verified bearer token rather than accepted from the request body.
 
 Example `PATCH /users/profile` body:
 
