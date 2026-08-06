@@ -12,6 +12,7 @@ This directory contains the project documentation that applies across the fronte
 
 - [Environment configuration](./ENVIRONMENT.md) — variable purpose, placement, validation, and rotation.
 - [Testing guide](./TESTING.md) — existing suites, test patterns, provider isolation, and roadmap.
+- [Integration testing](./INTEGRATION_TESTING.md) — isolated PostgreSQL setup, HTTP workflows, safety, and CI guidance.
 - [Contributing](./CONTRIBUTING.md) — branches, commits, code expectations, and pull requests.
 - [Troubleshooting](./TROUBLESHOOTING.md) — common frontend, backend, database, and provider failures.
 
