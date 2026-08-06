@@ -1,0 +1,256 @@
+openapi: 3.1.0
+info:
+  title: Warranty Wallet API
+  version: 2.0.0
+  summary: Warranty, purchase-document, claim, and subscription management API
+  description: |
+    HTTP API used by the Warranty Wallet Next.js application.
+
+    Protected operations use Firebase ID tokens. The API verifies the token,
+    resolves the synchronized PostgreSQL user, and then applies account status,
+    role, ownership, and plan rules.
+
+    Examples contain fictional identifiers and must not be treated as credentials.
+  contact:
+    name: Warranty Wallet maintainers
+    url: https://github.com/SamiunAuntor/Warranty-Wallet-2.0
+  license:
+    name: ISC
+    identifier: ISC
+servers:
+  - url: http://localhost:5000/api/v1
+    description: Local development
+  - url: https://api.example.com/api/v1
+    description: Production placeholder
+tags:
+  - name: Health
+    description: Process health and readiness.
+  - name: Users
+    description: Firebase identity synchronization, profile, avatar, and preferences.
+  - name: Categories
+    description: Public category catalog and administrator maintenance.
+  - name: Brands
+    description: Public brand catalog and administrator maintenance.
+  - name: Assets
+    description: User-owned purchased products and warranty state.
+  - name: Documents
+    description: Purchase records, warranty evidence, and condition media.
+  - name: AI
+    description: Assisted invoice-field extraction with Gemini.
+  - name: Claims
+    description: Warranty claims, evidence attachments, and timeline events.
+  - name: Notifications
+    description: User notification inbox and administrator broadcasts.
+  - name: Activities
+    description: Auditable user and administrator activity records.
+  - name: Payments
+    description: Plans, Stripe Checkout, payments, and subscriptions.
+  - name: Dashboard
+    description: User and administrator analytics.
+  - name: Admin
+    description: Platform administration protected by the ADMIN role.
+  - name: Reports
+    description: PDF and Excel exports.
+  - name: Webhooks
+    description: Signed provider callback endpoints.
+  - name: Operations
+    description: Scheduler and maintenance operations.
+paths:
+  /health:
+    $ref: ./paths/health.yaml
+  /users/sync:
+    $ref: ./paths/users.yaml#/~1users~1sync
+  /users/profile:
+    $ref: ./paths/users.yaml#/~1users~1profile
+  /users/profile/avatar:
+    $ref: ./paths/users.yaml#/~1users~1profile~1avatar
+  /users/preferences:
+    $ref: ./paths/users.yaml#/~1users~1preferences
+  /categories:
+    $ref: ./paths/catalog.yaml#/~1categories
+  /categories/{id}:
+    $ref: ./paths/catalog.yaml#/~1categories~1{id}
+  /brands:
+    $ref: ./paths/catalog.yaml#/~1brands
+  /brands/{id}:
+    $ref: ./paths/catalog.yaml#/~1brands~1{id}
+  /products/dashboard:
+    $ref: ./paths/products.yaml#/~1products~1dashboard
+  /products:
+    $ref: ./paths/products.yaml#/~1products
+  /products/{id}:
+    $ref: ./paths/products.yaml#/~1products~1{id}
+  /products/{productId}/documents:
+    $ref: ./paths/documents.yaml#/~1products~1{productId}~1documents
+  /documents:
+    $ref: ./paths/documents.yaml#/~1documents
+  /documents/statistics:
+    $ref: ./paths/documents.yaml#/~1documents~1statistics
+  /documents/{id}:
+    $ref: ./paths/documents.yaml#/~1documents~1{id}
+  /ai/extract-invoice:
+    $ref: ./paths/ai.yaml#/~1ai~1extract-invoice
+  /claims:
+    $ref: ./paths/claims.yaml#/~1claims
+  /claims/{id}:
+    $ref: ./paths/claims.yaml#/~1claims~1{id}
+  /claims/{id}/timeline:
+    $ref: ./paths/claims.yaml#/~1claims~1{id}~1timeline
+  /claims/{id}/documents:
+    $ref: ./paths/claims.yaml#/~1claims~1{id}~1documents
+  /claims/{id}/documents/{documentId}:
+    $ref: ./paths/claims.yaml#/~1claims~1{id}~1documents~1{documentId}
+  /notifications:
+    $ref: ./paths/engagement.yaml#/~1notifications
+  /notifications/unread-count:
+    $ref: ./paths/engagement.yaml#/~1notifications~1unread-count
+  /notifications/read-all:
+    $ref: ./paths/engagement.yaml#/~1notifications~1read-all
+  /notifications/{id}/read:
+    $ref: ./paths/engagement.yaml#/~1notifications~1{id}~1read
+  /notifications/{id}:
+    $ref: ./paths/engagement.yaml#/~1notifications~1{id}
+  /notifications/broadcast:
+    $ref: ./paths/engagement.yaml#/~1notifications~1broadcast
+  /activities:
+    $ref: ./paths/engagement.yaml#/~1activities
+  /activities/recent:
+    $ref: ./paths/engagement.yaml#/~1activities~1recent
+  /activities/{id}:
+    $ref: ./paths/engagement.yaml#/~1activities~1{id}
+  /payments/plans:
+    $ref: ./paths/payments.yaml#/~1payments~1plans
+  /payments/create-checkout:
+    $ref: ./paths/payments.yaml#/~1payments~1create-checkout
+  /payments/confirm-checkout:
+    $ref: ./paths/payments.yaml#/~1payments~1confirm-checkout
+  /payments:
+    $ref: ./paths/payments.yaml#/~1payments
+  /payments/subscription:
+    $ref: ./paths/payments.yaml#/~1payments~1subscription
+  /payments/change-plan:
+    $ref: ./paths/payments.yaml#/~1payments~1change-plan
+  /payments/cancel-subscription:
+    $ref: ./paths/payments.yaml#/~1payments~1cancel-subscription
+  /payments/resume-subscription:
+    $ref: ./paths/payments.yaml#/~1payments~1resume-subscription
+  /dashboard:
+    $ref: ./paths/dashboard.yaml#/~1dashboard
+  /dashboard/warranty:
+    $ref: ./paths/dashboard.yaml#/~1dashboard~1warranty
+  /dashboard/categories:
+    $ref: ./paths/dashboard.yaml#/~1dashboard~1categories
+  /dashboard/admin:
+    $ref: ./paths/dashboard.yaml#/~1dashboard~1admin
+  /dashboard/admin/revenue:
+    $ref: ./paths/dashboard.yaml#/~1dashboard~1admin~1revenue
+  /dashboard/admin/product-growth:
+    $ref: ./paths/dashboard.yaml#/~1dashboard~1admin~1product-growth
+  /admin/dashboard:
+    $ref: ./paths/admin.yaml#/~1admin~1dashboard
+  /admin/users:
+    $ref: ./paths/admin.yaml#/~1admin~1users
+  /admin/users/{id}:
+    $ref: ./paths/admin.yaml#/~1admin~1users~1{id}
+  /admin/users/{id}/block:
+    $ref: ./paths/admin.yaml#/~1admin~1users~1{id}~1block
+  /admin/users/{id}/unblock:
+    $ref: ./paths/admin.yaml#/~1admin~1users~1{id}~1unblock
+  /admin/products:
+    $ref: ./paths/admin.yaml#/~1admin~1products
+  /admin/products/{id}:
+    $ref: ./paths/admin.yaml#/~1admin~1products~1{id}
+  /admin/payments:
+    $ref: ./paths/admin.yaml#/~1admin~1payments
+  /admin/payments/{id}:
+    $ref: ./paths/admin.yaml#/~1admin~1payments~1{id}
+  /admin/categories:
+    $ref: ./paths/admin.yaml#/~1admin~1categories
+  /admin/brands:
+    $ref: ./paths/admin.yaml#/~1admin~1brands
+  /admin/claims:
+    $ref: ./paths/admin.yaml#/~1admin~1claims
+  /admin/claims/{id}/status:
+    $ref: ./paths/admin.yaml#/~1admin~1claims~1{id}~1status
+  /admin/notifications:
+    $ref: ./paths/admin.yaml#/~1admin~1notifications
+  /reports/products:
+    $ref: ./paths/reports.yaml#/~1reports~1products
+  /reports/warranty:
+    $ref: ./paths/reports.yaml#/~1reports~1warranty
+  /reports/payments:
+    $ref: ./paths/reports.yaml#/~1reports~1payments
+  /reports/admin/users:
+    $ref: ./paths/reports.yaml#/~1reports~1admin~1users
+  /reports/admin/revenue:
+    $ref: ./paths/reports.yaml#/~1reports~1admin~1revenue
+  /reports/admin/categories:
+    $ref: ./paths/reports.yaml#/~1reports~1admin~1categories
+  /webhooks/stripe:
+    $ref: ./paths/operations.yaml#/~1webhooks~1stripe
+  /cron/warranty:
+    $ref: ./paths/operations.yaml#/~1cron~1warranty
+components:
+  securitySchemes:
+    FirebaseBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: Firebase ID token
+      description: Firebase ID token issued to the signed-in browser user.
+  parameters:
+    Id:
+      $ref: ./components/parameters.yaml#/Id
+    Page:
+      $ref: ./components/parameters.yaml#/Page
+    Limit:
+      $ref: ./components/parameters.yaml#/Limit
+    Search:
+      $ref: ./components/parameters.yaml#/Search
+    SortOrder:
+      $ref: ./components/parameters.yaml#/SortOrder
+  responses:
+    BadRequest:
+      $ref: ./components/responses.yaml#/BadRequest
+    Unauthorized:
+      $ref: ./components/responses.yaml#/Unauthorized
+    Forbidden:
+      $ref: ./components/responses.yaml#/Forbidden
+    NotFound:
+      $ref: ./components/responses.yaml#/NotFound
+    Conflict:
+      $ref: ./components/responses.yaml#/Conflict
+    TooManyRequests:
+      $ref: ./components/responses.yaml#/TooManyRequests
+    ServerError:
+      $ref: ./components/responses.yaml#/ServerError
+    ServiceUnavailable:
+      $ref: ./components/responses.yaml#/ServiceUnavailable
+  schemas:
+    ApiError:
+      $ref: ./components/schemas.yaml#/ApiError
+    PaginationMeta:
+      $ref: ./components/schemas.yaml#/PaginationMeta
+    User:
+      $ref: ./components/schemas.yaml#/User
+    UserPreference:
+      $ref: ./components/schemas.yaml#/UserPreference
+    Category:
+      $ref: ./components/schemas.yaml#/Category
+    Brand:
+      $ref: ./components/schemas.yaml#/Brand
+    Product:
+      $ref: ./components/schemas.yaml#/Product
+    Document:
+      $ref: ./components/schemas.yaml#/Document
+    Claim:
+      $ref: ./components/schemas.yaml#/Claim
+    ClaimTimelineEvent:
+      $ref: ./components/schemas.yaml#/ClaimTimelineEvent
+    Notification:
+      $ref: ./components/schemas.yaml#/Notification
+    ActivityLog:
+      $ref: ./components/schemas.yaml#/ActivityLog
+    Payment:
+      $ref: ./components/schemas.yaml#/Payment
+    Subscription:
+      $ref: ./components/schemas.yaml#/Subscription

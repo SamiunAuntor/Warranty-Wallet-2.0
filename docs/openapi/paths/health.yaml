@@ -1,0 +1,30 @@
+get:
+  tags: [Health]
+  operationId: getHealth
+  summary: Check API health
+  description: Returns process health, runtime environment, and server timestamp.
+  security: []
+  responses:
+    '200':
+      description: API process is accepting requests.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [success, message, environment, timestamp]
+            properties:
+              success:
+                type: boolean
+                const: true
+              message:
+                type: string
+              environment:
+                type: string
+              timestamp:
+                type: string
+                format: date-time
+          example:
+            success: true
+            message: Warranty Wallet API is healthy.
+            environment: development
+            timestamp: '2026-08-07T00:00:00.000Z'

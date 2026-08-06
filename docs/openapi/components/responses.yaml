@@ -1,0 +1,80 @@
+BadRequest:
+  description: Request validation or business-rule failure.
+  content:
+    application/json:
+      schema:
+        $ref: ./schemas.yaml#/ApiError
+      example:
+        success: false
+        message: The request contains invalid data.
+
+Unauthorized:
+  description: Missing, invalid, or expired authentication.
+  content:
+    application/json:
+      schema:
+        $ref: ./schemas.yaml#/ApiError
+      example:
+        success: false
+        message: Authentication is required.
+
+Forbidden:
+  description: Authenticated user lacks role or ownership access.
+  content:
+    application/json:
+      schema:
+        $ref: ./schemas.yaml#/ApiError
+      example:
+        success: false
+        message: You do not have permission to perform this action.
+
+NotFound:
+  description: Resource does not exist within the permitted scope.
+  content:
+    application/json:
+      schema:
+        $ref: ./schemas.yaml#/ApiError
+      example:
+        success: false
+        message: Resource not found.
+
+Conflict:
+  description: Unique value or lifecycle-state conflict.
+  content:
+    application/json:
+      schema:
+        $ref: ./schemas.yaml#/ApiError
+      example:
+        success: false
+        message: The resource conflicts with existing state.
+
+TooManyRequests:
+  description: API rate limit exceeded.
+  content:
+    application/json:
+      schema:
+        $ref: ./schemas.yaml#/ApiError
+      example:
+        success: false
+        message: Too many requests. Try again later.
+
+ServerError:
+  description: Unexpected internal failure.
+  content:
+    application/json:
+      schema:
+        $ref: ./schemas.yaml#/ApiError
+      example:
+        success: false
+        message: An unexpected error occurred.
+
+ServiceUnavailable:
+  description: Database or upstream provider is temporarily unavailable.
+  content:
+    application/json:
+      schema:
+        $ref: ./schemas.yaml#/ApiError
+      example:
+        success: false
+        message: The service is temporarily unavailable. Please retry.
+

@@ -1,0 +1,475 @@
+ApiError:
+  type: object
+  required: [success, message]
+  properties:
+    success:
+      type: boolean
+      const: false
+    message:
+      type: string
+  additionalProperties: false
+
+PaginationMeta:
+  type: object
+  required: [page, limit, total, totalPages]
+  properties:
+    page:
+      type: integer
+      minimum: 1
+    limit:
+      type: integer
+      minimum: 1
+      maximum: 100
+    total:
+      type: integer
+      minimum: 0
+    totalPages:
+      type: integer
+      minimum: 0
+
+TimestampFields:
+  type: object
+  properties:
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+User:
+  type: object
+  required: [id, firebaseUid, name, email, role, status, plan, createdAt, updatedAt]
+  properties:
+    id:
+      type: string
+    firebaseUid:
+      type: string
+    name:
+      type: string
+    email:
+      type: string
+      format: email
+    phone:
+      type: [string, "null"]
+    photoURL:
+      type: [string, "null"]
+      format: uri
+    avatarSource:
+      type: string
+      enum: [NONE, GOOGLE, CUSTOM]
+    emailVerified:
+      type: boolean
+    role:
+      type: string
+      enum: [USER, ADMIN]
+    status:
+      type: string
+      enum: [ACTIVE, BLOCKED, DELETED]
+    plan:
+      type: string
+      enum: [BASIC, PLUS, PRO]
+    lastLoginAt:
+      type: [string, "null"]
+      format: date-time
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+UserPreference:
+  type: object
+  required: [id, userId, warrantyReminders, reminderDays, timezone, currency, dateFormat]
+  properties:
+    id:
+      type: string
+    userId:
+      type: string
+    warrantyReminders:
+      type: boolean
+    reminderDays:
+      type: array
+      minItems: 1
+      maxItems: 5
+      uniqueItems: true
+      items:
+        type: integer
+        minimum: 1
+        maximum: 365
+    timezone:
+      type: string
+      examples: [UTC, Asia/Dhaka]
+    currency:
+      type: string
+      enum: [USD, BDT, EUR, GBP, CAD, AUD]
+    dateFormat:
+      type: string
+      enum: [MMM_D_YYYY, DD_MM_YYYY, MM_DD_YYYY]
+
+Category:
+  type: object
+  required: [id, name, slug, isActive, createdAt, updatedAt]
+  properties:
+    id:
+      type: string
+    name:
+      type: string
+    slug:
+      type: string
+    icon:
+      type: [string, "null"]
+    description:
+      type: [string, "null"]
+    isActive:
+      type: boolean
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+Brand:
+  type: object
+  required: [id, name, slug, isActive, createdAt, updatedAt]
+  properties:
+    id:
+      type: string
+    name:
+      type: string
+    slug:
+      type: string
+    description:
+      type: [string, "null"]
+    websiteUrl:
+      type: [string, "null"]
+      format: uri
+    isActive:
+      type: boolean
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+Product:
+  type: object
+  required:
+    - id
+    - userId
+    - categoryId
+    - name
+    - brand
+    - purchasePrice
+    - purchaseDate
+    - hasWarranty
+    - warrantyStatus
+    - lifecycleStatus
+    - createdAt
+    - updatedAt
+  properties:
+    id:
+      type: string
+    userId:
+      type: string
+    categoryId:
+      type: string
+    brandId:
+      type: [string, "null"]
+    name:
+      type: string
+    brand:
+      type: string
+    model:
+      type: [string, "null"]
+    serialNumber:
+      type: [string, "null"]
+    barcode:
+      type: [string, "null"]
+    purchasePrice:
+      oneOf:
+        - type: number
+        - type: string
+      description: Decimal value serialized according to the response layer.
+    purchaseDate:
+      type: string
+      format: date-time
+    hasWarranty:
+      type: boolean
+    warrantyDuration:
+      type: [integer, "null"]
+    warrantyType:
+      type: [string, "null"]
+      enum: [MANUFACTURER, EXTENDED, null]
+    expiryDate:
+      type: [string, "null"]
+      format: date-time
+    warrantyStatus:
+      type: string
+      enum: [NO_WARRANTY, ACTIVE, EXPIRING_SOON, EXPIRED]
+    lifecycleStatus:
+      type: string
+      enum: [ADDED, ARCHIVED]
+    sellerName:
+      type: [string, "null"]
+    sellerPhone:
+      type: [string, "null"]
+    sellerEmail:
+      type: [string, "null"]
+      format: email
+    sellerAddress:
+      type: [string, "null"]
+    productImageUrl:
+      type: [string, "null"]
+      format: uri
+    notes:
+      type: [string, "null"]
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+Document:
+  type: object
+  required: [id, userId, productId, fileName, fileType, fileUrl, publicId, provider, ocrProcessed, createdAt, updatedAt]
+  properties:
+    id:
+      type: string
+    userId:
+      type: string
+    productId:
+      type: string
+    fileName:
+      type: string
+    fileType:
+      type: string
+    fileSize:
+      type: [integer, "null"]
+    fileUrl:
+      type: string
+      format: uri
+    publicId:
+      type: string
+    provider:
+      type: string
+    invoiceNumber:
+      type: [string, "null"]
+    vendorName:
+      type: [string, "null"]
+    ocrProcessed:
+      type: boolean
+    ocrConfidence:
+      type: [number, "null"]
+    ocrRaw:
+      type: [object, "null"]
+      additionalProperties: true
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+Claim:
+  type: object
+  required: [id, claimNumber, userId, productId, title, issueDescription, status, createdAt, updatedAt]
+  properties:
+    id:
+      type: string
+    claimNumber:
+      type: string
+    userId:
+      type: string
+    productId:
+      type: string
+    title:
+      type: string
+    issueDescription:
+      type: string
+    serviceCenter:
+      type: [string, "null"]
+    providerReference:
+      type: [string, "null"]
+    submittedCondition:
+      type: [string, "null"]
+    resolution:
+      type: [string, "null"]
+    status:
+      type: string
+      enum: [SUBMITTED, IN_PROGRESS, RESOLVED, REJECTED, CANCELLED]
+    filedAt:
+      type: [string, "null"]
+      format: date-time
+    resolvedAt:
+      type: [string, "null"]
+      format: date-time
+    timeline:
+      type: array
+      items:
+        $ref: '#/ClaimTimelineEvent'
+    documents:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+ClaimTimelineEvent:
+  type: object
+  required: [id, claimId, title, createdAt]
+  properties:
+    id:
+      type: string
+    claimId:
+      type: string
+    status:
+      type: [string, "null"]
+      enum: [SUBMITTED, IN_PROGRESS, RESOLVED, REJECTED, CANCELLED, null]
+    title:
+      type: string
+    description:
+      type: [string, "null"]
+    createdAt:
+      type: string
+      format: date-time
+
+Notification:
+  type: object
+  required: [id, userId, title, message, type, isRead, createdAt, updatedAt]
+  properties:
+    id:
+      type: string
+    userId:
+      type: string
+    title:
+      type: string
+    message:
+      type: string
+    type:
+      type: string
+      enum: [REMINDER, PAYMENT, SUBSCRIPTION, SYSTEM]
+    entityId:
+      type: [string, "null"]
+    eventKey:
+      type: [string, "null"]
+    emailSentAt:
+      type: [string, "null"]
+      format: date-time
+    isRead:
+      type: boolean
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+ActivityLog:
+  type: object
+  required: [id, userId, type, entity, title, createdAt]
+  properties:
+    id:
+      type: string
+    userId:
+      type: string
+    type:
+      type: string
+    entity:
+      type: string
+    entityId:
+      type: [string, "null"]
+    title:
+      type: string
+    description:
+      type: [string, "null"]
+    metadata:
+      type: [object, "null"]
+      additionalProperties: true
+    createdAt:
+      type: string
+      format: date-time
+
+Payment:
+  type: object
+  required: [id, userId, stripeSessionId, amount, currency, paymentMethod, status, createdAt, updatedAt]
+  properties:
+    id:
+      type: string
+    userId:
+      type: string
+    stripeSessionId:
+      type: string
+    stripePaymentIntent:
+      type: [string, "null"]
+    stripeInvoiceId:
+      type: [string, "null"]
+    amount:
+      oneOf:
+        - type: number
+        - type: string
+    currency:
+      type: string
+    paymentMethod:
+      type: string
+    plan:
+      type: [string, "null"]
+      enum: [BASIC, PLUS, PRO, null]
+    status:
+      type: string
+      enum: [PENDING, SUCCESS, FAILED, REFUNDED]
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+Subscription:
+  type: object
+  required: [id, userId, plan, status, startsAt, expiresAt, isActive, cancelAtPeriodEnd]
+  properties:
+    id:
+      type: string
+    userId:
+      type: string
+    plan:
+      type: string
+      enum: [BASIC, PLUS, PRO]
+    scheduledPlan:
+      type: [string, "null"]
+      enum: [BASIC, PLUS, PRO, null]
+    pendingPlan:
+      type: [string, "null"]
+      enum: [BASIC, PLUS, PRO, null]
+    status:
+      type: string
+      enum: [ACTIVE, INCOMPLETE, PAST_DUE, EXPIRED, CANCELLED]
+    startsAt:
+      type: string
+      format: date-time
+    expiresAt:
+      type: string
+      format: date-time
+    currentPeriodStart:
+      type: [string, "null"]
+      format: date-time
+    currentPeriodEnd:
+      type: [string, "null"]
+      format: date-time
+    cancelAtPeriodEnd:
+      type: boolean
+    cancelledAt:
+      type: [string, "null"]
+      format: date-time
+    isActive:
+      type: boolean

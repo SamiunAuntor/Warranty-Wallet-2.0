@@ -1,0 +1,49 @@
+Id:
+  name: id
+  in: path
+  required: true
+  description: CUID of the requested resource.
+  schema:
+    type: string
+    minLength: 20
+  example: cm12345678901234567890123
+
+Page:
+  name: page
+  in: query
+  description: One-based result page.
+  schema:
+    type: integer
+    minimum: 1
+    default: 1
+  example: 1
+
+Limit:
+  name: limit
+  in: query
+  description: Results per page. The API caps the value at 100.
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 100
+    default: 10
+  example: 20
+
+Search:
+  name: search
+  in: query
+  description: Case-insensitive free-text search term.
+  schema:
+    type: string
+    maxLength: 150
+  example: headphones
+
+SortOrder:
+  name: sortOrder
+  in: query
+  description: Direction applied to the selected sort field.
+  schema:
+    type: string
+    enum: [asc, desc]
+    default: desc
+
