@@ -1,0 +1,63 @@
+/ai/extract-invoice:
+  post:
+    tags: [AI]
+    operationId: extractInvoice
+    summary: Extract structured purchase fields from an invoice
+    description: |
+      Sends a supported PDF or image to the configured Gemini multimodal model.
+      Returned values are suggestions and must be reviewed before asset creation.
+    security:
+      - FirebaseBearer: []
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            type: object
+            required: [file]
+            properties:
+              file:
+                type: string
+                format: binary
+    responses:
+      '200':
+        description: Structured fields extracted from the document.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                statusCode: { type: integer }
+                message: { type: string }
+                data:
+                  type: object
+                  properties:
+                    productName: { type: string }
+                    brand: { type: string }
+                    purchaseDate: { type: string, format: date }
+                    purchasePrice: { type: number }
+                    sellerName: { type: string }
+                    invoiceNumber: { type: string }
+                    warrantyDuration: { type: [integer, "null"] }
+            example:
+              success: true
+              statusCode: 200
+              message: Invoice extracted successfully.
+              data:
+                productName: Wireless Headphones
+                brand: Sony
+                purchaseDate: '2026-08-01'
+                purchasePrice: 44990
+                sellerName: Example Electronics
+                invoiceNumber: INV-DEMO-100
+                warrantyDuration: 12
+      '400': { $ref: ../components/responses.yaml#/BadRequest }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '413': { description: Invoice exceeds the 5 MB limit. }
+      '502':
+        description: Gemini returned an unavailable model or unusable response.
+        content:
+          application/json:
+            schema: { $ref: ../components/schemas.yaml#/ApiError }
+      '503': { $ref: ../components/responses.yaml#/ServiceUnavailable }

@@ -1,0 +1,188 @@
+/products/dashboard:
+  get:
+    tags: [Assets]
+    operationId: getProductDashboardStats
+    summary: Read owned asset summary statistics
+    security:
+      - FirebaseBearer: []
+    responses:
+      '200':
+        description: Asset and warranty summary.
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+
+/products:
+  get:
+    tags: [Assets]
+    operationId: listProducts
+    summary: List assets owned by the authenticated user
+    security:
+      - FirebaseBearer: []
+    parameters:
+      - $ref: ../components/parameters.yaml#/Page
+      - $ref: ../components/parameters.yaml#/Limit
+      - $ref: ../components/parameters.yaml#/Search
+      - name: categoryId
+        in: query
+        schema: { type: string }
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum: [NO_WARRANTY, ACTIVE, EXPIRING_SOON, EXPIRED]
+      - name: lifecycleStatus
+        in: query
+        schema:
+          type: string
+          enum: [ADDED, ARCHIVED]
+      - name: sortBy
+        in: query
+        schema:
+          type: string
+          enum: [createdAt, name, brand, purchaseDate, expiryDate, purchasePrice]
+      - $ref: ../components/parameters.yaml#/SortOrder
+    responses:
+      '200':
+        description: Paginated owned assets.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                statusCode: { type: integer }
+                message: { type: string }
+                data:
+                  type: array
+                  items: { $ref: ../components/schemas.yaml#/Product }
+                meta: { $ref: ../components/schemas.yaml#/PaginationMeta }
+      '400': { $ref: ../components/responses.yaml#/BadRequest }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+  post:
+    tags: [Assets]
+    operationId: createProduct
+    summary: Create an owned asset
+    description: Calculates warranty expiry/status and enforces the user's plan limit.
+    security:
+      - FirebaseBearer: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProductInput'
+          example:
+            name: Wireless Headphones
+            brand: Sony
+            model: WH-1000XM6
+            serialNumber: DEMO-0001
+            categoryId: cm12345678901234567890123
+            purchasePrice: 44990
+            purchaseDate: '2026-08-01'
+            hasWarranty: true
+            warrantyDuration: 12
+            warrantyType: MANUFACTURER
+            sellerName: Example Electronics
+            sellerEmail: support@example.com
+    responses:
+      '201':
+        description: Asset created.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                statusCode: { type: integer, const: 201 }
+                message: { type: string }
+                data: { $ref: ../components/schemas.yaml#/Product }
+      '400': { $ref: ../components/responses.yaml#/BadRequest }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '409': { $ref: ../components/responses.yaml#/Conflict }
+
+/products/{id}:
+  parameters:
+    - $ref: ../components/parameters.yaml#/Id
+  get:
+    tags: [Assets]
+    operationId: getProduct
+    summary: Read one owned asset
+    security:
+      - FirebaseBearer: []
+    responses:
+      '200':
+        description: Asset details with related data.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                statusCode: { type: integer }
+                message: { type: string }
+                data: { $ref: ../components/schemas.yaml#/Product }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+  patch:
+    tags: [Assets]
+    operationId: updateProduct
+    summary: Update an owned asset
+    security:
+      - FirebaseBearer: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ProductInput'
+              - type: object
+            description: Partial product input; at least one supported field is required.
+    responses:
+      '200': { description: Asset updated. }
+      '400': { $ref: ../components/responses.yaml#/BadRequest }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+  delete:
+    tags: [Assets]
+    operationId: deleteProduct
+    summary: Delete or archive an owned asset
+    security:
+      - FirebaseBearer: []
+    responses:
+      '200': { description: Asset removed according to lifecycle policy. }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+      '409': { $ref: ../components/responses.yaml#/Conflict }
+
+components:
+  schemas:
+    ProductInput:
+      type: object
+      required: [name, brand, categoryId, purchasePrice, purchaseDate, hasWarranty]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 150 }
+        brand: { type: string, minLength: 1, maxLength: 100 }
+        brandId: { type: [string, "null"] }
+        model: { type: [string, "null"], maxLength: 100 }
+        serialNumber: { type: [string, "null"], maxLength: 150 }
+        barcode: { type: [string, "null"], maxLength: 150 }
+        categoryId: { type: string }
+        purchasePrice: { type: number, minimum: 0 }
+        purchaseDate: { type: string, format: date }
+        hasWarranty: { type: boolean }
+        warrantyDuration: { type: [integer, "null"], minimum: 1 }
+        warrantyType:
+          type: [string, "null"]
+          enum: [MANUFACTURER, EXTENDED, null]
+        sellerName: { type: [string, "null"], maxLength: 200 }
+        sellerPhone: { type: [string, "null"], maxLength: 30 }
+        sellerEmail: { type: [string, "null"], format: email }
+        sellerAddress: { type: [string, "null"], maxLength: 500 }
+        productImage: { type: [string, "null"], format: uri }
+        notes: { type: [string, "null"], maxLength: 3000 }
+

@@ -1,0 +1,176 @@
+/products/{productId}/documents:
+  parameters:
+    - name: productId
+      in: path
+      required: true
+      schema: { type: string }
+  post:
+    tags: [Documents]
+    operationId: uploadProductDocuments
+    summary: Upload documents for an owned asset
+    description: Accepts up to the configured file count after ownership and signature checks.
+    security:
+      - FirebaseBearer: []
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            type: object
+            required: [type, files]
+            properties:
+              type:
+                type: string
+                enum: [INVOICE, WARRANTY_CARD, PRODUCT_IMAGE, RECEIPT, OTHER, CLAIM_EVIDENCE, CLAIM_CONDITION]
+              extractedData:
+                type: string
+                maxLength: 10000
+              files:
+                type: array
+                maxItems: 5
+                items:
+                  type: string
+                  format: binary
+    responses:
+      '201': { description: Documents uploaded and recorded. }
+      '400': { $ref: ../components/responses.yaml#/BadRequest }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+      '413': { description: File exceeds the 5 MB limit. }
+      '503': { $ref: ../components/responses.yaml#/ServiceUnavailable }
+  get:
+    tags: [Documents]
+    operationId: listProductDocuments
+    summary: List documents belonging to an owned asset
+    security:
+      - FirebaseBearer: []
+    responses:
+      '200':
+        description: Asset document collection.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                statusCode: { type: integer }
+                message: { type: string }
+                data:
+                  type: array
+                  items: { $ref: ../components/schemas.yaml#/Document }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+
+/documents:
+  get:
+    tags: [Documents]
+    operationId: listDocuments
+    summary: List all documents owned by the authenticated user
+    security:
+      - FirebaseBearer: []
+    parameters:
+      - $ref: ../components/parameters.yaml#/Page
+      - $ref: ../components/parameters.yaml#/Limit
+      - $ref: ../components/parameters.yaml#/Search
+      - name: type
+        in: query
+        schema:
+          type: string
+          enum: [INVOICE, WARRANTY_CARD, PRODUCT_IMAGE, RECEIPT, OTHER, CLAIM_EVIDENCE, CLAIM_CONDITION]
+      - name: productId
+        in: query
+        schema: { type: string }
+    responses:
+      '200':
+        description: Paginated owned documents.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                statusCode: { type: integer }
+                message: { type: string }
+                data:
+                  type: array
+                  items: { $ref: ../components/schemas.yaml#/Document }
+                meta: { $ref: ../components/schemas.yaml#/PaginationMeta }
+      '400': { $ref: ../components/responses.yaml#/BadRequest }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+
+/documents/statistics:
+  get:
+    tags: [Documents]
+    operationId: getDocumentStatistics
+    summary: Read document totals for the authenticated user
+    security:
+      - FirebaseBearer: []
+    responses:
+      '200':
+        description: Document totals grouped by type and processing state.
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+
+/documents/{id}:
+  parameters:
+    - $ref: ../components/parameters.yaml#/Id
+  get:
+    tags: [Documents]
+    operationId: getDocument
+    summary: Read one owned document
+    security:
+      - FirebaseBearer: []
+    responses:
+      '200':
+        description: Document details.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                statusCode: { type: integer }
+                message: { type: string }
+                data: { $ref: ../components/schemas.yaml#/Document }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+  patch:
+    tags: [Documents]
+    operationId: replaceDocument
+    summary: Replace the file for an owned document
+    security:
+      - FirebaseBearer: []
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            type: object
+            required: [file]
+            properties:
+              file:
+                type: string
+                format: binary
+    responses:
+      '200': { description: Replacement uploaded and document updated. }
+      '400': { $ref: ../components/responses.yaml#/BadRequest }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+      '409': { $ref: ../components/responses.yaml#/Conflict }
+      '413': { description: Replacement exceeds the 5 MB limit. }
+  delete:
+    tags: [Documents]
+    operationId: deleteDocument
+    summary: Delete an owned document
+    security:
+      - FirebaseBearer: []
+    responses:
+      '200': { description: Document and provider object deleted. }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+      '409': { $ref: ../components/responses.yaml#/Conflict }
+
