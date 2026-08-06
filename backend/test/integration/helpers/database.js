@@ -89,6 +89,68 @@ const createDatabaseHarness = (prisma) => {
         })
     );
 
+    const createNotification = async (userId, overrides = {}) => (
+        prisma.notification.create({
+            data: {
+                userId,
+                title: overrides.title || "Integration notification",
+                message: overrides.message || "A workflow event occurred.",
+                type: overrides.type || "SYSTEM",
+                entityId: overrides.entityId,
+                eventKey: overrides.eventKey || unique("event"),
+                isRead: overrides.isRead ?? false,
+            },
+        })
+    );
+
+    const createActivity = async (userId, overrides = {}) => (
+        prisma.activityLog.create({
+            data: {
+                userId,
+                type: overrides.type || "PROFILE_UPDATED",
+                entity: overrides.entity || "USER",
+                entityId: overrides.entityId || userId,
+                title: overrides.title || "Integration activity",
+                description: overrides.description || "Recorded by an integration fixture.",
+                metadata: overrides.metadata,
+            },
+        })
+    );
+
+    const createPayment = async (userId, overrides = {}) => (
+        prisma.payment.create({
+            data: {
+                userId,
+                stripeSessionId: overrides.stripeSessionId || unique("stripe-session"),
+                stripePaymentIntent: overrides.stripePaymentIntent,
+                stripeInvoiceId: overrides.stripeInvoiceId,
+                amount: overrides.amount || 9.99,
+                currency: overrides.currency || "usd",
+                paymentMethod: overrides.paymentMethod || "card",
+                plan: overrides.plan || "PLUS",
+                status: overrides.status || "SUCCESS",
+            },
+        })
+    );
+
+    const createSubscription = async (userId, overrides = {}) => {
+        const startsAt = overrides.startsAt || new Date("2026-01-01T00:00:00.000Z");
+        return prisma.subscription.create({
+            data: {
+                userId,
+                latestPaymentId: overrides.latestPaymentId,
+                plan: overrides.plan || "PLUS",
+                status: overrides.status || "ACTIVE",
+                startsAt,
+                expiresAt: overrides.expiresAt || new Date("2027-01-01T00:00:00.000Z"),
+                currentPeriodStart: overrides.currentPeriodStart || startsAt,
+                currentPeriodEnd: overrides.currentPeriodEnd || new Date("2026-02-01T00:00:00.000Z"),
+                cancelAtPeriodEnd: overrides.cancelAtPeriodEnd ?? false,
+                isActive: overrides.isActive ?? true,
+            },
+        });
+    };
+
     const cleanup = async () => {
         const userIds = [...created.userIds];
         if (userIds.length) {
@@ -107,10 +169,14 @@ const createDatabaseHarness = (prisma) => {
     };
 
     return {
+        createActivity,
         createBrand,
         createCategory,
         createDocument,
+        createNotification,
+        createPayment,
         createProduct,
+        createSubscription,
         createUser,
         cleanup,
         unique,
