@@ -151,6 +151,32 @@ const createDatabaseHarness = (prisma) => {
         });
     };
 
+    const createClaim = async (userId, productId, overrides = {}) => (
+        prisma.claim.create({
+            data: {
+                claimNumber: overrides.claimNumber || unique("claim"),
+                userId,
+                productId,
+                title: overrides.title || "Integration warranty claim",
+                issueDescription: overrides.issueDescription || "The product stopped operating during normal use.",
+                serviceCenter: overrides.serviceCenter,
+                providerReference: overrides.providerReference,
+                submittedCondition: overrides.submittedCondition,
+                resolution: overrides.resolution,
+                status: overrides.status || "SUBMITTED",
+                filedAt: overrides.filedAt || new Date("2026-02-01T00:00:00.000Z"),
+                timeline: {
+                    create: {
+                        status: overrides.status || "SUBMITTED",
+                        title: "Claim submitted",
+                        description: "Initial integration-test event.",
+                    },
+                },
+            },
+            include: { timeline: true },
+        })
+    );
+
     const cleanup = async () => {
         const userIds = [...created.userIds];
         if (userIds.length) {
@@ -172,6 +198,7 @@ const createDatabaseHarness = (prisma) => {
         createActivity,
         createBrand,
         createCategory,
+        createClaim,
         createDocument,
         createNotification,
         createPayment,
