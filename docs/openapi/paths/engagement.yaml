@@ -1,0 +1,172 @@
+/notifications:
+  get:
+    tags: [Notifications]
+    operationId: listNotifications
+    summary: List notifications for the authenticated user
+    security: [{ FirebaseBearer: [] }]
+    parameters:
+      - $ref: ../components/parameters.yaml#/Page
+      - $ref: ../components/parameters.yaml#/Limit
+    responses:
+      '200':
+        description: Paginated notification collection.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                statusCode: { type: integer }
+                message: { type: string }
+                data:
+                  type: array
+                  items: { $ref: ../components/schemas.yaml#/Notification }
+                meta: { $ref: ../components/schemas.yaml#/PaginationMeta }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+
+/notifications/unread-count:
+  get:
+    tags: [Notifications]
+    operationId: getUnreadNotificationCount
+    summary: Count unread notifications
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200':
+        description: Unread total.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                data:
+                  type: object
+                  properties:
+                    count: { type: integer, minimum: 0 }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+
+/notifications/read-all:
+  patch:
+    tags: [Notifications]
+    operationId: markAllNotificationsRead
+    summary: Mark every owned notification as read
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200': { description: All notifications marked read. }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+
+/notifications/{id}/read:
+  parameters:
+    - $ref: ../components/parameters.yaml#/Id
+  patch:
+    tags: [Notifications]
+    operationId: markNotificationRead
+    summary: Mark one owned notification as read
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200': { description: Notification marked read. }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+
+/notifications/{id}:
+  parameters:
+    - $ref: ../components/parameters.yaml#/Id
+  delete:
+    tags: [Notifications]
+    operationId: deleteNotification
+    summary: Delete one owned notification
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200': { description: Notification deleted. }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+
+/notifications/broadcast:
+  post:
+    tags: [Notifications]
+    operationId: broadcastNotification
+    summary: Broadcast a system notification
+    description: Requires the ADMIN role.
+    security: [{ FirebaseBearer: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [title, message, type]
+            properties:
+              title: { type: string, minLength: 3, maxLength: 100 }
+              message: { type: string, minLength: 5, maxLength: 1000 }
+              type: { type: string, enum: [SYSTEM] }
+    responses:
+      '201': { description: Broadcast notifications created. }
+      '400': { $ref: ../components/responses.yaml#/BadRequest }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+
+/activities:
+  get:
+    tags: [Activities]
+    operationId: listActivities
+    summary: List activity records for the authenticated user
+    security: [{ FirebaseBearer: [] }]
+    parameters:
+      - $ref: ../components/parameters.yaml#/Page
+      - $ref: ../components/parameters.yaml#/Limit
+    responses:
+      '200':
+        description: Paginated activity collection.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                data:
+                  type: array
+                  items: { $ref: ../components/schemas.yaml#/ActivityLog }
+                meta: { $ref: ../components/schemas.yaml#/PaginationMeta }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+
+/activities/recent:
+  get:
+    tags: [Activities]
+    operationId: listRecentActivities
+    summary: Read the most recent owned activity records
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200':
+        description: Recent activity collection.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                data:
+                  type: array
+                  items: { $ref: ../components/schemas.yaml#/ActivityLog }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+
+/activities/{id}:
+  parameters:
+    - $ref: ../components/parameters.yaml#/Id
+  get:
+    tags: [Activities]
+    operationId: getActivity
+    summary: Read one owned activity record
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200':
+        description: Activity details.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                data: { $ref: ../components/schemas.yaml#/ActivityLog }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+

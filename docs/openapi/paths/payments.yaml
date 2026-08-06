@@ -1,0 +1,166 @@
+/payments/plans:
+  get:
+    tags: [Payments]
+    operationId: listPlans
+    summary: List available plans, prices, and asset limits
+    security: []
+    responses:
+      '200':
+        description: Public plan catalog.
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+
+/payments/create-checkout:
+  post:
+    tags: [Payments]
+    operationId: createCheckout
+    summary: Create a Stripe Checkout session
+    security: [{ FirebaseBearer: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [plan]
+            properties:
+              plan: { type: string, enum: [PLUS, PRO] }
+          example: { plan: PLUS }
+    responses:
+      '200':
+        description: Checkout session created.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                data:
+                  type: object
+                  properties:
+                    sessionId: { type: string }
+                    url: { type: string, format: uri }
+      '400': { $ref: ../components/responses.yaml#/BadRequest }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '503': { $ref: ../components/responses.yaml#/ServiceUnavailable }
+
+/payments/confirm-checkout:
+  post:
+    tags: [Payments]
+    operationId: confirmCheckout
+    summary: Confirm ownership and paid status for a Checkout session
+    security: [{ FirebaseBearer: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [sessionId]
+            properties:
+              sessionId: { type: string, minLength: 1 }
+          example: { sessionId: cs_test_example }
+    responses:
+      '200': { description: Checkout reconciled with application state. }
+      '400': { $ref: ../components/responses.yaml#/BadRequest }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '403': { $ref: ../components/responses.yaml#/Forbidden }
+      '409': { $ref: ../components/responses.yaml#/Conflict }
+      '503': { $ref: ../components/responses.yaml#/ServiceUnavailable }
+
+/payments:
+  get:
+    tags: [Payments]
+    operationId: listPayments
+    summary: List payment history for the authenticated user
+    security: [{ FirebaseBearer: [] }]
+    parameters:
+      - $ref: ../components/parameters.yaml#/Page
+      - $ref: ../components/parameters.yaml#/Limit
+    responses:
+      '200':
+        description: Paginated payment history.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                data:
+                  type: array
+                  items: { $ref: ../components/schemas.yaml#/Payment }
+                meta: { $ref: ../components/schemas.yaml#/PaginationMeta }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+
+/payments/subscription:
+  get:
+    tags: [Payments]
+    operationId: getSubscription
+    summary: Read current subscription state
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200':
+        description: Subscription or free-plan state.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, const: true }
+                data:
+                  oneOf:
+                    - $ref: ../components/schemas.yaml#/Subscription
+                    - type: 'null'
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+
+/payments/change-plan:
+  post:
+    tags: [Payments]
+    operationId: changePlan
+    summary: Upgrade immediately or schedule a paid-plan downgrade
+    security: [{ FirebaseBearer: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [plan]
+            properties:
+              plan: { type: string, enum: [PLUS, PRO] }
+    responses:
+      '200':
+        description: Plan changed, scheduled, or customer-action URL returned.
+      '400': { $ref: ../components/responses.yaml#/BadRequest }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '409': { $ref: ../components/responses.yaml#/Conflict }
+      '503': { $ref: ../components/responses.yaml#/ServiceUnavailable }
+
+/payments/cancel-subscription:
+  post:
+    tags: [Payments]
+    operationId: cancelSubscription
+    summary: Cancel renewal at the end of the billing period
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200': { description: Cancellation scheduled without removing current access. }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+      '409': { $ref: ../components/responses.yaml#/Conflict }
+      '503': { $ref: ../components/responses.yaml#/ServiceUnavailable }
+
+/payments/resume-subscription:
+  post:
+    tags: [Payments]
+    operationId: resumeSubscription
+    summary: Reverse a scheduled subscription cancellation
+    security: [{ FirebaseBearer: [] }]
+    responses:
+      '200': { description: Subscription renewal resumed. }
+      '401': { $ref: ../components/responses.yaml#/Unauthorized }
+      '404': { $ref: ../components/responses.yaml#/NotFound }
+      '409': { $ref: ../components/responses.yaml#/Conflict }
+      '503': { $ref: ../components/responses.yaml#/ServiceUnavailable }
