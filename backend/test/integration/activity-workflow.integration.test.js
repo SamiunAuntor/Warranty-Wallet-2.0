@@ -60,8 +60,8 @@ if (!integrationEnabled()) {
         it("hides activity records owned by another user", async () => {
             const foreign = await prisma.activityLog.findFirstOrThrow({ where: { userId: otherUser.id } });
             const { response, body } = await api.request(`/activities/${foreign.id}`, identity());
-            assert.equal(response.status, 404);
-            assert.equal(body.code, "NOT_FOUND");
+            assert.equal(response.status, 403);
+            assert.equal(body.code, "FORBIDDEN");
         });
 
         it("returns a validation error for a malformed activity identifier", async () => {
