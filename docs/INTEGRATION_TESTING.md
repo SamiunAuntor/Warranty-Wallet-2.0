@@ -199,3 +199,42 @@ Use the harness's `unique()` helper for every unique database field. Avoid globa
 - Browser rendering
 
 Those boundaries require provider sandboxes or contract tests and should remain opt-in so ordinary CI is deterministic.
+
+## Workflow coverage matrix
+
+| Suite | Primary routes | Persistence assertions | Authorization assertions |
+| --- | --- | --- | --- |
+| Health and authentication | `/health`, protected routes, unknown routes | Local-user lookup | Missing, unknown, and blocked identities |
+| User and preferences | `/users/sync`, `/users/me`, `/users/preferences` | Profile and preference updates | Current-user isolation |
+| Assets | `/products` and `/products/:id` | Create, update, list, and soft delete | Cross-user access denial |
+| Claims | `/claims`, status, timeline, documents | Claim lifecycle and evidence links | Asset and claim ownership |
+| Notifications | list, unread count, read, read-all, delete | Read state and deletion | Cross-user notification denial |
+| Activity | list, recent, and details | Feed pagination | Cross-user activity denial |
+| Billing read model | plans, history, subscription | Payment and subscription projection | Current-user payment isolation |
+| Dashboard | summary and analytics | Aggregates from seeded records | Admin analytics role checks |
+| Catalog administration | categories and brands | Create, update, conflict, deactivate | Administrator-only mutations |
+| Admin users | list, details, block, unblock | User status transitions | Ordinary-user denial and self-protection |
+
+## Expected error assertions
+
+Integration tests assert machine-readable `code` values, not only human-facing messages. Messages may be edited for clarity or localization, while codes form a stable contract between backend and frontend.
+
+| Situation | Expected status | Expected code |
+| --- | ---: | --- |
+| Missing identity | 401 | `UNAUTHORIZED` |
+| Unknown local account | 401 | `USER_NOT_FOUND` |
+| Blocked account | 403 | `ACCOUNT_SUSPENDED` |
+| Insufficient role | 403 | `FORBIDDEN` |
+| Missing owned resource | 404 | `NOT_FOUND` |
+| Duplicate catalog name | 409 | `CONFLICT` |
+| Invalid body, params, or query | 400 | `VALIDATION_FAILED` |
+
+## CI behavior
+
+The repository workflow separates checks into three jobs:
+
+1. Frontend compilation and linting run without a database.
+2. Backend unit tests run with placeholder configuration and no network services.
+3. Backend integration tests receive an isolated PostgreSQL service database.
+
+The integration job synchronizes the Prisma schema into its disposable service database before running the suites. When the repository adopts committed migrations, replace `prisma db push` with `prisma migrate deploy`. Provider credentials remain placeholders because these suites stop at project-owned boundaries.
