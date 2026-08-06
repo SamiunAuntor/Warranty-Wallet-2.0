@@ -7,6 +7,19 @@ const firebaseAdmin = require("../../config/firebase");
 const ApiError = require("../../utils/ApiError");
 const { pagination } = require("../../utils/query");
 
+const updateFirebaseDisabledState = async (firebaseUid, disabled) => {
+    // Database integration tests authenticate through local test headers and must
+    // never cross the project boundary into Firebase Admin's live API.
+    if (process.env.NODE_ENV === "test" && process.env.ENABLE_TEST_AUTH === "true") {
+        return;
+    }
+
+    await firebaseAdmin.auth().updateUser(firebaseUid, { disabled });
+    if (disabled) {
+        await firebaseAdmin.auth().revokeRefreshTokens(firebaseUid);
+    }
+};
+
 const getDashboard = async () => {
 
     return adminRepository.getDashboardStatistics();
@@ -135,8 +148,7 @@ const blockUser = async (
 
     }
 
-    await firebaseAdmin.auth().updateUser(user.firebaseUid, { disabled: true });
-    await firebaseAdmin.auth().revokeRefreshTokens(user.firebaseUid);
+    await updateFirebaseDisabledState(user.firebaseUid, true);
 
     const updated = await adminRepository.updateUser(id, { status: "BLOCKED" });
 
@@ -168,7 +180,7 @@ const unblockUser = async (
     const user =
         await getUser(id);
 
-    await firebaseAdmin.auth().updateUser(user.firebaseUid, { disabled: false });
+    await updateFirebaseDisabledState(user.firebaseUid, false);
 
     const updated = await adminRepository.updateUser(id, { status: "ACTIVE" });
 
@@ -209,8 +221,7 @@ const deleteUser = async (
 
     }
 
-    await firebaseAdmin.auth().updateUser(user.firebaseUid, { disabled: true });
-    await firebaseAdmin.auth().revokeRefreshTokens(user.firebaseUid);
+    await updateFirebaseDisabledState(user.firebaseUid, true);
 
     const updated = await adminRepository.updateUser(id, { status: "DELETED" });
 
