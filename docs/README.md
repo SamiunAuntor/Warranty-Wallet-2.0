@@ -43,13 +43,6 @@ This directory contains the project documentation that applies across the fronte
 - [Administration](./guides/ADMINISTRATION.md), [report exports](./guides/REPORT_EXPORTS.md), and [catalog management](./guides/CATALOG_MANAGEMENT.md)
 - [AI extraction](./guides/AI_EXTRACTION.md) and [frontend API contracts](./guides/FRONTEND_API_CONTRACTS.md)
 
-## Engineering playbooks
-
-- [Local development](./guides/LOCAL_DEVELOPMENT.md), [debugging](./guides/DEBUGGING_PLAYBOOK.md), and [test design](./guides/TEST_DESIGN.md)
-- [API contract review](./guides/CONTRACT_REVIEW.md) and [code review](./guides/CODE_REVIEW.md)
-- [Release verification](./guides/RELEASE_VERIFICATION.md) and [operations runbook](./guides/OPERATIONS_RUNBOOK.md)
-- [Data repair](./guides/DATA_REPAIR.md), [privacy](./guides/PRIVACY_DATA_HANDLING.md), and [performance](./guides/PERFORMANCE_GUIDE.md)
-
 ## Documentation maintenance
 
 Documentation should change in the same pull request as the behavior it describes. When adding a feature, review at least the root guide, relevant component guide, API reference, environment guide, and testing guide.
