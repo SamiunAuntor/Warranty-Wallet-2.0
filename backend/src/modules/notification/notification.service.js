@@ -1,5 +1,6 @@
 const notificationRepository = require("./notification.repository");
 const userRepository = require("../user/user.repository");
+const prisma = require("../../config/prisma");
 
 const ApiError = require("../../utils/ApiError");
 
@@ -128,22 +129,21 @@ const deleteNotification = async (id, user) => {
 const broadcastNotification = async ({ title, message, type, }) => {
     const users = await userRepository.findAll();
 
-    const notifications = users.map((user) => ({
+    const recipients = users.filter((user) => user.role === "USER" && user.status === "ACTIVE");
+
+    const notifications = recipients.map((user) => ({
         userId: user.id,
         title,
         message,
         type,
     }));
 
-    await Promise.all(
+    if (notifications.length === 0) return;
 
-        notifications.map((notification) =>
-            notificationRepository.create(
-                notification
-            )
-        )
-
-    );
+    await prisma.notification.createMany({
+        data: notifications,
+        skipDuplicates: true,
+    });
 
 };
 
