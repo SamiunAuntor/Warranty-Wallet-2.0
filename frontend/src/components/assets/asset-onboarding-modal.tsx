@@ -49,9 +49,9 @@ function toAssetDraft(extracted: ExtractedAssetData, categories: Category[], bra
     name: extracted.productName ?? undefined,
     brand: brand?.name ?? extracted.brand ?? undefined,
     brandId: brand?.id ?? null,
+    categoryId: category?.id,
     model: extracted.model ?? undefined,
     serialNumber: extracted.serialNumber ?? undefined,
-    categoryId: category?.id,
     purchaseDate: extracted.purchaseDate ?? undefined,
     purchasePrice: extracted.purchasePrice ?? undefined,
     sellerName: extracted.sellerName ?? undefined,
@@ -157,9 +157,9 @@ export function AssetOnboardingModal({ categories, brands, pending, onClose, onS
   return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#111827]/45 p-4 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="asset-upload-title">
     <div className="max-h-[94vh] w-full max-w-3xl overflow-hidden rounded-l-2xl bg-[#f8f9ff] shadow-2xl">
       <div className="max-h-[94vh] overflow-y-auto">
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#e1e4ec] bg-white px-6 py-4">
+      <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-[#e1e4ec] bg-white px-6 py-4">
         <div><p className="text-xs font-semibold uppercase tracking-[.14em] text-[#4b41e1]">Step 1 of 2</p><h2 id="asset-upload-title" className="mt-1 text-xl font-semibold text-[#111d32]">Add documents and photos</h2><p className="mt-1 text-sm text-[#686d77]">Add what you have now. You can review all details on the next step.</p></div>
-        <button type="button" onClick={onClose} className="rounded-lg p-2 text-[#596170] hover:bg-[#eef1f8]" aria-label="Close asset workflow">×</button>
+        <div className="flex items-center gap-2"><button type="button" onClick={() => { setExtracted({}); setFileExtractions([]); setShowForm(true); }} className="rounded-lg border border-[#d6d9e3] bg-white px-3 py-2 text-sm font-semibold text-[#4b41e1] hover:bg-[#f5f4ff]">Skip scan</button><button type="button" onClick={onClose} className="rounded-lg p-2 text-[#596170] hover:bg-[#eef1f8]" aria-label="Close asset workflow">×</button></div>
       </div>
 
       <div className="space-y-5 p-6">
@@ -169,10 +169,10 @@ export function AssetOnboardingModal({ categories, brands, pending, onClose, onS
         <UploadBox number="2" title="Condition photos" description={`Up to 3 JPG, PNG, or WebP photos, ${MAX_SOURCE_IMAGE_SIZE_MB} MB each.`} multiple accept="image/jpeg,image/png,image/webp" onChange={(files) => void prepareSelection(files, "photo")}/>
         {photos.length > 0 && <div className="grid gap-2 rounded-xl border border-[#dfe2ea] bg-white p-4 sm:grid-cols-3">{photos.map((photo, index) => <div key={photo.sourceKey} className="flex min-w-0 items-start gap-2 rounded-lg bg-[#f5f6fb] p-3"><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-[#394254]">{photo.file.name}</p><p className="mt-1 text-xs text-[#737986]">{(photo.file.size / 1024 / 1024).toFixed(2)} MB</p></div><button type="button" onClick={() => setPhotos((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="text-lg text-[#a83e4c]" aria-label={`Remove ${photo.file.name}`}>×</button></div>)}</div>}
 
-        {preparing && <div className="rounded-lg bg-[#eeecff] px-4 py-3 text-sm text-[#4b41e1]">Adding selected files…</div>}
-        {extracting && <div className="rounded-lg bg-[#eeecff] px-4 py-3 text-sm text-[#4b41e1]">Analyzing document {Math.min(processedCount + 1, documents.length)} of {documents.length}…</div>}
+        {preparing && <div className="flex items-center gap-3 rounded-lg bg-[#eeecff] px-4 py-3 text-sm text-[#4b41e1]"><span className="scan-line relative h-4 w-10 overflow-hidden rounded-full bg-[#d7d0ff]"><span className="absolute inset-y-0 left-0 w-1/3 rounded-full bg-[#4b41e1]"/></span><span>Adding selected files...</span></div>}
+        {extracting && <div className="flex items-center gap-3 rounded-lg bg-[#eeecff] px-4 py-3 text-sm text-[#4b41e1]"><span className="scan-line relative h-4 w-10 overflow-hidden rounded-full bg-[#d7d0ff]"><span className="absolute inset-y-0 left-0 w-1/3 rounded-full bg-[#4b41e1]"/></span><span>Analyzing document {Math.min(processedCount + 1, documents.length)} of {documents.length}...</span></div>}
 
-        <div className="flex items-center justify-end border-t border-[#e1e4ec] pt-5"><button type="button" onClick={() => documents.length > 0 ? void analyze() : (setExtracted({}), setShowForm(true))} disabled={busy} className="flex h-11 min-w-28 items-center justify-center rounded-lg bg-[#4b41e1] px-5 text-sm font-semibold text-white hover:bg-[#645efb] disabled:cursor-not-allowed disabled:opacity-50">{extracting ? "Analyzing…" : preparing ? "Adding files…" : "Next"}</button></div>
+        <div className="flex items-center justify-end gap-3 border-t border-[#e1e4ec] pt-5"><button type="button" onClick={() => { setExtracted({}); setFileExtractions([]); setShowForm(true); }} disabled={busy} className="h-11 rounded-lg border border-[#c9ccd5] bg-white px-5 text-sm font-semibold text-[#17243a] hover:bg-[#f6f7fb] disabled:cursor-not-allowed disabled:opacity-50">Manual entry</button><button type="button" onClick={() => documents.length > 0 ? void analyze() : (setExtracted({}), setShowForm(true))} disabled={busy} className="flex h-11 min-w-28 items-center justify-center rounded-lg bg-[#4b41e1] px-5 text-sm font-semibold text-white hover:bg-[#645efb] disabled:cursor-not-allowed disabled:opacity-50">{extracting ? "Analyzing..." : preparing ? "Adding files..." : "Next"}</button></div>
       </div>
       </div>
     </div>
