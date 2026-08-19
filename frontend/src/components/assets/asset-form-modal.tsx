@@ -48,7 +48,6 @@ export function AssetFormModal({ asset, initialValues, categories, brands, pendi
       sellerName: optional("sellerName"),
       sellerPhone: optional("sellerPhone"),
       sellerAddress: optional("sellerAddress"),
-      productImageUrl: optional("productImageUrl"),
       notes: optional("notes"),
     });
   };
@@ -75,7 +74,6 @@ export function AssetFormModal({ asset, initialValues, categories, brands, pendi
         {asset && <label className={labelClass}>Asset state<select value={lifecycleStatus} onChange={(event) => setLifecycleStatus(event.target.value as AssetLifecycleStatus)} className={inputClass}><option value="ADDED">Added</option><option value="ARCHIVED">Archived</option></select></label>}
         <label className={labelClass}>Seller name<input name="sellerName" defaultValue={asset?.sellerName ?? initialValues?.sellerName ?? ""} className={inputClass}/></label>
         <label className={labelClass}>Seller phone<input name="sellerPhone" defaultValue={asset?.sellerPhone ?? ""} className={inputClass}/></label>
-        <label className={labelClass}>Image URL<input name="productImageUrl" type="url" defaultValue={asset?.productImageUrl ?? ""} className={inputClass}/></label>
         <label className={`${labelClass} sm:col-span-2`}>Seller address<input name="sellerAddress" defaultValue={asset?.sellerAddress ?? ""} className={inputClass}/></label>
         <label className={`${labelClass} sm:col-span-2`}>Notes<textarea name="notes" rows={3} defaultValue={asset?.notes ?? ""} className="w-full rounded-lg border border-[#c9ccd5] bg-white px-3 py-2 text-sm outline-none transition focus:border-[#4b41e1] focus:ring-2 focus:ring-[#e2dfff]"/></label>
         <div className="flex justify-end gap-3 border-t border-[#e1e4ec] pt-5 sm:col-span-2">
