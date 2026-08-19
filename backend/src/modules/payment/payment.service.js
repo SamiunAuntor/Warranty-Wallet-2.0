@@ -238,9 +238,9 @@ const changePlan = async (user, targetPlan) => {
             updated = await stripe.subscriptions.update(remote.id, {
                 items: [{ id: item.id, price: price.id }],
                 proration_behavior: "always_invoice",
-                payment_behavior: "pending_if_incomplete",
+                payment_behavior: "allow_incomplete",
                 cancel_at_period_end: false,
-                expand: ["latest_invoice"],
+                expand: ["latest_invoice", "latest_invoice.payment_intent"],
             });
         } catch (error) {
             await paymentRepository.updateSubscription(user.id, { pendingPlan: null });
@@ -250,7 +250,12 @@ const changePlan = async (user, targetPlan) => {
         const upgradeInvoice = typeof updated.latest_invoice === "string"
             ? await stripe.invoices.retrieve(updated.latest_invoice)
             : updated.latest_invoice;
-        const paymentUrl = upgradeInvoice?.hosted_invoice_url || null;
+        const paymentIntent = upgradeInvoice?.payment_intent && typeof upgradeInvoice.payment_intent === "object"
+            ? upgradeInvoice.payment_intent
+            : null;
+        const paymentUrl = upgradeInvoice?.hosted_invoice_url
+            || paymentIntent?.next_action?.redirect_to_url?.url
+            || null;
 
         if (pendingPayment) {
             return {

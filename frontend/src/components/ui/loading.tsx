@@ -17,5 +17,5 @@ export function Loading({
   className = "",
   size = "md",
 }: LoadingProps) {
-  return <div role="status" aria-live="polite" className={`flex items-center justify-center bg-[#f8f9ff] ${fullScreen ? "min-h-screen w-full" : "h-full w-full"} ${className}`}><span className={`animate-spin rounded-full border-[#dfdcff] border-t-[#4b41e1] ${sizes[size]}`}/><span className="sr-only">{label}</span></div>;
+  return <div role="status" aria-live="polite" className={`flex items-center justify-center bg-[#f8f9ff] ${fullScreen ? "min-h-screen w-full" : "h-full w-full pt-10 sm:pt-16" } ${className}`}><span className={`animate-spin rounded-full border-[#dfdcff] border-t-[#4b41e1] ${sizes[size]}`}/><span className="sr-only">{label}</span></div>;
 }
