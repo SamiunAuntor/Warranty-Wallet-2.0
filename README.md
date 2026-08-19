@@ -4,6 +4,63 @@ Warranty Wallet is a full-stack warranty and purchase-document management platfo
 
 The repository contains a Next.js web application and an Express API. Authentication is handled by Firebase, application data is stored in PostgreSQL through Prisma, documents are stored in Cloudinary, invoice details can be extracted with Gemini, and paid plans use Stripe Checkout.
 
+## Quick Links
+
+- [How to run](#how-to-run)
+- [Project structure](#project-structure)
+- [Core capabilities](#core-capabilities)
+- [Technology stack](#technology-stack)
+- [Environment overview](#environment-overview)
+- [Development commands](#development-commands)
+- [Application flow](#application-flow)
+- [API conventions](#api-conventions)
+- [Testing](#testing)
+- [Deployment](#deployment)
+- [Security notes](#security-notes)
+- [Contribution workflow](#contribution-workflow)
+- [License](#license)
+
+## How to Run
+
+1. Clone the repository.
+2. Install backend dependencies, configure `backend/.env`, run Prisma migrations, and start the API.
+3. Install frontend dependencies, configure `frontend/.env.local`, and start the web app.
+4. Open the frontend in your browser and sign in with Firebase.
+
+Backend:
+
+```bash
+cd backend
+npm install
+cp .env.example .env
+npx prisma generate
+npx prisma migrate dev
+npm run dev
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm install
+cp .env.example .env.local
+npm run dev
+```
+
+Live endpoints:
+
+- Frontend: http://localhost:3000
+- Backend: http://localhost:5000
+- Health check: http://localhost:5000/api/v1/health
+
+## Project Structure
+
+- [`frontend/`](./frontend) - Next.js web application
+- [`backend/`](./backend) - Express API
+- [`docs/`](./docs) - API, deployment, and reference docs
+- [`README.md`](./README.md) - Project overview and setup
+- [`VERCEL_DEPLOYMENT.md`](./VERCEL_DEPLOYMENT.md) - Production deployment checklist
+
 ## Core capabilities
 
 - Create and manage a digital inventory of purchased assets.
