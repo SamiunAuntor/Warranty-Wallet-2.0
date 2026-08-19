@@ -63,18 +63,27 @@ export function AdminSidebar({ mobileOpen = false, onClose }: { mobileOpen?: boo
             Open user dashboard
             <ExternalLink className="h-4 w-4" />
           </Link>
-          <button
-            type="button"
-            onClick={async () => {
-              await logout();
-              onClose?.();
-              router.push("/login");
-            }}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/10"
-          >
-            <LogOut className="h-4 w-4" />
-            Logout
-          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={async () => {
+                await logout();
+                onClose?.();
+                router.push("/login");
+              }}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/10"
+            >
+              <LogOut className="h-4 w-4" />
+              Logout
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex w-full items-center justify-center rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/10 lg:hidden"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </aside>
     </>

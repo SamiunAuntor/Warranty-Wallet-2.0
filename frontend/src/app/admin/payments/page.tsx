@@ -45,7 +45,7 @@ export default function AdminPaymentsPage() {
       setLoading(true);
       setError("");
       firebaseUser.getIdToken()
-        .then((token) => getAdminPayments(token, { page, limit: 20, search, status, sortBy, sortOrder }))
+        .then((token) => getAdminPayments(token, { page, limit: 15, search, status, sortBy, sortOrder }))
         .then((result) => {
           setPayments(result.data);
           setMeta(result.meta);

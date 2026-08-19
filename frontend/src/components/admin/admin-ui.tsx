@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Inbox, X } from "lucide-react";
 
 export const adminCard = "rounded-2xl border border-[#e4e7f0] bg-white shadow-[0_8px_30px_rgba(25,32,56,0.05)]";
-export const adminChartCard = "rounded-2xl bg-white shadow-[0_8px_24px_rgba(25,32,56,0.04)]";
+export const adminChartCard = "rounded-2xl border border-[#e6eaf2] bg-white shadow-[0_8px_24px_rgba(25,32,56,0.03)]";
 export const adminInput = "h-11 rounded-xl border border-[#dfe3ed] bg-white px-3 text-sm text-[#182238] outline-none transition focus:border-[#7768f2] focus:ring-4 focus:ring-[#5b47ee]/10";
 
 export function AdminPageHeader({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
