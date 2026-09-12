@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Warranty Wallet",
+    "slug": "warranty-wallet",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "warrantywallet",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "plugins": ["expo-router"],
+    "android": {
+      "package": "com.warrantywallet.app"
+    },
+    "ios": {
+      "bundleIdentifier": "com.warrantywallet.app",
+      "supportsTablet": true
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
