@@ -1,7 +1,7 @@
 import { Link, router } from "expo-router";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { normalizeEmail, validateLoginInput } from "../../lib/auth-validation";
 import { colors, spacing } from "../../lib/theme";
@@ -10,7 +10,7 @@ import { useAuth } from "../../providers/auth-provider";
 WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
-  const { login, loginWithGoogle } = useAuth();
+  const { appUser, authError, login, loginWithGoogle } = useAuth();
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
@@ -20,11 +20,33 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const handledGoogleToken = useRef<string | null>(null);
   useEffect(() => {
-    if (response?.type === "success" && response.params.id_token)
-      void loginWithGoogle(response.params.id_token)
-        .then(() => router.replace("/(app)"))
-        .catch(() => setError("Google sign-in could not be completed."));
+    if (appUser) {
+      router.replace("/(app)");
+    }
+  }, [appUser]);
+
+  useEffect(() => {
+    if (authError) {
+      setError(authError);
+      setSubmitting(false);
+    }
+  }, [authError]);
+
+  useEffect(() => {
+    const idToken = response?.type === "success" ? response.params.id_token : undefined;
+
+    if (!idToken || handledGoogleToken.current === idToken) {
+      return;
+    }
+
+    handledGoogleToken.current = idToken;
+    setSubmitting(true);
+    void loginWithGoogle(idToken).catch(() => {
+      setError("Google sign-in could not be completed.");
+      setSubmitting(false);
+    });
   }, [loginWithGoogle, response]);
 
   async function submit() {
@@ -39,10 +61,8 @@ export default function LoginScreen() {
     setSubmitting(true);
     try {
       await login(normalizeEmail(email), password);
-      router.replace("/(app)");
     } catch {
       setError("The email or password is incorrect.");
-    } finally {
       setSubmitting(false);
     }
   }

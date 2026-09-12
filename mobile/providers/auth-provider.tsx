@@ -17,6 +17,7 @@ import { syncUser, type AppUser } from "../lib/auth-api";
 import { normalizeEmail } from "../lib/auth-validation";
 
 type AuthContextValue = {
+  authError: string;
   loading: boolean;
   user: User | null;
   appUser: AppUser | null;
@@ -33,6 +34,7 @@ const unavailable = async () => {
   throw new Error("Authentication is not ready.");
 };
 const AuthContext = createContext<AuthContextValue>({
+  authError: "",
   loading: true,
   user: null,
   appUser: null,
@@ -49,6 +51,7 @@ const AuthContext = createContext<AuthContextValue>({
 export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<User | null>(null);
   const [appUser, setAppUser] = useState<AppUser | null>(null);
+  const [authError, setAuthError] = useState("");
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     try {
@@ -60,8 +63,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
           return;
         }
         try {
+          setAuthError("");
           setAppUser(await syncUser(nextUser));
-        } catch {
+        } catch (cause) {
+          setAuthError(
+            cause instanceof Error
+              ? cause.message
+              : "Could not connect your account to Warranty Wallet.",
+          );
           await signOut(getFirebaseAuth());
           setUser(null);
           setAppUser(null);
@@ -75,10 +84,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }, []);
   async function login(email: string, password: string) {
+    setAuthError("");
     await signInWithEmailAndPassword(getFirebaseAuth(), normalizeEmail(email), password);
   }
 
   async function register(name: string, email: string, password: string) {
+    setAuthError("");
     const credential = await createUserWithEmailAndPassword(
       getFirebaseAuth(),
       normalizeEmail(email),
@@ -89,6 +100,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }
 
   async function loginWithGoogle(idToken: string) {
+    setAuthError("");
     await signInWithCredential(getFirebaseAuth(), GoogleAuthProvider.credential(idToken));
   }
 
@@ -111,6 +123,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   return (
     <AuthContext.Provider
       value={{
+        authError,
         loading,
         user,
         appUser,

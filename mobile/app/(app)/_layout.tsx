@@ -4,8 +4,10 @@ import { useAuth } from "../../providers/auth-provider";
 import { colors } from "../../lib/theme";
 
 export default function AppLayout() {
-  const { user, loading } = useAuth();
-  if (!loading && !user) return <Redirect href="/(auth)/login" />;
+  const { appUser, loading, user } = useAuth();
+  if (!loading && (!user || !appUser)) {
+    return <Redirect href="/(auth)/login" />;
+  }
   return (
     <Tabs
       screenOptions={{
