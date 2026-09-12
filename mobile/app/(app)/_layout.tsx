@@ -21,5 +21,6 @@ export default function AppLayout() {
     <Tabs.Screen name="settings" options={{ title: "Settings", tabBarIcon: () => <Text>S</Text> }} />
     <Tabs.Screen name="profile" options={{ title: "Profile", tabBarIcon: () => <Text>P</Text> }} />
     <Tabs.Screen name="activity" options={{ title: "Activity", tabBarIcon: () => <Text>H</Text> }} />
+    <Tabs.Screen name="preferences" options={{ title: "Preferences", tabBarIcon: () => <Text>V</Text> }} />
   </Tabs>;
 }
