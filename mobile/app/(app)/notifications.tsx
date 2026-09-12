@@ -1,43 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import {
-  getNotifications,
-  readAllNotifications,
-  readNotification,
-  type Notification,
-} from "../../lib/notifications-api";
+import { useNotifications } from "../../hooks/use-notifications";
 import { colors, spacing } from "../../lib/theme";
-import { useAuth } from "../../providers/auth-provider";
 
 export default function NotificationsScreen() {
-  const { user } = useAuth();
-  const [items, setItems] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const load = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      setItems(await getNotifications(await user.getIdToken()));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load notifications.");
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-  useEffect(() => {
-    void load();
-  }, [load]);
-  async function mark(item: Notification) {
-    if (!user || item.isRead) return;
-    const updated = await readNotification(await user.getIdToken(), item.id);
-    setItems((current) => current.map((entry) => (entry.id === updated.id ? updated : entry)));
-  }
-  async function markAll() {
-    if (!user) return;
-    await readAllNotifications(await user.getIdToken());
-    setItems((current) => current.map((item) => ({ ...item, isRead: true })));
-  }
+  const { error, items, loading, markAllRead, markRead } = useNotifications();
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -45,7 +11,7 @@ export default function NotificationsScreen() {
           <Text style={styles.eyebrow}>UPDATES</Text>
           <Text style={styles.title}>Notifications</Text>
         </View>
-        <Pressable onPress={() => void markAll()}>
+        <Pressable onPress={() => void markAllRead()}>
           <Text style={styles.markAll}>Mark all read</Text>
         </Pressable>
       </View>
@@ -60,7 +26,7 @@ export default function NotificationsScreen() {
           ListEmptyComponent={<Text style={styles.empty}>You are all caught up.</Text>}
           renderItem={({ item }) => (
             <Pressable
-              onPress={() => void mark(item)}
+              onPress={() => void markRead(item)}
               style={[styles.card, !item.isRead && styles.unread]}
             >
               <Text style={styles.cardTitle}>{item.title}</Text>

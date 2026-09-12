@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
@@ -8,43 +7,10 @@ import {
   View,
 } from "react-native";
 import { colors, spacing } from "../../lib/theme";
-import {
-  getDashboard,
-  getWarrantyHeatmap,
-  type DashboardData,
-  type WarrantyHeatmapData,
-} from "../../lib/dashboard-api";
-import { useAuth } from "../../providers/auth-provider";
+import { useDashboard } from "../../hooks/use-dashboard";
 
 export default function DashboardScreen() {
-  const { user } = useAuth();
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [heatmap, setHeatmap] = useState<WarrantyHeatmapData | null>(null);
-  const [error, setError] = useState("");
-  const [refreshing, setRefreshing] = useState(false);
-  const load = useCallback(async () => {
-    if (!user) return;
-    setError("");
-    try {
-      const token = await user.getIdToken();
-      const [dashboard, warranty] = await Promise.all([
-        getDashboard(token),
-        getWarrantyHeatmap(token),
-      ]);
-      setData(dashboard);
-      setHeatmap(warranty);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load dashboard.");
-    }
-  }, [user]);
-  useEffect(() => {
-    void load();
-  }, [load]);
-  async function refresh() {
-    setRefreshing(true);
-    await load();
-    setRefreshing(false);
-  }
+  const { data, error, heatmap, refresh, refreshing } = useDashboard();
   if (!data && !error)
     return (
       <View style={styles.center}>

@@ -1,26 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
-import { getActivities, type Activity } from "../../lib/activity-api";
+import { useActivity } from "../../hooks/use-activity";
 import { colors, spacing } from "../../lib/theme";
-import { useAuth } from "../../providers/auth-provider";
 export default function ActivityScreen() {
-  const { user } = useAuth();
-  const [items, setItems] = useState<Activity[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const load = useCallback(async () => {
-    if (!user) return;
-    try {
-      setItems(await getActivities(await user.getIdToken()));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load activity.");
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const { error, items, loading } = useActivity();
   return (
     <View style={styles.container}>
       <Text style={styles.eyebrow}>HISTORY</Text>

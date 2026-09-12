@@ -1,40 +1,9 @@
-import * as DocumentPicker from "expo-document-picker";
-import { useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { extractInvoice, type ExtractedAssetData } from "../../lib/ai-api";
+import { useInvoiceScan } from "../../hooks/use-invoice-scan";
 import { colors, spacing } from "../../lib/theme";
-import { useAuth } from "../../providers/auth-provider";
 
 export default function ScanScreen() {
-  const { user } = useAuth();
-  const [data, setData] = useState<ExtractedAssetData | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  async function pick() {
-    if (!user) return;
-    const result = await DocumentPicker.getDocumentAsync({
-      copyToCacheDirectory: true,
-      type: ["application/pdf", "image/*"],
-    });
-    if (result.canceled) return;
-    setBusy(true);
-    setError("");
-    try {
-      const item = result.assets[0];
-      setData(
-        await extractInvoice(await user.getIdToken(), {
-          uri: item.uri,
-          name: item.name,
-          mimeType: item.mimeType,
-          size: item.size,
-        }),
-      );
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not extract invoice data.");
-    } finally {
-      setBusy(false);
-    }
-  }
+  const { busy, data, error, pick } = useInvoiceScan();
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.eyebrow}>SMART CAPTURE</Text>

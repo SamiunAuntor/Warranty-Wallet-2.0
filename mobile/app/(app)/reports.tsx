@@ -1,6 +1,5 @@
-import { useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { downloadReport } from "../../lib/reports-api";
+import { useReports } from "../../hooks/use-reports";
 import { colors, spacing } from "../../lib/theme";
 import { useAuth } from "../../providers/auth-provider";
 
@@ -13,21 +12,8 @@ const reports = [
   ["payments", "Payment report"],
 ] as const;
 export default function ReportsScreen() {
-  const { user, appUser } = useAuth();
-  const [busy, setBusy] = useState("");
-  const [error, setError] = useState("");
-  async function download(report: string, format: "PDF" | "EXCEL") {
-    if (!user) return;
-    setBusy(`${report}-${format}`);
-    setError("");
-    try {
-      await downloadReport(await user.getIdToken(), report, format);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not download report.");
-    } finally {
-      setBusy("");
-    }
-  }
+  const { appUser } = useAuth();
+  const { busy, download, error } = useReports();
   if (appUser?.role !== "ADMIN")
     return (
       <View style={styles.center}>

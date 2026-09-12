@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -8,62 +7,33 @@ import {
   TextInput,
   View,
 } from "react-native";
-import {
-  getUserPreferences,
-  updateAppUser,
-  updateUserPreferences,
-  type UserPreferences,
-} from "../../lib/auth-api";
+import type { UserPreferences } from "../../lib/auth-api";
+import { useSettings } from "../../hooks/use-settings";
 import { colors, spacing } from "../../lib/theme";
-import { useAuth } from "../../providers/auth-provider";
 
 export default function SettingsScreen() {
-  const { user, appUser, logout, setAppUser } = useAuth();
-  const [preferences, setPreferences] = useState<UserPreferences | null>(null);
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
-  useEffect(() => {
-    if (!user) return;
-    setName(appUser?.name ?? "");
-    setPhone(appUser?.phone ?? "");
-    void (async () => {
-      try {
-        setPreferences(await getUserPreferences(await user.getIdToken()));
-      } catch {
-        setMessage("Could not load preferences.");
-      }
-    })();
-  }, [appUser?.name, appUser?.phone, user]);
-  async function save() {
-    if (!user || !preferences) return;
-    setSaving(true);
-    setMessage("");
-    try {
-      const token = await user.getIdToken();
-      const [updatedUser, updatedPreferences] = await Promise.all([
-        updateAppUser(token, {
-          name: name.trim(),
-          phone: phone.trim() || null,
-        }),
-        updateUserPreferences(token, preferences),
-      ]);
-      setAppUser(updatedUser);
-      setPreferences(updatedPreferences);
-      setMessage("Settings saved.");
-    } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : "Could not save settings.");
-    } finally {
-      setSaving(false);
-    }
-  }
-  if (!appUser || !preferences)
+  const settings = useSettings();
+  const {
+    appUser,
+    loading,
+    logout,
+    message,
+    name,
+    phone,
+    preferences,
+    save,
+    saving,
+    setName,
+    setPhone,
+    updatePreference,
+  } = settings;
+  if (loading || !appUser || !preferences) {
     return (
       <View style={styles.center}>
         <ActivityIndicator color={colors.brand} />
       </View>
     );
+  }
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.eyebrow}>ACCOUNT</Text>
@@ -85,10 +55,7 @@ export default function SettingsScreen() {
         <Text style={styles.section}>Warranty reminders</Text>
         <Pressable
           onPress={() =>
-            setPreferences({
-              ...preferences,
-              warrantyReminders: !preferences.warrantyReminders,
-            })
+            updatePreference("warrantyReminders", !preferences.warrantyReminders)
           }
           style={styles.toggle}
         >
@@ -100,13 +67,10 @@ export default function SettingsScreen() {
         <TextInput
           keyboardType="numbers-and-punctuation"
           onChangeText={(value) =>
-            setPreferences({
-              ...preferences,
-              reminderDays: value
-                .split(",")
-                .map(Number)
-                .filter((day) => Number.isFinite(day)),
-            })
+            updatePreference(
+              "reminderDays",
+              value.split(",").map(Number).filter((day) => Number.isFinite(day)),
+            )
           }
           style={styles.input}
           value={preferences.reminderDays.join(", ")}
@@ -115,10 +79,7 @@ export default function SettingsScreen() {
         <TextInput
           autoCapitalize="characters"
           onChangeText={(value) =>
-            setPreferences({
-              ...preferences,
-              currency: value as UserPreferences["currency"],
-            })
+            updatePreference("currency", value as UserPreferences["currency"])
           }
           style={styles.input}
           value={preferences.currency}
