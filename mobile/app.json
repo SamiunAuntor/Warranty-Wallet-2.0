@@ -6,8 +6,13 @@
     "orientation": "portrait",
     "scheme": "warrantywallet",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "plugins": ["expo-router", "expo-image-picker"],
+    "plugins": [
+      "expo-router",
+      "expo-image-picker",
+      "expo-sharing",
+      "expo-status-bar",
+      "expo-web-browser"
+    ],
     "android": {
       "package": "com.warrantywallet.app"
     },
