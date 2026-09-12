@@ -1,19 +1,7 @@
-import * as WebBrowser from "expo-web-browser";
-import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import {
-  cancelSubscription,
-  confirmCheckout,
-  createCheckout,
-  getPayments,
-  getSubscription,
-  resumeSubscription,
-  type Payment,
-  type Plan,
-  type Subscription,
-} from "../../lib/billing-api";
+import type { Plan } from "../../lib/billing-api";
+import { useBilling } from "../../hooks/use-billing";
 import { colors, spacing } from "../../lib/theme";
-import { useAuth } from "../../providers/auth-provider";
 
 const plans: Array<{ name: Plan; description: string; price: string }> = [
   {
@@ -33,69 +21,14 @@ const plans: Array<{ name: Plan; description: string; price: string }> = [
   },
 ];
 export default function BillingScreen() {
-  const { user } = useAuth();
-  const [subscription, setSubscription] = useState<Subscription>(null);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const load = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      const token = await user.getIdToken();
-      const [current, history] = await Promise.all([getSubscription(token), getPayments(token)]);
-      setSubscription(current);
-      setPayments(history.data);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load billing.");
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-  useEffect(() => {
-    void load();
-  }, [load]);
-  async function upgrade(plan: "PLUS" | "PRO") {
-    if (!user) return;
-    setBusy(true);
-    setError("");
-    try {
-      const token = await user.getIdToken();
-      const { url } = await createCheckout(token, plan);
-      const result = await WebBrowser.openBrowserAsync(url);
-      const returnedUrl = "url" in result && typeof result.url === "string" ? result.url : "";
-      const sessionId = returnedUrl.match(/[?&]session_id=([^&]+)/)?.[1];
-      if (sessionId) await confirmCheckout(token, decodeURIComponent(sessionId));
-      await load();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not complete checkout.");
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function toggleCancel() {
-    if (!user || !subscription) return;
-    setBusy(true);
-    try {
-      const token = await user.getIdToken();
-      setSubscription(
-        await (subscription.cancelAtPeriodEnd
-          ? resumeSubscription(token)
-          : cancelSubscription(token)),
-      );
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not update subscription.");
-    } finally {
-      setBusy(false);
-    }
-  }
-  if (loading)
+  const { busy, error, loading, payments, subscription, toggleCancel, upgrade } = useBilling();
+  if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator color={colors.brand} />
       </View>
     );
+  }
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.eyebrow}>PLAN AND PAYMENTS</Text>
