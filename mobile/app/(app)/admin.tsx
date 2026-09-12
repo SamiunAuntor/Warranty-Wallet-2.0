@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import type { AdminUser } from "../../lib/admin-api";
 import { useAdminDashboard } from "../../hooks/use-admin-dashboard";
+import { AccessDeniedState, LoadingState } from "../../components/ui/ScreenStates";
 import { colors, spacing } from "../../lib/theme";
 
 export default function AdminScreen() {
@@ -25,18 +26,9 @@ export default function AdminScreen() {
     }
   }
   if (appUser?.role !== "ADMIN")
-    return (
-      <View style={styles.center}>
-        <Text style={styles.title}>Admin access required.</Text>
-        <Text style={styles.muted}>This area is limited to administrator accounts.</Text>
-      </View>
-    );
+    return <AccessDeniedState />;
   if (loading || !stats)
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.brand} />
-      </View>
-    );
+    return <LoadingState />;
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.eyebrow}>OPERATIONS</Text>

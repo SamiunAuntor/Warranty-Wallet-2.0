@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import type { CatalogItem } from "../../lib/admin-api";
 import { useAdminCatalog } from "../../hooks/use-admin-catalog";
+import { AccessDeniedState, LoadingState } from "../../components/ui/ScreenStates";
 import { colors, spacing } from "../../lib/theme";
 export default function AdminCatalogScreen() {
   const {
@@ -48,17 +49,9 @@ export default function AdminCatalogScreen() {
     ]);
   }
   if (appUser?.role !== "ADMIN")
-    return (
-      <View style={styles.center}>
-        <Text style={styles.title}>Admin access required.</Text>
-      </View>
-    );
+    return <AccessDeniedState />;
   if (loading)
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.brand} />
-      </View>
-    );
+    return <LoadingState />;
   return (
     <FlatList
       contentContainerStyle={styles.container}
