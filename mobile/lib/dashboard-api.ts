@@ -8,7 +8,9 @@ export type DashboardData = {
     expired: number;
   };
   purchaseValue: string | number;
-  claims: { open: number };
+  claims: {
+    open: number;
+  };
   warrantyHealth: number;
   warrantyTimeline: Array<{
     id: string;
@@ -16,7 +18,10 @@ export type DashboardData = {
     expiryDate: string;
     warrantyStatus: string;
   }>;
-  notifications: { total: number; unread: number };
+  notifications: {
+    total: number;
+    unread: number;
+  };
   plan: "BASIC" | "PLUS" | "PRO";
 };
 export type WarrantyHeatmapData = {

@@ -23,7 +23,12 @@ export type Payment = {
 };
 export type PaymentList = {
   data: Payment[];
-  meta: { page: number; limit: number; total: number; totalPages: number };
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 };
 export function getSubscription(token: string) {
   return apiRequest<Subscription>("/payments/subscription", { token });

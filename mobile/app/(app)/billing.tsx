@@ -106,7 +106,11 @@ export default function BillingScreen() {
         <Text style={styles.current}>{subscription?.plan ?? "BASIC"}</Text>
         <Text style={styles.muted}>
           {subscription?.isActive
-            ? `Active until ${subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd).toLocaleDateString() : "the current period"}.`
+            ? `Active until ${
+                subscription.currentPeriodEnd
+                  ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
+                  : "the current period"
+              }.`
             : "You are using the basic plan."}
         </Text>
         {subscription && subscription.plan !== "BASIC" ? (
@@ -162,14 +166,22 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.lg,
   },
-  center: { alignItems: "center", flex: 1, justifyContent: "center" },
+  center: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+  },
   eyebrow: {
     color: colors.brand,
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 2,
   },
-  title: { color: colors.ink, fontSize: 30, fontWeight: "800" },
+  title: {
+    color: colors.ink,
+    fontSize: 30,
+    fontWeight: "800",
+  },
   section: {
     color: colors.ink,
     fontSize: 17,
@@ -203,7 +215,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     padding: spacing.sm,
   },
-  outlineText: { color: colors.brand, fontSize: 12, fontWeight: "700" },
+  outlineText: {
+    color: colors.brand,
+    fontSize: 12,
+    fontWeight: "700",
+  },
   plan: {
     alignItems: "center",
     backgroundColor: colors.surface,
@@ -213,16 +229,30 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     padding: spacing.md,
   },
-  planCopy: { flex: 1 },
-  planName: { color: colors.ink, fontSize: 15, fontWeight: "700" },
+  planCopy: {
+    flex: 1,
+  },
+  planName: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: "700",
+  },
   upgrade: {
     backgroundColor: colors.brand,
     borderRadius: 9,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
-  upgradeText: { color: colors.surface, fontSize: 12, fontWeight: "700" },
-  activeText: { color: colors.brand, fontSize: 12, fontWeight: "700" },
+  upgradeText: {
+    color: colors.surface,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  activeText: {
+    color: colors.brand,
+    fontSize: 12,
+    fontWeight: "700",
+  },
   payment: {
     alignItems: "center",
     backgroundColor: colors.surface,
@@ -233,6 +263,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: spacing.md,
   },
-  paymentStatus: { color: colors.brand, fontSize: 11, fontWeight: "700" },
-  error: { color: colors.danger },
+  paymentStatus: {
+    color: colors.brand,
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  error: {
+    color: colors.danger,
+  },
 });

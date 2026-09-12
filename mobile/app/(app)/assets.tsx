@@ -234,7 +234,11 @@ function AssetForm({
 }
 
 const styles = StyleSheet.create({
-  container: { backgroundColor: colors.canvas, flex: 1, padding: spacing.lg },
+  container: {
+    backgroundColor: colors.canvas,
+    flex: 1,
+    padding: spacing.lg,
+  },
   header: {
     alignItems: "center",
     flexDirection: "row",
@@ -258,7 +262,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
-  addText: { color: colors.surface, fontWeight: "700" },
+  addText: {
+    color: colors.surface,
+    fontWeight: "700",
+  },
   search: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -268,8 +275,14 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     padding: spacing.md,
   },
-  loader: { marginTop: spacing.xl },
-  list: { gap: spacing.sm, paddingBottom: spacing.xl, paddingTop: spacing.md },
+  loader: {
+    marginTop: spacing.xl,
+  },
+  list: {
+    gap: spacing.sm,
+    paddingBottom: spacing.xl,
+    paddingTop: spacing.md,
+  },
   card: {
     alignItems: "center",
     backgroundColor: colors.surface,
@@ -279,10 +292,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     padding: spacing.md,
   },
-  cardBody: { flex: 1, gap: spacing.xs },
-  cardSide: { alignItems: "flex-end", gap: spacing.md },
-  assetName: { color: colors.ink, fontSize: 16, fontWeight: "700" },
-  muted: { color: colors.muted, fontSize: 13 },
+  cardBody: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  cardSide: {
+    alignItems: "flex-end",
+    gap: spacing.md,
+  },
+  assetName: {
+    color: colors.ink,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  muted: {
+    color: colors.muted,
+    fontSize: 13,
+  },
   status: {
     borderRadius: 12,
     fontSize: 10,
@@ -291,11 +317,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },
-  active: { backgroundColor: colors.brandSoft, color: colors.brand },
-  expired: { backgroundColor: "#fbe4e4", color: colors.danger },
-  delete: { color: colors.danger, fontSize: 12, fontWeight: "700" },
-  empty: { color: colors.muted, padding: spacing.xl, textAlign: "center" },
-  error: { color: colors.danger, marginTop: spacing.sm },
+  active: {
+    backgroundColor: colors.brandSoft,
+    color: colors.brand,
+  },
+  expired: {
+    backgroundColor: "#fbe4e4",
+    color: colors.danger,
+  },
+  delete: {
+    color: colors.danger,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  empty: {
+    color: colors.muted,
+    padding: spacing.xl,
+    textAlign: "center",
+  },
+  error: {
+    color: colors.danger,
+    marginTop: spacing.sm,
+  },
   form: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -304,7 +347,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     padding: spacing.md,
   },
-  formTitle: { color: colors.ink, fontSize: 17, fontWeight: "700" },
+  formTitle: {
+    color: colors.ink,
+    fontSize: 17,
+    fontWeight: "700",
+  },
   input: {
     borderColor: colors.border,
     borderRadius: 10,
@@ -330,8 +377,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brand,
     borderColor: colors.brand,
   },
-  categoryText: { color: colors.muted, fontSize: 12 },
-  categoryTextSelected: { color: colors.surface, fontSize: 12 },
+  categoryText: {
+    color: colors.muted,
+    fontSize: 12,
+  },
+  categoryTextSelected: {
+    color: colors.surface,
+    fontSize: 12,
+  },
   save: {
     alignItems: "center",
     backgroundColor: colors.brand,
@@ -339,5 +392,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     padding: spacing.sm,
   },
-  saveText: { color: colors.surface, fontWeight: "700" },
+  saveText: {
+    color: colors.surface,
+    fontWeight: "700",
+  },
 });

@@ -113,14 +113,22 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.lg,
   },
-  center: { alignItems: "center", flex: 1, justifyContent: "center" },
+  center: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+  },
   eyebrow: {
     color: colors.brand,
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 2,
   },
-  title: { color: colors.ink, fontSize: 30, fontWeight: "800" },
+  title: {
+    color: colors.ink,
+    fontSize: 30,
+    fontWeight: "800",
+  },
   card: {
     alignItems: "center",
     backgroundColor: colors.surface,
@@ -129,7 +137,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: spacing.lg,
   },
-  avatar: { borderRadius: 48, height: 96, width: 96 },
+  avatar: {
+    borderRadius: 48,
+    height: 96,
+    width: 96,
+  },
   avatarFallback: {
     alignItems: "center",
     backgroundColor: colors.brandSoft,
@@ -138,7 +150,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 96,
   },
-  initial: { color: colors.brand, fontSize: 36, fontWeight: "800" },
+  initial: {
+    color: colors.brand,
+    fontSize: 36,
+    fontWeight: "800",
+  },
   outline: {
     borderColor: colors.brand,
     borderRadius: 10,
@@ -146,7 +162,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     padding: spacing.sm,
   },
-  outlineText: { color: colors.brand, fontWeight: "700" },
+  outlineText: {
+    color: colors.brand,
+    fontWeight: "700",
+  },
   label: {
     alignSelf: "stretch",
     color: colors.muted,
@@ -176,7 +195,16 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     padding: spacing.md,
   },
-  saveText: { color: colors.surface, fontWeight: "700" },
-  message: { color: colors.brand, marginTop: spacing.md },
-  error: { color: colors.danger, marginTop: spacing.md },
+  saveText: {
+    color: colors.surface,
+    fontWeight: "700",
+  },
+  message: {
+    color: colors.brand,
+    marginTop: spacing.md,
+  },
+  error: {
+    color: colors.danger,
+    marginTop: spacing.md,
+  },
 });

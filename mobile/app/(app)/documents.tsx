@@ -163,7 +163,11 @@ export default function DocumentsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { backgroundColor: colors.canvas, flex: 1, padding: spacing.lg },
+  container: {
+    backgroundColor: colors.canvas,
+    flex: 1,
+    padding: spacing.lg,
+  },
   eyebrow: {
     color: colors.brand,
     fontSize: 12,
@@ -193,7 +197,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     padding: spacing.md,
   },
-  formTitle: { color: colors.ink, fontSize: 17, fontWeight: "700" },
+  formTitle: {
+    color: colors.ink,
+    fontSize: 17,
+    fontWeight: "700",
+  },
   typeRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -207,9 +215,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },
-  typeSelected: { backgroundColor: colors.brand, borderColor: colors.brand },
-  typeText: { color: colors.muted, fontSize: 10 },
-  typeTextSelected: { color: colors.surface, fontSize: 10, fontWeight: "700" },
+  typeSelected: {
+    backgroundColor: colors.brand,
+    borderColor: colors.brand,
+  },
+  typeText: {
+    color: colors.muted,
+    fontSize: 10,
+  },
+  typeTextSelected: {
+    color: colors.surface,
+    fontSize: 10,
+    fontWeight: "700",
+  },
   choose: {
     borderColor: colors.brand,
     borderRadius: 10,
@@ -217,7 +235,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     padding: spacing.sm,
   },
-  chooseText: { color: colors.brand, fontSize: 13, textAlign: "center" },
+  chooseText: {
+    color: colors.brand,
+    fontSize: 13,
+    textAlign: "center",
+  },
   save: {
     alignItems: "center",
     backgroundColor: colors.brand,
@@ -225,10 +247,22 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     padding: spacing.sm,
   },
-  saveText: { color: colors.surface, fontWeight: "700" },
-  error: { color: colors.danger, marginTop: spacing.sm },
-  loader: { marginTop: spacing.xl },
-  list: { gap: spacing.sm, paddingBottom: spacing.xl, paddingTop: spacing.md },
+  saveText: {
+    color: colors.surface,
+    fontWeight: "700",
+  },
+  error: {
+    color: colors.danger,
+    marginTop: spacing.sm,
+  },
+  loader: {
+    marginTop: spacing.xl,
+  },
+  list: {
+    gap: spacing.sm,
+    paddingBottom: spacing.xl,
+    paddingTop: spacing.md,
+  },
   card: {
     alignItems: "center",
     backgroundColor: colors.surface,
@@ -238,9 +272,27 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     padding: spacing.md,
   },
-  cardBody: { flex: 1 },
-  fileName: { color: colors.ink, fontSize: 15, fontWeight: "700" },
-  muted: { color: colors.muted, fontSize: 13, marginTop: spacing.xs },
-  delete: { color: colors.danger, fontSize: 12, fontWeight: "700" },
-  empty: { color: colors.muted, padding: spacing.xl, textAlign: "center" },
+  cardBody: {
+    flex: 1,
+  },
+  fileName: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  muted: {
+    color: colors.muted,
+    fontSize: 13,
+    marginTop: spacing.xs,
+  },
+  delete: {
+    color: colors.danger,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  empty: {
+    color: colors.muted,
+    padding: spacing.xl,
+    textAlign: "center",
+  },
 });

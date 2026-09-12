@@ -17,11 +17,19 @@ export type DocumentRecord = {
   fileUrl: string;
   ocrProcessed: boolean;
   createdAt: string;
-  product: { id: string; name: string };
+  product: {
+    id: string;
+    name: string;
+  };
 };
 export type DocumentList = {
   data: DocumentRecord[];
-  meta: { page: number; limit: number; total: number; totalPages: number };
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 };
 export type NativeFile = {
   uri: string;

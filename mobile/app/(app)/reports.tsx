@@ -70,15 +70,25 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.lg,
   },
-  center: { alignItems: "center", flex: 1, justifyContent: "center" },
+  center: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+  },
   eyebrow: {
     color: colors.brand,
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 2,
   },
-  title: { color: colors.ink, fontSize: 30, fontWeight: "800" },
-  error: { color: colors.danger },
+  title: {
+    color: colors.ink,
+    fontSize: 30,
+    fontWeight: "800",
+  },
+  error: {
+    color: colors.danger,
+  },
   card: {
     alignItems: "center",
     backgroundColor: colors.surface,
@@ -89,20 +99,35 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: spacing.md,
   },
-  name: { color: colors.ink, fontSize: 15, fontWeight: "700" },
-  actions: { flexDirection: "row", gap: spacing.xs },
+  name: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  actions: {
+    flexDirection: "row",
+    gap: spacing.xs,
+  },
   primary: {
     backgroundColor: colors.brand,
     borderRadius: 8,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },
-  primaryText: { color: colors.surface, fontSize: 12, fontWeight: "700" },
+  primaryText: {
+    color: colors.surface,
+    fontSize: 12,
+    fontWeight: "700",
+  },
   secondary: {
     backgroundColor: colors.brandSoft,
     borderRadius: 8,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },
-  secondaryText: { color: colors.brand, fontSize: 12, fontWeight: "700" },
+  secondaryText: {
+    color: colors.brand,
+    fontSize: 12,
+    fontWeight: "700",
+  },
 });

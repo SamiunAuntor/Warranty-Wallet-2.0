@@ -57,7 +57,12 @@ export type AssetInput = {
 };
 export type AssetList = {
   data: Asset[];
-  meta: { page: number; limit: number; total: number; totalPages: number };
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 };
 
 export function getAssets(token: string, search = "") {

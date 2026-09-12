@@ -140,14 +140,22 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.lg,
   },
-  center: { alignItems: "center", flex: 1, justifyContent: "center" },
+  center: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+  },
   eyebrow: {
     color: colors.brand,
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 2,
   },
-  title: { color: colors.ink, fontSize: 30, fontWeight: "800" },
+  title: {
+    color: colors.ink,
+    fontSize: 30,
+    fontWeight: "800",
+  },
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -161,7 +169,11 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginBottom: spacing.md,
   },
-  label: { color: colors.muted, fontSize: 12, marginTop: spacing.sm },
+  label: {
+    color: colors.muted,
+    fontSize: 12,
+    marginTop: spacing.sm,
+  },
   input: {
     borderColor: colors.border,
     borderRadius: 10,
@@ -170,7 +182,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     padding: spacing.sm,
   },
-  readonly: { color: colors.muted, fontSize: 13, marginTop: spacing.md },
+  readonly: {
+    color: colors.muted,
+    fontSize: 13,
+    marginTop: spacing.md,
+  },
   toggle: {
     alignSelf: "flex-start",
     backgroundColor: colors.brandSoft,
@@ -178,15 +194,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
-  toggleText: { color: colors.brand, fontWeight: "700" },
-  message: { color: colors.brand },
+  toggleText: {
+    color: colors.brand,
+    fontWeight: "700",
+  },
+  message: {
+    color: colors.brand,
+  },
   save: {
     alignItems: "center",
     backgroundColor: colors.brand,
     borderRadius: 10,
     padding: spacing.md,
   },
-  saveText: { color: colors.surface, fontWeight: "700" },
+  saveText: {
+    color: colors.surface,
+    fontWeight: "700",
+  },
   logout: {
     alignItems: "center",
     borderColor: colors.danger,
@@ -194,5 +218,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: spacing.md,
   },
-  logoutText: { color: colors.danger, fontWeight: "700" },
+  logoutText: {
+    color: colors.danger,
+    fontWeight: "700",
+  },
 });

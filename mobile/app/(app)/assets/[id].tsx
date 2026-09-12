@@ -245,15 +245,25 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: spacing.lg,
   },
-  back: { color: colors.brand, fontWeight: "700" },
+  back: {
+    color: colors.brand,
+    fontWeight: "700",
+  },
   eyebrow: {
     color: colors.brand,
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 2,
   },
-  title: { color: colors.ink, fontSize: 30, fontWeight: "800" },
-  subtitle: { color: colors.muted, fontSize: 15 },
+  title: {
+    color: colors.ink,
+    fontSize: 30,
+    fontWeight: "800",
+  },
+  subtitle: {
+    color: colors.muted,
+    fontSize: 15,
+  },
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -266,14 +276,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     paddingVertical: spacing.sm,
   },
-  label: { color: colors.muted, fontSize: 12 },
+  label: {
+    color: colors.muted,
+    fontSize: 12,
+  },
   value: {
     color: colors.ink,
     fontSize: 15,
     fontWeight: "600",
     marginTop: spacing.xs,
   },
-  actions: { gap: spacing.sm },
+  actions: {
+    gap: spacing.sm,
+  },
   primary: {
     alignItems: "center",
     backgroundColor: colors.brand,
@@ -281,7 +296,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     padding: spacing.md,
   },
-  primaryText: { color: colors.surface, fontWeight: "700" },
+  primaryText: {
+    color: colors.surface,
+    fontWeight: "700",
+  },
   outline: {
     alignItems: "center",
     borderColor: colors.brand,
@@ -289,7 +307,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: spacing.md,
   },
-  outlineText: { color: colors.brand, fontWeight: "700" },
+  outlineText: {
+    color: colors.brand,
+    fontWeight: "700",
+  },
   deleteButton: {
     alignItems: "center",
     borderColor: colors.danger,
@@ -297,10 +318,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: spacing.md,
   },
-  deleteText: { color: colors.danger, fontWeight: "700" },
-  delete: { color: colors.brand, fontSize: 12, fontWeight: "700" },
-  error: { color: colors.danger, textAlign: "center" },
-  section: { color: colors.ink, fontSize: 17, fontWeight: "700" },
+  deleteText: {
+    color: colors.danger,
+    fontWeight: "700",
+  },
+  delete: {
+    color: colors.brand,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  error: {
+    color: colors.danger,
+    textAlign: "center",
+  },
+  section: {
+    color: colors.ink,
+    fontSize: 17,
+    fontWeight: "700",
+  },
   document: {
     borderBottomColor: colors.border,
     borderBottomWidth: 1,
@@ -332,6 +367,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brand,
     borderColor: colors.brand,
   },
-  categoryText: { color: colors.muted, fontSize: 12 },
-  categoryTextSelected: { color: colors.surface, fontSize: 12 },
+  categoryText: {
+    color: colors.muted,
+    fontSize: 12,
+  },
+  categoryTextSelected: {
+    color: colors.surface,
+    fontSize: 12,
+  },
 });

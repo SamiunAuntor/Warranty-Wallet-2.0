@@ -105,7 +105,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     padding: spacing.md,
   },
-  error: { color: colors.danger, marginTop: spacing.sm },
+  error: {
+    color: colors.danger,
+    marginTop: spacing.sm,
+  },
   button: {
     alignItems: "center",
     backgroundColor: colors.brand,
@@ -113,7 +116,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     padding: spacing.md,
   },
-  buttonText: { color: colors.surface, fontSize: 16, fontWeight: "700" },
+  buttonText: {
+    color: colors.surface,
+    fontSize: 16,
+    fontWeight: "700",
+  },
   link: {
     color: colors.brand,
     fontSize: 15,

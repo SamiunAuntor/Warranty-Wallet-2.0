@@ -135,15 +135,25 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.lg,
   },
-  center: { alignItems: "center", flex: 1, justifyContent: "center" },
+  center: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+  },
   eyebrow: {
     color: colors.brand,
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 2,
   },
-  title: { color: colors.ink, fontSize: 28, fontWeight: "800" },
-  error: { color: colors.danger },
+  title: {
+    color: colors.ink,
+    fontSize: 28,
+    fontWeight: "800",
+  },
+  error: {
+    color: colors.danger,
+  },
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -151,14 +161,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: spacing.md,
   },
-  section: { color: colors.ink, fontSize: 17, fontWeight: "700" },
+  section: {
+    color: colors.ink,
+    fontSize: 17,
+    fontWeight: "700",
+  },
   claim: {
     borderTopColor: colors.border,
     borderTopWidth: 1,
     marginTop: spacing.sm,
     paddingTop: spacing.sm,
   },
-  name: { color: colors.ink, fontSize: 14, fontWeight: "700" },
+  name: {
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: "700",
+  },
   muted: {
     color: colors.muted,
     fontSize: 12,
@@ -178,7 +196,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
     paddingVertical: 4,
   },
-  selected: { backgroundColor: colors.brand, borderColor: colors.brand },
-  statusText: { color: colors.muted, fontSize: 9 },
-  selectedText: { color: colors.surface, fontSize: 9, fontWeight: "700" },
+  selected: {
+    backgroundColor: colors.brand,
+    borderColor: colors.brand,
+  },
+  statusText: {
+    color: colors.muted,
+    fontSize: 9,
+  },
+  selectedText: {
+    color: colors.surface,
+    fontSize: 9,
+    fontWeight: "700",
+  },
 });

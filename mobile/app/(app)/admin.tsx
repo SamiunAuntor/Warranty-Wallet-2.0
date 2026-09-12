@@ -164,15 +164,25 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 2,
   },
-  title: { color: colors.ink, fontSize: 30, fontWeight: "800" },
+  title: {
+    color: colors.ink,
+    fontSize: 30,
+    fontWeight: "800",
+  },
   muted: {
     color: colors.muted,
     fontSize: 13,
     lineHeight: 20,
     marginTop: spacing.xs,
   },
-  error: { color: colors.danger },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  error: {
+    color: colors.danger,
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
   stat: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -208,7 +218,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     padding: spacing.sm,
   },
-  multiline: { minHeight: 90, textAlignVertical: "top" },
+  multiline: {
+    minHeight: 90,
+    textAlignVertical: "top",
+  },
   save: {
     alignItems: "center",
     backgroundColor: colors.brand,
@@ -216,7 +229,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     padding: spacing.sm,
   },
-  saveText: { color: colors.surface, fontWeight: "700" },
+  saveText: {
+    color: colors.surface,
+    fontWeight: "700",
+  },
   user: {
     alignItems: "center",
     backgroundColor: colors.surface,
@@ -226,8 +242,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     padding: spacing.md,
   },
-  userCopy: { flex: 1 },
-  userName: { color: colors.ink, fontSize: 15, fontWeight: "700" },
-  block: { color: colors.danger, fontSize: 12, fontWeight: "700" },
-  unblock: { color: colors.brand, fontSize: 12, fontWeight: "700" },
+  userCopy: {
+    flex: 1,
+  },
+  userName: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  block: {
+    color: colors.danger,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  unblock: {
+    color: colors.brand,
+    fontSize: 12,
+    fontWeight: "700",
+  },
 });

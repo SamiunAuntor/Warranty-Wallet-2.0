@@ -172,14 +172,22 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.lg,
   },
-  center: { alignItems: "center", flex: 1, justifyContent: "center" },
+  center: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+  },
   eyebrow: {
     color: colors.brand,
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 2,
   },
-  title: { color: colors.ink, fontSize: 28, fontWeight: "800" },
+  title: {
+    color: colors.ink,
+    fontSize: 28,
+    fontWeight: "800",
+  },
   input: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -189,16 +197,30 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     padding: spacing.sm,
   },
-  switch: { flexDirection: "row", gap: spacing.xs, marginTop: spacing.sm },
+  switch: {
+    flexDirection: "row",
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+  },
   choice: {
     borderColor: colors.border,
     borderRadius: 14,
     borderWidth: 1,
     padding: spacing.sm,
   },
-  selected: { backgroundColor: colors.brand, borderColor: colors.brand },
-  choiceText: { color: colors.muted, fontSize: 12 },
-  selectedText: { color: colors.surface, fontSize: 12, fontWeight: "700" },
+  selected: {
+    backgroundColor: colors.brand,
+    borderColor: colors.brand,
+  },
+  choiceText: {
+    color: colors.muted,
+    fontSize: 12,
+  },
+  selectedText: {
+    color: colors.surface,
+    fontSize: 12,
+    fontWeight: "700",
+  },
   save: {
     alignItems: "center",
     backgroundColor: colors.brand,
@@ -206,8 +228,13 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     padding: spacing.sm,
   },
-  saveText: { color: colors.surface, fontWeight: "700" },
-  error: { color: colors.danger },
+  saveText: {
+    color: colors.surface,
+    fontWeight: "700",
+  },
+  error: {
+    color: colors.danger,
+  },
   section: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -228,8 +255,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     paddingVertical: spacing.sm,
   },
-  copy: { flex: 1 },
-  name: { color: colors.ink, fontWeight: "700" },
-  muted: { color: colors.muted, fontSize: 12, marginTop: spacing.xs },
-  delete: { color: colors.danger, fontSize: 12, fontWeight: "700" },
+  copy: {
+    flex: 1,
+  },
+  name: {
+    color: colors.ink,
+    fontWeight: "700",
+  },
+  muted: {
+    color: colors.muted,
+    fontSize: 12,
+    marginTop: spacing.xs,
+  },
+  delete: {
+    color: colors.danger,
+    fontSize: 12,
+    fontWeight: "700",
+  },
 });

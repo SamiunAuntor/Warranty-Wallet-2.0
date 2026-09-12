@@ -177,7 +177,11 @@ function ClaimForm({ onCreated }: { onCreated: (claim: Claim) => void }) {
 }
 
 const styles = StyleSheet.create({
-  container: { backgroundColor: colors.canvas, flex: 1, padding: spacing.lg },
+  container: {
+    backgroundColor: colors.canvas,
+    flex: 1,
+    padding: spacing.lg,
+  },
   header: {
     alignItems: "center",
     flexDirection: "row",
@@ -201,7 +205,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
-  addText: { color: colors.surface, fontWeight: "700" },
+  addText: {
+    color: colors.surface,
+    fontWeight: "700",
+  },
   search: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -211,8 +218,14 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     padding: spacing.md,
   },
-  list: { gap: spacing.sm, paddingBottom: spacing.xl, paddingTop: spacing.md },
-  loader: { marginTop: spacing.xl },
+  list: {
+    gap: spacing.sm,
+    paddingBottom: spacing.xl,
+    paddingTop: spacing.md,
+  },
+  loader: {
+    marginTop: spacing.xl,
+  },
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -220,7 +233,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: spacing.md,
   },
-  claimNumber: { color: colors.brand, fontSize: 12, fontWeight: "700" },
+  claimNumber: {
+    color: colors.brand,
+    fontSize: 12,
+    fontWeight: "700",
+  },
   claimTitle: {
     color: colors.ink,
     fontSize: 17,
@@ -246,15 +263,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },
-  statusSelected: { backgroundColor: colors.brand, borderColor: colors.brand },
-  statusText: { color: colors.muted, fontSize: 10 },
+  statusSelected: {
+    backgroundColor: colors.brand,
+    borderColor: colors.brand,
+  },
+  statusText: {
+    color: colors.muted,
+    fontSize: 10,
+  },
   statusTextSelected: {
     color: colors.surface,
     fontSize: 10,
     fontWeight: "700",
   },
-  empty: { color: colors.muted, padding: spacing.xl, textAlign: "center" },
-  error: { color: colors.danger, marginTop: spacing.sm },
+  empty: {
+    color: colors.muted,
+    padding: spacing.xl,
+    textAlign: "center",
+  },
+  error: {
+    color: colors.danger,
+    marginTop: spacing.sm,
+  },
   form: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -263,8 +293,16 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     padding: spacing.md,
   },
-  formTitle: { color: colors.ink, fontSize: 17, fontWeight: "700" },
-  helper: { color: colors.muted, fontSize: 12, marginTop: spacing.xs },
+  formTitle: {
+    color: colors.ink,
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  helper: {
+    color: colors.muted,
+    fontSize: 12,
+    marginTop: spacing.xs,
+  },
   input: {
     borderColor: colors.border,
     borderRadius: 10,
@@ -273,7 +311,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     padding: spacing.sm,
   },
-  multiline: { minHeight: 90, textAlignVertical: "top" },
+  multiline: {
+    minHeight: 90,
+    textAlignVertical: "top",
+  },
   save: {
     alignItems: "center",
     backgroundColor: colors.brand,
@@ -281,5 +322,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     padding: spacing.sm,
   },
-  saveText: { color: colors.surface, fontWeight: "700" },
+  saveText: {
+    color: colors.surface,
+    fontWeight: "700",
+  },
 });

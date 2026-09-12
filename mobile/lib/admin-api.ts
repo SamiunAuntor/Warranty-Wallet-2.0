@@ -21,7 +21,12 @@ export type AdminUser = {
 };
 export type AdminUserList = {
   data: AdminUser[];
-  meta: { page: number; limit: number; total: number; totalPages: number };
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 };
 export function getAdminStats(token: string) {
   return apiRequest<AdminStats>("/admin/dashboard", { token });
@@ -56,15 +61,23 @@ export type AdminAsset = {
   brand: string;
   warrantyStatus: string;
   lifecycleStatus: string;
-  user: { name: string; email: string };
+  user: {
+    name: string;
+    email: string;
+  };
 };
 export type AdminClaim = {
   id: string;
   claimNumber: string;
   title: string;
   status: string;
-  product: { name: string };
-  user: { name: string; email: string };
+  product: {
+    name: string;
+  };
+  user: {
+    name: string;
+    email: string;
+  };
 };
 export type AdminPayment = {
   id: string;
@@ -72,7 +85,10 @@ export type AdminPayment = {
   currency: string;
   plan: string | null;
   status: string;
-  user: { name: string; email: string };
+  user: {
+    name: string;
+    email: string;
+  };
   createdAt: string;
 };
 export function getAdminCategories(token: string) {

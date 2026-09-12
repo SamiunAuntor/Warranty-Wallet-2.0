@@ -75,16 +75,29 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 2,
   },
-  title: { color: colors.ink, fontSize: 30, fontWeight: "800" },
-  copy: { color: colors.muted, fontSize: 15, lineHeight: 22 },
+  title: {
+    color: colors.ink,
+    fontSize: 30,
+    fontWeight: "800",
+  },
+  copy: {
+    color: colors.muted,
+    fontSize: 15,
+    lineHeight: 22,
+  },
   primary: {
     alignItems: "center",
     backgroundColor: colors.brand,
     borderRadius: 10,
     padding: spacing.md,
   },
-  primaryText: { color: colors.surface, fontWeight: "700" },
-  error: { color: colors.danger },
+  primaryText: {
+    color: colors.surface,
+    fontWeight: "700",
+  },
+  error: {
+    color: colors.danger,
+  },
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -97,7 +110,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     paddingVertical: spacing.sm,
   },
-  key: { color: colors.muted, fontSize: 12 },
+  key: {
+    color: colors.muted,
+    fontSize: 12,
+  },
   value: {
     color: colors.ink,
     fontSize: 15,

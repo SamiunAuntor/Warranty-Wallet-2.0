@@ -140,7 +140,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
     gap: spacing.md,
   },
-  center: { alignItems: "center", flex: 1, justifyContent: "center" },
+  center: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+  },
   eyebrow: {
     color: colors.brand,
     fontSize: 12,
@@ -153,15 +157,26 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginTop: spacing.md,
   },
-  copy: { color: colors.muted, fontSize: 16, lineHeight: 24 },
-  error: { color: colors.danger, marginTop: spacing.md },
+  copy: {
+    color: colors.muted,
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  error: {
+    color: colors.danger,
+    marginTop: spacing.md,
+  },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.sm,
     marginTop: spacing.sm,
   },
-  healthGrid: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.md },
+  healthGrid: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
   stat: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -170,7 +185,10 @@ const styles = StyleSheet.create({
     minWidth: "47%",
     padding: spacing.md,
   },
-  muted: { color: colors.muted, fontSize: 13 },
+  muted: {
+    color: colors.muted,
+    fontSize: 13,
+  },
   statValue: {
     color: colors.ink,
     fontSize: 28,
@@ -185,14 +203,22 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     marginTop: spacing.sm,
   },
-  panelTitle: { color: colors.ink, fontSize: 16, fontWeight: "700" },
+  panelTitle: {
+    color: colors.ink,
+    fontSize: 16,
+    fontWeight: "700",
+  },
   health: {
     color: colors.brand,
     fontSize: 42,
     fontWeight: "800",
     marginTop: spacing.md,
   },
-  healthSuffix: { color: colors.muted, fontSize: 16, fontWeight: "500" },
+  healthSuffix: {
+    color: colors.muted,
+    fontSize: 16,
+    fontWeight: "500",
+  },
   timeline: {
     alignItems: "center",
     borderBottomColor: colors.border,
@@ -200,8 +226,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     paddingVertical: spacing.md,
   },
-  timelineCopy: { flex: 1 },
-  assetName: { color: colors.ink, fontSize: 15, fontWeight: "600" },
+  timelineCopy: {
+    flex: 1,
+  },
+  assetName: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: "600",
+  },
   badge: {
     backgroundColor: colors.brandSoft,
     borderRadius: 20,

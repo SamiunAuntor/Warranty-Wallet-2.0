@@ -16,7 +16,12 @@ export type ClaimDocument = {
   evidenceType: string;
   claimStage: ClaimStatus | null;
   note: string | null;
-  document: { id: string; fileName: string; fileUrl: string; fileType: string };
+  document: {
+    id: string;
+    fileName: string;
+    fileUrl: string;
+    fileType: string;
+  };
 };
 export type Claim = {
   id: string;
@@ -32,13 +37,22 @@ export type Claim = {
   filedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  product: { id: string; name: string; brand: string };
+  product: {
+    id: string;
+    name: string;
+    brand: string;
+  };
   timeline?: ClaimTimelineEvent[];
   documents?: ClaimDocument[];
 };
 export type ClaimList = {
   data: Claim[];
-  meta: { page: number; limit: number; total: number; totalPages: number };
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 };
 export function getClaims(token: string, search = "") {
   const params = new URLSearchParams({ page: "1", limit: "50" });
@@ -67,7 +81,10 @@ export function getClaim(token: string, id: string) {
 export function updateClaim(
   token: string,
   id: string,
-  input: { status?: ClaimStatus; resolution?: string },
+  input: {
+    status?: ClaimStatus;
+    resolution?: string;
+  },
 ) {
   return apiRequest<Claim>(`/claims/${id}`, {
     method: "PATCH",

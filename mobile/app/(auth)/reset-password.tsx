@@ -92,7 +92,11 @@ const styles = StyleSheet.create({
     lineHeight: 40,
     marginTop: spacing.md,
   },
-  copy: { color: colors.muted, fontSize: 15, marginTop: spacing.sm },
+  copy: {
+    color: colors.muted,
+    fontSize: 15,
+    marginTop: spacing.sm,
+  },
   input: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -110,8 +114,15 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     padding: spacing.md,
   },
-  buttonText: { color: colors.surface, fontSize: 16, fontWeight: "700" },
-  error: { color: colors.danger, marginTop: spacing.md },
+  buttonText: {
+    color: colors.surface,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  error: {
+    color: colors.danger,
+    marginTop: spacing.md,
+  },
   link: {
     color: colors.brand,
     fontSize: 15,

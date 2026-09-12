@@ -121,14 +121,22 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.lg,
   },
-  center: { alignItems: "center", flex: 1, justifyContent: "center" },
+  center: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+  },
   eyebrow: {
     color: colors.brand,
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 2,
   },
-  title: { color: colors.ink, fontSize: 30, fontWeight: "800" },
+  title: {
+    color: colors.ink,
+    fontSize: 30,
+    fontWeight: "800",
+  },
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -136,7 +144,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: spacing.lg,
   },
-  section: { color: colors.ink, fontSize: 17, fontWeight: "700" },
+  section: {
+    color: colors.ink,
+    fontSize: 17,
+    fontWeight: "700",
+  },
   toggle: {
     alignSelf: "flex-start",
     backgroundColor: colors.brandSoft,
@@ -145,8 +157,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
-  toggleText: { color: colors.brand, fontWeight: "700" },
-  label: { color: colors.muted, fontSize: 12, marginTop: spacing.md },
+  toggleText: {
+    color: colors.brand,
+    fontWeight: "700",
+  },
+  label: {
+    color: colors.muted,
+    fontSize: 12,
+    marginTop: spacing.md,
+  },
   input: {
     borderColor: colors.border,
     borderRadius: 10,
@@ -162,6 +181,12 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     padding: spacing.md,
   },
-  saveText: { color: colors.surface, fontWeight: "700" },
-  message: { color: colors.brand, marginTop: spacing.md },
+  saveText: {
+    color: colors.surface,
+    fontWeight: "700",
+  },
+  message: {
+    color: colors.brand,
+    marginTop: spacing.md,
+  },
 });

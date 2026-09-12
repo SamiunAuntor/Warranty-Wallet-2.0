@@ -74,7 +74,11 @@ export default function NotificationsScreen() {
   );
 }
 const styles = StyleSheet.create({
-  container: { backgroundColor: colors.canvas, flex: 1, padding: spacing.lg },
+  container: {
+    backgroundColor: colors.canvas,
+    flex: 1,
+    padding: spacing.lg,
+  },
   header: {
     alignItems: "center",
     flexDirection: "row",
@@ -92,8 +96,16 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginTop: spacing.xs,
   },
-  markAll: { color: colors.brand, fontSize: 12, fontWeight: "700" },
-  list: { gap: spacing.sm, paddingBottom: spacing.xl, paddingTop: spacing.lg },
+  markAll: {
+    color: colors.brand,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  list: {
+    gap: spacing.sm,
+    paddingBottom: spacing.xl,
+    paddingTop: spacing.lg,
+  },
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -101,16 +113,36 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: spacing.md,
   },
-  unread: { borderColor: colors.brand, borderWidth: 2 },
-  cardTitle: { color: colors.ink, fontSize: 15, fontWeight: "700" },
+  unread: {
+    borderColor: colors.brand,
+    borderWidth: 2,
+  },
+  cardTitle: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: "700",
+  },
   message: {
     color: colors.muted,
     fontSize: 13,
     lineHeight: 20,
     marginTop: spacing.xs,
   },
-  date: { color: colors.muted, fontSize: 11, marginTop: spacing.sm },
-  empty: { color: colors.muted, padding: spacing.xl, textAlign: "center" },
-  error: { color: colors.danger, marginTop: spacing.md },
-  loader: { marginTop: spacing.xl },
+  date: {
+    color: colors.muted,
+    fontSize: 11,
+    marginTop: spacing.sm,
+  },
+  empty: {
+    color: colors.muted,
+    padding: spacing.xl,
+    textAlign: "center",
+  },
+  error: {
+    color: colors.danger,
+    marginTop: spacing.md,
+  },
+  loader: {
+    marginTop: spacing.xl,
+  },
 });

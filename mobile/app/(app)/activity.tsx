@@ -49,7 +49,11 @@ export default function ActivityScreen() {
   );
 }
 const styles = StyleSheet.create({
-  container: { backgroundColor: colors.canvas, flex: 1, padding: spacing.lg },
+  container: {
+    backgroundColor: colors.canvas,
+    flex: 1,
+    padding: spacing.lg,
+  },
   eyebrow: {
     color: colors.brand,
     fontSize: 12,
@@ -62,7 +66,10 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginTop: spacing.xs,
   },
-  list: { gap: spacing.sm, paddingTop: spacing.lg },
+  list: {
+    gap: spacing.sm,
+    paddingTop: spacing.lg,
+  },
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -70,13 +77,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: spacing.md,
   },
-  itemTitle: { color: colors.ink, fontWeight: "700" },
+  itemTitle: {
+    color: colors.ink,
+    fontWeight: "700",
+  },
   muted: {
     color: colors.muted,
     fontSize: 13,
     lineHeight: 20,
     marginTop: spacing.xs,
   },
-  date: { color: colors.muted, fontSize: 11, marginTop: spacing.sm },
-  error: { color: colors.danger, marginTop: spacing.md },
+  date: {
+    color: colors.muted,
+    fontSize: 11,
+    marginTop: spacing.sm,
+  },
+  error: {
+    color: colors.danger,
+    marginTop: spacing.md,
+  },
 });
