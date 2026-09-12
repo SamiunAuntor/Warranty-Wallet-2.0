@@ -1,6 +1,10 @@
 import { Link, router } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  normalizeEmail,
+  validateRegistrationInput,
+} from "../../lib/auth-validation";
 import { colors, spacing } from "../../lib/theme";
 import { useAuth } from "../../providers/auth-provider";
 
@@ -13,11 +17,16 @@ export default function RegisterScreen() {
   const [submitting, setSubmitting] = useState(false);
   async function submit() {
     setError("");
-    if (!name.trim() || !email.trim() || password.length < 6)
-      return setError("Enter your name, email, and a password of at least 6 characters.");
+    const validationError = validateRegistrationInput(name, email, password);
+
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await register(name, email, password);
+      await register(name.trim(), normalizeEmail(email), password);
       router.replace("/(app)");
     } catch {
       setError("We could not create your account. Check your details and try again.");

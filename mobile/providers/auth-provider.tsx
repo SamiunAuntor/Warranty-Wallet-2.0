@@ -14,6 +14,7 @@ import {
 import { createContext, useContext, useEffect, useState, type PropsWithChildren } from "react";
 import { getFirebaseAuth } from "../lib/firebase";
 import { syncUser, type AppUser } from "../lib/auth-api";
+import { normalizeEmail } from "../lib/auth-validation";
 
 type AuthContextValue = {
   loading: boolean;
@@ -74,13 +75,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }, []);
   async function login(email: string, password: string) {
-    await signInWithEmailAndPassword(getFirebaseAuth(), email.trim(), password);
+    await signInWithEmailAndPassword(getFirebaseAuth(), normalizeEmail(email), password);
   }
 
   async function register(name: string, email: string, password: string) {
     const credential = await createUserWithEmailAndPassword(
       getFirebaseAuth(),
-      email.trim(),
+      normalizeEmail(email),
       password,
     );
     await updateProfile(credential.user, { displayName: name.trim() });

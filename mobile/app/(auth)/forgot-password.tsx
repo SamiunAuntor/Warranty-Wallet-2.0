@@ -1,6 +1,7 @@
 import { Link } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { normalizeEmail } from "../../lib/auth-validation";
 import { colors, spacing } from "../../lib/theme";
 import { useAuth } from "../../providers/auth-provider";
 
@@ -13,10 +14,16 @@ export default function ForgotPasswordScreen() {
   async function submit() {
     setError("");
     setMessage("");
-    if (!email.trim()) return setError("Enter your email address.");
+    const normalizedEmail = normalizeEmail(email);
+
+    if (!normalizedEmail) {
+      setError("Enter your email address.");
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await requestPasswordReset(email);
+      await requestPasswordReset(normalizedEmail);
       setMessage("If an account exists for that email, a reset link has been sent.");
     } catch {
       setError("We could not send the reset email. Check the address and try again.");

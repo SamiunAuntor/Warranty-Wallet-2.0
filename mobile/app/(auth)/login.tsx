@@ -3,6 +3,7 @@ import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { normalizeEmail, validateLoginInput } from "../../lib/auth-validation";
 import { colors, spacing } from "../../lib/theme";
 import { useAuth } from "../../providers/auth-provider";
 
@@ -28,10 +29,16 @@ export default function LoginScreen() {
 
   async function submit() {
     setError("");
-    if (!email.trim() || !password) return setError("Enter your email and password.");
+    const validationError = validateLoginInput(email, password);
+
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await login(email, password);
+      await login(normalizeEmail(email), password);
       router.replace("/(app)");
     } catch {
       setError("The email or password is incorrect.");

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, router, useLocalSearchParams } from "expo-router";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { validatePasswordResetInput } from "../../lib/auth-validation";
 import { colors, spacing } from "../../lib/theme";
 import { useAuth } from "../../providers/auth-provider";
 
@@ -23,8 +24,12 @@ export default function ResetPasswordScreen() {
   async function submit() {
     if (!oobCode) return;
     setError("");
-    if (password.length < 6 || password !== confirm)
-      return setError("Passwords must match and contain at least 6 characters.");
+    const validationError = validatePasswordResetInput(password, confirm);
+
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
     setSaving(true);
     try {
       await resetPassword(oobCode, password);
