@@ -17,5 +17,6 @@ export default function AppLayout() {
     <Tabs.Screen name="reports" options={{ title: "Reports", tabBarIcon: () => <Text>R</Text> }} />
     <Tabs.Screen name="scan" options={{ title: "Scan", tabBarIcon: () => <Text>I</Text> }} />
     <Tabs.Screen name="settings" options={{ title: "Settings", tabBarIcon: () => <Text>S</Text> }} />
+    <Tabs.Screen name="profile" options={{ title: "Profile", tabBarIcon: () => <Text>P</Text> }} />
   </Tabs>;
 }

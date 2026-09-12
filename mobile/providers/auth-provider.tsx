@@ -1,4 +1,4 @@
-import { createUserWithEmailAndPassword, GoogleAuthProvider, onAuthStateChanged, sendPasswordResetEmail, signInWithCredential, signInWithEmailAndPassword, signOut, updateProfile, type User } from "firebase/auth";
+import { confirmPasswordReset, createUserWithEmailAndPassword, GoogleAuthProvider, onAuthStateChanged, sendPasswordResetEmail, signInWithCredential, signInWithEmailAndPassword, signOut, updateProfile, verifyPasswordResetCode, type User } from "firebase/auth";
 import { createContext, useContext, useEffect, useState, type PropsWithChildren } from "react";
 import { getFirebaseAuth } from "../lib/firebase";
 import { syncUser, type AppUser } from "../lib/auth-api";
@@ -12,6 +12,8 @@ type AuthContextValue = {
   logout: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<void>;
+  verifyResetCode: (code: string) => Promise<string>;
+  resetPassword: (code: string, password: string) => Promise<void>;
   setAppUser: (user: AppUser) => void;
 };
 const unavailable = async () => { throw new Error("Authentication is not ready."); };
@@ -25,6 +27,8 @@ const AuthContext = createContext<AuthContextValue>({
   requestPasswordReset: unavailable,
   setAppUser: () => undefined,
   loginWithGoogle: unavailable,
+  verifyResetCode: unavailable,
+  resetPassword: unavailable,
 });
 
 export function AuthProvider({ children }: PropsWithChildren) {
@@ -69,6 +73,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
     await signInWithCredential(getFirebaseAuth(), GoogleAuthProvider.credential(idToken));
   }
 
+  async function verifyResetCode(code: string) {
+    return verifyPasswordResetCode(getFirebaseAuth(), code);
+  }
+
+  async function resetPassword(code: string, password: string) {
+    await confirmPasswordReset(getFirebaseAuth(), code, password);
+  }
+
   async function logout() {
     await signOut(getFirebaseAuth());
   }
@@ -77,7 +89,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     await sendPasswordResetEmail(getFirebaseAuth(), email.trim());
   }
 
-  return <AuthContext.Provider value={{ loading, user, appUser, login, register, logout, requestPasswordReset, loginWithGoogle, setAppUser }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ loading, user, appUser, login, register, logout, requestPasswordReset, loginWithGoogle, verifyResetCode, resetPassword, setAppUser }}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => useContext(AuthContext);
