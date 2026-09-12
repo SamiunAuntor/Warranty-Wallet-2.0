@@ -1,4 +1,4 @@
-import { createUserWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signOut, updateProfile, type User } from "firebase/auth";
+import { createUserWithEmailAndPassword, GoogleAuthProvider, onAuthStateChanged, sendPasswordResetEmail, signInWithCredential, signInWithEmailAndPassword, signOut, updateProfile, type User } from "firebase/auth";
 import { createContext, useContext, useEffect, useState, type PropsWithChildren } from "react";
 import { getFirebaseAuth } from "../lib/firebase";
 import { syncUser, type AppUser } from "../lib/auth-api";
@@ -11,6 +11,7 @@ type AuthContextValue = {
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
+  loginWithGoogle: (idToken: string) => Promise<void>;
   setAppUser: (user: AppUser) => void;
 };
 const unavailable = async () => { throw new Error("Authentication is not ready."); };
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthContextValue>({
   logout: unavailable,
   requestPasswordReset: unavailable,
   setAppUser: () => undefined,
+  loginWithGoogle: unavailable,
 });
 
 export function AuthProvider({ children }: PropsWithChildren) {
@@ -63,6 +65,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setAppUser(await syncUser(credential.user, name));
   }
 
+  async function loginWithGoogle(idToken: string) {
+    await signInWithCredential(getFirebaseAuth(), GoogleAuthProvider.credential(idToken));
+  }
+
   async function logout() {
     await signOut(getFirebaseAuth());
   }
@@ -71,7 +77,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     await sendPasswordResetEmail(getFirebaseAuth(), email.trim());
   }
 
-  return <AuthContext.Provider value={{ loading, user, appUser, login, register, logout, requestPasswordReset, setAppUser }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ loading, user, appUser, login, register, logout, requestPasswordReset, loginWithGoogle, setAppUser }}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => useContext(AuthContext);
