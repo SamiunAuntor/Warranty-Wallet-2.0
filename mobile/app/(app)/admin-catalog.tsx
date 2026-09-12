@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Alert,
   ActivityIndicator,
@@ -9,80 +9,40 @@ import {
   TextInput,
   View,
 } from "react-native";
-import {
-  createBrand,
-  createCategory,
-  deleteBrand,
-  deleteCategory,
-  getAdminBrands,
-  getAdminCategories,
-  type CatalogItem,
-} from "../../lib/admin-api";
+import type { CatalogItem } from "../../lib/admin-api";
+import { useAdminCatalog } from "../../hooks/use-admin-catalog";
 import { colors, spacing } from "../../lib/theme";
-import { useAuth } from "../../providers/auth-provider";
 export default function AdminCatalogScreen() {
-  const { user, appUser } = useAuth();
-  const [categories, setCategories] = useState<CatalogItem[]>([]);
-  const [brands, setBrands] = useState<CatalogItem[]>([]);
+  const {
+    add: addCatalog,
+    appUser,
+    brands,
+    categories,
+    error,
+    loading,
+    remove: removeCatalog,
+  } = useAdminCatalog();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [kind, setKind] = useState<"category" | "brand">("category");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const load = useCallback(async () => {
-    if (!user || appUser?.role !== "ADMIN") return;
+  async function addItem() {
+    if (!name.trim()) return;
     try {
-      const token = await user.getIdToken();
-      const [nextCategories, nextBrands] = await Promise.all([
-        getAdminCategories(token),
-        getAdminBrands(token),
-      ]);
-      setCategories(nextCategories);
-      setBrands(nextBrands);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load catalog.");
-    } finally {
-      setLoading(false);
-    }
-  }, [appUser?.role, user]);
-  useEffect(() => {
-    void load();
-  }, [load]);
-  async function add() {
-    if (!user || !name.trim()) return;
-    try {
-      const token = await user.getIdToken();
-      const item =
-        kind === "category"
-          ? await createCategory(token, name.trim(), description.trim())
-          : await createBrand(token, name.trim(), description.trim());
-      if (kind === "category") setCategories((current) => [item, ...current]);
-      else setBrands((current) => [item, ...current]);
+      await addCatalog(kind, name, description);
       setName("");
       setDescription("");
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not create catalog item.");
+    } catch {
+      return;
     }
   }
-  function remove(item: CatalogItem, itemKind: "category" | "brand") {
-    if (!user) return;
+  function removeItem(item: CatalogItem, itemKind: "category" | "brand") {
     Alert.alert("Delete catalog item?", item.name, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
-          try {
-            if (itemKind === "category") {
-              await deleteCategory(await user.getIdToken(), item.id);
-              setCategories((current) => current.filter((entry) => entry.id !== item.id));
-            } else {
-              await deleteBrand(await user.getIdToken(), item.id);
-              setBrands((current) => current.filter((entry) => entry.id !== item.id));
-            }
-          } catch (cause) {
-            setError(cause instanceof Error ? cause.message : "Could not delete item.");
-          }
+          await removeCatalog(item, itemKind);
         },
       },
     ]);
@@ -141,7 +101,7 @@ export default function AdminCatalogScreen() {
               <Text style={kind === "brand" ? styles.selectedText : styles.choiceText}>Brand</Text>
             </Pressable>
           </View>
-          <Pressable onPress={() => void add()} style={styles.save}>
+          <Pressable onPress={() => void addItem()} style={styles.save}>
             <Text style={styles.saveText}>Add {kind}</Text>
           </Pressable>
           {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -156,7 +116,7 @@ export default function AdminCatalogScreen() {
                 <Text style={styles.name}>{entry.name}</Text>
                 <Text style={styles.muted}>{entry.description || "No description"}</Text>
               </View>
-              <Pressable onPress={() => remove(entry, item.kind)}>
+              <Pressable onPress={() => removeItem(entry, item.kind)}>
                 <Text style={styles.delete}>Delete</Text>
               </Pressable>
             </View>

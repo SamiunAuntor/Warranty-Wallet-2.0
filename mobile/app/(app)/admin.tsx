@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -8,70 +8,20 @@ import {
   TextInput,
   View,
 } from "react-native";
-import {
-  broadcast,
-  getAdminStats,
-  getAdminUsers,
-  setUserBlocked,
-  type AdminStats,
-  type AdminUser,
-} from "../../lib/admin-api";
+import type { AdminUser } from "../../lib/admin-api";
+import { useAdminDashboard } from "../../hooks/use-admin-dashboard";
 import { colors, spacing } from "../../lib/theme";
-import { useAuth } from "../../providers/auth-provider";
 
 export default function AdminScreen() {
-  const { user, appUser } = useAuth();
-  const [stats, setStats] = useState<AdminStats | null>(null);
-  const [users, setUsers] = useState<AdminUser[]>([]);
+  const { appUser, busy, error, loading, sendBroadcast, stats, toggleUser, users } =
+    useAdminDashboard();
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const load = useCallback(async () => {
-    if (!user || appUser?.role !== "ADMIN") return;
-    try {
-      const token = await user.getIdToken();
-      const [nextStats, nextUsers] = await Promise.all([
-        getAdminStats(token),
-        getAdminUsers(token),
-      ]);
-      setStats(nextStats);
-      setUsers(nextUsers.data);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load admin data.");
-    }
-  }, [appUser?.role, user]);
-  useEffect(() => {
-    void load();
-  }, [load]);
-  async function toggle(item: AdminUser) {
-    if (!user) return;
-    try {
-      const updated = await setUserBlocked(
-        await user.getIdToken(),
-        item.id,
-        item.status !== "BLOCKED",
-      );
-      setUsers((current) => current.map((entry) => (entry.id === updated.id ? updated : entry)));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not update user.");
-    }
-  }
   async function send() {
-    if (!user || !title.trim() || !message.trim()) return setError("Enter a title and message.");
-    setBusy(true);
-    try {
-      await broadcast(await user.getIdToken(), {
-        title: title.trim(),
-        message: message.trim(),
-        type: "SYSTEM",
-      });
+    await sendBroadcast(title, message);
+    if (!error) {
       setTitle("");
       setMessage("");
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not broadcast notification.");
-    } finally {
-      setBusy(false);
     }
   }
   if (appUser?.role !== "ADMIN")
@@ -81,7 +31,7 @@ export default function AdminScreen() {
         <Text style={styles.muted}>This area is limited to administrator accounts.</Text>
       </View>
     );
-  if (!stats)
+  if (loading || !stats)
     return (
       <View style={styles.center}>
         <ActivityIndicator color={colors.brand} />
@@ -128,7 +78,7 @@ export default function AdminScreen() {
               {item.email} · {item.plan}
             </Text>
           </View>
-          <Pressable onPress={() => void toggle(item)}>
+          <Pressable onPress={() => void toggleUser(item)}>
             <Text style={item.status === "BLOCKED" ? styles.unblock : styles.block}>
               {item.status === "BLOCKED" ? "Unblock" : "Block"}
             </Text>
