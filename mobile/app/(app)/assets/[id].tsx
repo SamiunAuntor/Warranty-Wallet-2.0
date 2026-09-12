@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
 import {
   ActivityIndicator,
@@ -11,52 +11,20 @@ import {
   View,
 } from "react-native";
 import {
-  deleteAsset,
-  getAsset,
-  getCategories,
   updateAsset,
   type Asset,
   type Category,
 } from "../../../lib/assets-api";
+import { useAssetDetails } from "../../../hooks/use-asset-details";
 import { colors, spacing } from "../../../lib/theme";
-import { useAuth } from "../../../providers/auth-provider";
 
 export default function AssetDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user } = useAuth();
-  const [asset, setAsset] = useState<Asset | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const { asset, categories, error, loading, remove: removeAsset, save, saving } =
+    useAssetDetails(id);
   const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const load = useCallback(async () => {
-    if (!user || !id) return;
-    try {
-      const token = await user.getIdToken();
-      const [next, catalog] = await Promise.all([getAsset(token, id), getCategories()]);
-      setAsset(next);
-      setCategories(catalog);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load asset.");
-    }
-  }, [id, user]);
-  useEffect(() => {
-    void load();
-  }, [load]);
-  async function save(input: Partial<Parameters<typeof updateAsset>[2]>) {
-    if (!user || !asset) return;
-    setSaving(true);
-    try {
-      setAsset(await updateAsset(await user.getIdToken(), asset.id, input));
-      setEditing(false);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not update asset.");
-    } finally {
-      setSaving(false);
-    }
-  }
   function remove() {
-    if (!user || !asset) return;
+    if (!asset) return;
     Alert.alert("Delete asset?", `Remove ${asset.name} and its records?`, [
       { text: "Cancel", style: "cancel" },
       {
@@ -64,16 +32,16 @@ export default function AssetDetailsScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            await deleteAsset(await user.getIdToken(), asset.id);
+            await removeAsset();
             router.back();
-          } catch (cause) {
-            setError(cause instanceof Error ? cause.message : "Could not delete asset.");
+          } catch {
+            return;
           }
         },
       },
     ]);
   }
-  if (!asset)
+  if (loading || !asset)
     return (
       <View style={styles.center}>
         {error ? (
@@ -114,7 +82,10 @@ export default function AssetDetailsScreen() {
           asset={asset}
           categories={categories}
           saving={saving}
-          onSave={(input) => void save(input)}
+          onSave={async (input) => {
+            await save(input);
+            setEditing(false);
+          }}
         />
       ) : (
         <View style={styles.actions}>

@@ -1,6 +1,6 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as Linking from "expo-linking";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
 import {
   ActivityIndicator,
@@ -11,15 +11,8 @@ import {
   TextInput,
   View,
 } from "react-native";
-import {
-  attachClaimDocument,
-  deleteClaim,
-  detachClaimDocument,
-  getClaim,
-  updateClaim,
-  type Claim,
-  type ClaimStatus,
-} from "../../../lib/claims-api";
+import type { ClaimStatus } from "../../../lib/claims-api";
+import { useClaimDetails } from "../../../hooks/use-claim-details";
 import { uploadDocument } from "../../../lib/documents-api";
 import { colors, spacing } from "../../../lib/theme";
 import { useAuth } from "../../../providers/auth-provider";
@@ -28,40 +21,25 @@ const statuses: ClaimStatus[] = ["SUBMITTED", "IN_PROGRESS", "RESOLVED", "REJECT
 export default function ClaimDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
-  const [claim, setClaim] = useState<Claim | null>(null);
+  const {
+    addTimelineEvent,
+    attachDocument,
+    changeStatus,
+    claim,
+    error,
+    loading,
+    remove: removeClaim,
+    reportError,
+    detachDocument,
+  } = useClaimDetails(id);
   const [eventTitle, setEventTitle] = useState("");
-  const [error, setError] = useState("");
-  const load = useCallback(async () => {
-    if (!user || !id) return;
-    try {
-      setClaim(await getClaim(await user.getIdToken(), id));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load claim.");
-    }
-  }, [id, user]);
-  useEffect(() => {
-    void load();
-  }, [load]);
   async function status(value: ClaimStatus) {
-    if (!user || !claim) return;
-    try {
-      setClaim(await updateClaim(await user.getIdToken(), claim.id, { status: value }));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not update claim.");
-    }
+    await changeStatus(value);
   }
   async function timeline() {
-    if (!user || !claim || !eventTitle.trim()) return;
-    try {
-      setClaim(
-        await (
-          await import("../../../lib/claims-api")
-        ).addClaimTimelineEvent(await user.getIdToken(), claim.id, eventTitle.trim()),
-      );
-      setEventTitle("");
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not add timeline event.");
-    }
+    if (!eventTitle.trim()) return;
+    await addTimelineEvent(eventTitle.trim());
+    setEventTitle("");
   }
   async function evidence() {
     if (!user || !claim) return;
@@ -83,28 +61,20 @@ export default function ClaimDetailsScreen() {
           size: file.size,
         },
       );
-      setClaim(
-        await attachClaimDocument(
-          await user.getIdToken(),
-          claim.id,
-          document.id,
-          "SUPPORTING_DOCUMENT",
-        ),
-      );
+      await attachDocument(document.id, "SUPPORTING_DOCUMENT");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not attach evidence.");
+      reportError(cause instanceof Error ? cause.message : "Could not attach evidence.");
     }
   }
-  async function remove() {
-    if (!user || !claim) return;
+  async function deleteCurrentClaim() {
     try {
-      await deleteClaim(await user.getIdToken(), claim.id);
+      await removeClaim();
       router.back();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not delete claim.");
+    } catch {
+      return;
     }
   }
-  if (!claim)
+  if (loading || !claim)
     return (
       <View style={styles.center}>
         {error ? (
@@ -176,14 +146,7 @@ export default function ClaimDetailsScreen() {
             <Pressable onPress={() => void Linking.openURL(item.document.fileUrl)}>
               <Text style={styles.link}>{item.document.fileName}</Text>
             </Pressable>
-            <Pressable
-              onPress={() =>
-                void (async () =>
-                  setClaim(
-                    await detachClaimDocument(await user!.getIdToken(), claim.id, item.documentId),
-                  ))()
-              }
-            >
+            <Pressable onPress={() => void detachDocument(item.documentId)}>
               <Text style={styles.remove}>Remove</Text>
             </Pressable>
           </View>
@@ -192,7 +155,7 @@ export default function ClaimDetailsScreen() {
           <Text style={styles.primaryText}>Attach evidence</Text>
         </Pressable>
       </View>
-      <Pressable onPress={() => void remove()} style={styles.deleteButton}>
+      <Pressable onPress={() => void deleteCurrentClaim()} style={styles.deleteButton}>
         <Text style={styles.deleteText}>Delete claim</Text>
       </Pressable>
     </ScrollView>
