@@ -8,9 +8,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit",
-    "format": "prettier --write \"app/**/*.tsx\" \"lib/**/*.ts\" \"providers/**/*.tsx\" \"app.json\" \"eas.json\" \"README.md\"",
-    "format:check": "prettier --check \"app/**/*.tsx\" \"lib/**/*.ts\" \"providers/**/*.tsx\" \"app.json\" \"eas.json\" \"README.md\""
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
@@ -33,7 +31,6 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
-    "prettier": "^3.9.6",
     "typescript": "~5.9.0"
   }
 }
