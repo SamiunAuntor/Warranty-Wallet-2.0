@@ -13,56 +13,46 @@ export default function AppLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.brand,
+        tabBarInactiveTintColor: colors.muted,
+        tabBarHideOnKeyboard: true,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: "600",
+        },
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+          height: 64,
+          paddingBottom: 8,
+          paddingTop: 6,
+        },
       }}
     >
       <Tabs.Screen
         name="index"
-        options={{ title: "Dashboard", tabBarIcon: () => <Text>D</Text> }}
+        options={{ title: "Home", tabBarIcon: () => <Text>⌂</Text> }}
       />
-      <Tabs.Screen name="assets" options={{ title: "Assets", tabBarIcon: () => <Text>A</Text> }} />
-      <Tabs.Screen name="claims" options={{ title: "Claims", tabBarIcon: () => <Text>C</Text> }} />
-      <Tabs.Screen
-        name="documents"
-        options={{ title: "Documents", tabBarIcon: () => <Text>F</Text> }}
-      />
-      <Tabs.Screen
-        name="notifications"
-        options={{ title: "Alerts", tabBarIcon: () => <Text>N</Text> }}
-      />
-      <Tabs.Screen
-        name="billing"
-        options={{ title: "Billing", tabBarIcon: () => <Text>B</Text> }}
-      />
-      <Tabs.Screen name="admin" options={{ title: "Admin", tabBarIcon: () => <Text>O</Text> }} />
-      <Tabs.Screen
-        name="admin-catalog"
-        options={{ title: "Catalog", tabBarIcon: () => <Text>K</Text> }}
-      />
-      <Tabs.Screen
-        name="admin-operations"
-        options={{ title: "Operations", tabBarIcon: () => <Text>X</Text> }}
-      />
+      <Tabs.Screen name="assets" options={{ title: "Assets", tabBarIcon: () => <Text>▣</Text> }} />
+      <Tabs.Screen name="claims" options={{ title: "Claims", tabBarIcon: () => <Text>✓</Text> }} />
       <Tabs.Screen
         name="reports"
-        options={{ title: "Reports", tabBarIcon: () => <Text>R</Text> }}
-      />
-      <Tabs.Screen name="scan" options={{ title: "Scan", tabBarIcon: () => <Text>I</Text> }} />
-      <Tabs.Screen
-        name="settings"
-        options={{ title: "Settings", tabBarIcon: () => <Text>S</Text> }}
+        options={{ title: "Reports", tabBarIcon: () => <Text>▤</Text> }}
       />
       <Tabs.Screen
-        name="profile"
-        options={{ title: "Profile", tabBarIcon: () => <Text>P</Text> }}
+        name="more"
+        options={{ title: "More", tabBarIcon: () => <Text>•••</Text> }}
       />
-      <Tabs.Screen
-        name="activity"
-        options={{ title: "Activity", tabBarIcon: () => <Text>H</Text> }}
-      />
-      <Tabs.Screen
-        name="preferences"
-        options={{ title: "Preferences", tabBarIcon: () => <Text>V</Text> }}
-      />
+      <Tabs.Screen name="documents" options={{ href: null }} />
+      <Tabs.Screen name="notifications" options={{ href: null }} />
+      <Tabs.Screen name="billing" options={{ href: null }} />
+      <Tabs.Screen name="admin" options={{ href: null }} />
+      <Tabs.Screen name="admin-catalog" options={{ href: null }} />
+      <Tabs.Screen name="admin-operations" options={{ href: null }} />
+      <Tabs.Screen name="scan" options={{ href: null }} />
+      <Tabs.Screen name="settings" options={{ href: null }} />
+      <Tabs.Screen name="profile" options={{ href: null }} />
+      <Tabs.Screen name="activity" options={{ href: null }} />
+      <Tabs.Screen name="preferences" options={{ href: null }} />
     </Tabs>
   );
 }

@@ -87,12 +87,15 @@ const styles = StyleSheet.create({
   },
   name: {
     color: colors.ink,
+    flex: 1,
     fontSize: 15,
     fontWeight: "700",
+    marginRight: spacing.sm,
   },
   actions: {
     flexDirection: "row",
     gap: spacing.xs,
+    flexShrink: 0,
   },
   primary: {
     backgroundColor: colors.brand,
