@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { router } from "expo-router";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -10,66 +9,16 @@ import {
   TextInput,
   View,
 } from "react-native";
-import {
-  createAsset,
-  deleteAsset,
-  getAssets,
-  getCategories,
-  type Asset,
-  type Category,
-} from "../../lib/assets-api";
+import { AssetCard } from "../../components/assets/AssetCard";
+import { AssetForm } from "../../components/assets/AssetForm";
+import { useAssets } from "../../hooks/use-assets";
 import { colors, spacing } from "../../lib/theme";
-import { useAuth } from "../../providers/auth-provider";
 
 export default function AssetsScreen() {
-  const { user } = useAuth();
-  const [assets, setAssets] = useState<Asset[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const load = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    setError("");
-    try {
-      const [list, catalog] = await Promise.all([
-        getAssets(await user.getIdToken(), search),
-        getCategories(),
-      ]);
-      setAssets(list.data);
-      setCategories(catalog.filter((category) => category.isActive));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load assets.");
-    } finally {
-      setLoading(false);
-    }
-  }, [search, user]);
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      void load();
-    }, 250);
-    return () => clearTimeout(timeout);
-  }, [load]);
-  async function remove(asset: Asset) {
-    if (!user) return;
-    Alert.alert("Delete asset?", `Remove ${asset.name} from your wallet?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await deleteAsset(await user.getIdToken(), asset.id);
-            setAssets((current) => current.filter((item) => item.id !== asset.id));
-          } catch (cause) {
-            setError(cause instanceof Error ? cause.message : "Could not delete asset.");
-          }
-        },
-      },
-    ]);
-  }
+  const { addAsset, assets, categories, error, loading } = useAssets(search);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -91,8 +40,8 @@ export default function AssetsScreen() {
       {showForm ? (
         <AssetForm
           categories={categories}
-          onCreated={(asset) => {
-            setAssets((current) => [asset, ...current]);
+          onCreated={async (input) => {
+            await addAsset(input);
             setShowForm(false);
           }}
         />
@@ -111,124 +60,13 @@ export default function AssetsScreen() {
             </Text>
           }
           renderItem={({ item }) => (
-            <Pressable onPress={() => router.push(`/(app)/assets/${item.id}`)} style={styles.card}>
-              <View style={styles.cardBody}>
-                <Text style={styles.assetName}>{item.name}</Text>
-                <Text style={styles.muted}>
-                  {item.brand}
-                  {item.model ? ` · ${item.model}` : ""}
-                </Text>
-                <Text style={styles.muted}>
-                  Purchased {new Date(item.purchaseDate).toLocaleDateString()}
-                </Text>
-              </View>
-              <View style={styles.cardSide}>
-                <Text
-                  style={[
-                    styles.status,
-                    item.warrantyStatus === "EXPIRED" ? styles.expired : styles.active,
-                  ]}
-                >
-                  {item.warrantyStatus.replaceAll("_", " ")}
-                </Text>
-                <Text style={styles.delete}>View</Text>
-              </View>
-            </Pressable>
+            <AssetCard
+              asset={item}
+              onPress={() => router.push(`/(app)/assets/${item.id}`)}
+            />
           )}
         />
       )}
-    </View>
-  );
-}
-
-function AssetForm({
-  categories,
-  onCreated,
-}: {
-  categories: Category[];
-  onCreated: (asset: Asset) => void;
-}) {
-  const { user } = useAuth();
-  const [name, setName] = useState("");
-  const [brand, setBrand] = useState("");
-  const [categoryId, setCategoryId] = useState("");
-  const [price, setPrice] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  async function submit() {
-    if (!user || !name.trim() || !brand.trim() || !categoryId || !price || !date)
-      return setError("Complete all required fields.");
-    setSaving(true);
-    setError("");
-    try {
-      const asset = await createAsset(await user.getIdToken(), {
-        name: name.trim(),
-        brand: brand.trim(),
-        categoryId,
-        purchasePrice: Number(price),
-        purchaseDate: date,
-        hasWarranty: false,
-      });
-      onCreated(asset);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not create asset.");
-    } finally {
-      setSaving(false);
-    }
-  }
-  return (
-    <View style={styles.form}>
-      <Text style={styles.formTitle}>Add an asset</Text>
-      <TextInput
-        onChangeText={setName}
-        placeholder="Product name"
-        placeholderTextColor={colors.muted}
-        style={styles.input}
-        value={name}
-      />
-      <TextInput
-        onChangeText={setBrand}
-        placeholder="Brand"
-        placeholderTextColor={colors.muted}
-        style={styles.input}
-        value={brand}
-      />
-      <TextInput
-        keyboardType="decimal-pad"
-        onChangeText={setPrice}
-        placeholder="Purchase price"
-        placeholderTextColor={colors.muted}
-        style={styles.input}
-        value={price}
-      />
-      <TextInput
-        onChangeText={setDate}
-        placeholder="Purchase date (YYYY-MM-DD)"
-        placeholderTextColor={colors.muted}
-        style={styles.input}
-        value={date}
-      />
-      <Text style={styles.muted}>Category</Text>
-      <View style={styles.categoryRow}>
-        {categories.map((category) => (
-          <Pressable
-            key={category.id}
-            onPress={() => setCategoryId(category.id)}
-            style={[styles.category, categoryId === category.id && styles.categorySelected]}
-          >
-            <Text
-              style={categoryId === category.id ? styles.categoryTextSelected : styles.categoryText}
-            >
-              {category.name}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      <Pressable disabled={saving} onPress={submit} style={styles.save}>
-        <Text style={styles.saveText}>{saving ? "Saving..." : "Save asset"}</Text>
-      </Pressable>
     </View>
   );
 }
@@ -283,53 +121,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
     paddingTop: spacing.md,
   },
-  card: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    flexDirection: "row",
-    padding: spacing.md,
-  },
-  cardBody: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  cardSide: {
-    alignItems: "flex-end",
-    gap: spacing.md,
-  },
-  assetName: {
-    color: colors.ink,
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  muted: {
-    color: colors.muted,
-    fontSize: 13,
-  },
-  status: {
-    borderRadius: 12,
-    fontSize: 10,
-    fontWeight: "700",
-    overflow: "hidden",
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  active: {
-    backgroundColor: colors.brandSoft,
-    color: colors.brand,
-  },
-  expired: {
-    backgroundColor: "#fbe4e4",
-    color: colors.danger,
-  },
-  delete: {
-    color: colors.danger,
-    fontSize: 12,
-    fontWeight: "700",
-  },
   empty: {
     color: colors.muted,
     padding: spacing.xl,
@@ -338,62 +129,5 @@ const styles = StyleSheet.create({
   error: {
     color: colors.danger,
     marginTop: spacing.sm,
-  },
-  form: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginTop: spacing.md,
-    padding: spacing.md,
-  },
-  formTitle: {
-    color: colors.ink,
-    fontSize: 17,
-    fontWeight: "700",
-  },
-  input: {
-    borderColor: colors.border,
-    borderRadius: 10,
-    borderWidth: 1,
-    color: colors.ink,
-    marginTop: spacing.sm,
-    padding: spacing.sm,
-  },
-  categoryRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-  },
-  category: {
-    borderColor: colors.border,
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  categorySelected: {
-    backgroundColor: colors.brand,
-    borderColor: colors.brand,
-  },
-  categoryText: {
-    color: colors.muted,
-    fontSize: 12,
-  },
-  categoryTextSelected: {
-    color: colors.surface,
-    fontSize: 12,
-  },
-  save: {
-    alignItems: "center",
-    backgroundColor: colors.brand,
-    borderRadius: 10,
-    marginTop: spacing.md,
-    padding: spacing.sm,
-  },
-  saveText: {
-    color: colors.surface,
-    fontWeight: "700",
   },
 });

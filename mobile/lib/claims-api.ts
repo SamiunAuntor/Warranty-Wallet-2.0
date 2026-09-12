@@ -54,21 +54,20 @@ export type ClaimList = {
     totalPages: number;
   };
 };
+
+export type CreateClaimInput = {
+  productId: string;
+  title: string;
+  issueDescription: string;
+  serviceCenter?: string;
+  providerReference?: string;
+};
 export function getClaims(token: string, search = "") {
   const params = new URLSearchParams({ page: "1", limit: "50" });
   if (search.trim()) params.set("search", search.trim());
   return apiRequest<ClaimList>(`/claims?${params.toString()}`, { token });
 }
-export function createClaim(
-  token: string,
-  input: {
-    productId: string;
-    title: string;
-    issueDescription: string;
-    serviceCenter?: string;
-    providerReference?: string;
-  },
-) {
+export function createClaim(token: string, input: CreateClaimInput) {
   return apiRequest<Claim>("/claims", {
     method: "POST",
     token,

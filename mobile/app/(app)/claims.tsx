@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { router } from "expo-router";
 import {
   ActivityIndicator,
@@ -9,49 +9,21 @@ import {
   TextInput,
   View,
 } from "react-native";
-import {
-  createClaim,
-  getClaims,
-  updateClaim,
-  type Claim,
-  type ClaimStatus,
-} from "../../lib/claims-api";
+import { ClaimCard } from "../../components/claims/ClaimCard";
+import { ClaimForm } from "../../components/claims/ClaimForm";
+import { useClaims } from "../../hooks/use-claims";
+import type { ClaimStatus } from "../../lib/claims-api";
 import { colors, spacing } from "../../lib/theme";
-import { useAuth } from "../../providers/auth-provider";
 
-const statuses: ClaimStatus[] = ["SUBMITTED", "IN_PROGRESS", "RESOLVED", "REJECTED", "CANCELLED"];
 export default function ClaimsScreen() {
-  const { user } = useAuth();
-  const [claims, setClaims] = useState<Claim[]>([]);
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const load = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      setClaims((await getClaims(await user.getIdToken(), search)).data);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load claims.");
-    } finally {
-      setLoading(false);
-    }
-  }, [search, user]);
-  useEffect(() => {
-    void load();
-  }, [load]);
-  async function changeStatus(claim: Claim, status: ClaimStatus) {
-    if (!user) return;
-    try {
-      const updated = await updateClaim(await user.getIdToken(), claim.id, {
-        status,
-      });
-      setClaims((current) => current.map((item) => (item.id === updated.id ? updated : item)));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not update claim.");
-    }
+  const { addClaim, changeStatus, claims, error, loading } = useClaims(search);
+
+  function handleStatusChange(claim: (typeof claims)[number], status: ClaimStatus) {
+    void changeStatus(claim, status);
   }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -72,8 +44,8 @@ export default function ClaimsScreen() {
       />
       {showForm ? (
         <ClaimForm
-          onCreated={(claim) => {
-            setClaims((current) => [claim, ...current]);
+          onCreated={async (input) => {
+            await addClaim(input);
             setShowForm(false);
           }}
         />
@@ -88,90 +60,14 @@ export default function ClaimsScreen() {
           keyExtractor={(item) => item.id}
           ListEmptyComponent={<Text style={styles.empty}>No claims found.</Text>}
           renderItem={({ item }) => (
-            <Pressable onPress={() => router.push(`/(app)/claims/${item.id}`)} style={styles.card}>
-              <Text style={styles.claimNumber}>{item.claimNumber}</Text>
-              <Text style={styles.claimTitle}>{item.title}</Text>
-              <Text style={styles.muted}>
-                {item.product.name} · {item.product.brand}
-              </Text>
-              <Text style={styles.muted}>{item.issueDescription}</Text>
-              <View style={styles.statusRow}>
-                {statuses.map((status) => (
-                  <Text
-                    key={status}
-                    style={[
-                      styles.status,
-                      item.status === status && styles.statusSelected,
-                      item.status === status ? styles.statusTextSelected : styles.statusText,
-                    ]}
-                  >
-                    {status.replaceAll("_", " ")}
-                  </Text>
-                ))}
-              </View>
-            </Pressable>
+            <ClaimCard
+              claim={item}
+              onPress={() => router.push(`/(app)/claims/${item.id}`)}
+              onStatusChange={(status) => handleStatusChange(item, status)}
+            />
           )}
         />
       )}
-    </View>
-  );
-}
-function ClaimForm({ onCreated }: { onCreated: (claim: Claim) => void }) {
-  const { user } = useAuth();
-  const [productId, setProductId] = useState("");
-  const [title, setTitle] = useState("");
-  const [issue, setIssue] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  async function submit() {
-    if (!user || !productId.trim() || !title.trim() || !issue.trim())
-      return setError("Enter the asset ID, title, and issue description.");
-    setSaving(true);
-    setError("");
-    try {
-      onCreated(
-        await createClaim(await user.getIdToken(), {
-          productId: productId.trim(),
-          title: title.trim(),
-          issueDescription: issue.trim(),
-        }),
-      );
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not create claim.");
-    } finally {
-      setSaving(false);
-    }
-  }
-  return (
-    <View style={styles.form}>
-      <Text style={styles.formTitle}>New claim</Text>
-      <Text style={styles.helper}>Use the asset ID from the asset details.</Text>
-      <TextInput
-        onChangeText={setProductId}
-        placeholder="Asset ID"
-        placeholderTextColor={colors.muted}
-        style={styles.input}
-        value={productId}
-      />
-      <TextInput
-        onChangeText={setTitle}
-        placeholder="Claim title"
-        placeholderTextColor={colors.muted}
-        style={styles.input}
-        value={title}
-      />
-      <TextInput
-        multiline
-        onChangeText={setIssue}
-        placeholder="Describe the issue"
-        placeholderTextColor={colors.muted}
-        style={[styles.input, styles.multiline]}
-        value={issue}
-      />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      <Pressable disabled={saving} onPress={() => void submit()} style={styles.save}>
-        <Text style={styles.saveText}>{saving ? "Saving..." : "Submit claim"}</Text>
-      </Pressable>
     </View>
   );
 }
@@ -226,56 +122,6 @@ const styles = StyleSheet.create({
   loader: {
     marginTop: spacing.xl,
   },
-  card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: spacing.md,
-  },
-  claimNumber: {
-    color: colors.brand,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  claimTitle: {
-    color: colors.ink,
-    fontSize: 17,
-    fontWeight: "700",
-    marginTop: spacing.xs,
-  },
-  muted: {
-    color: colors.muted,
-    fontSize: 13,
-    lineHeight: 20,
-    marginTop: spacing.xs,
-  },
-  statusRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.xs,
-    marginTop: spacing.md,
-  },
-  status: {
-    borderColor: colors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  statusSelected: {
-    backgroundColor: colors.brand,
-    borderColor: colors.brand,
-  },
-  statusText: {
-    color: colors.muted,
-    fontSize: 10,
-  },
-  statusTextSelected: {
-    color: colors.surface,
-    fontSize: 10,
-    fontWeight: "700",
-  },
   empty: {
     color: colors.muted,
     padding: spacing.xl,
@@ -284,46 +130,5 @@ const styles = StyleSheet.create({
   error: {
     color: colors.danger,
     marginTop: spacing.sm,
-  },
-  form: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginTop: spacing.md,
-    padding: spacing.md,
-  },
-  formTitle: {
-    color: colors.ink,
-    fontSize: 17,
-    fontWeight: "700",
-  },
-  helper: {
-    color: colors.muted,
-    fontSize: 12,
-    marginTop: spacing.xs,
-  },
-  input: {
-    borderColor: colors.border,
-    borderRadius: 10,
-    borderWidth: 1,
-    color: colors.ink,
-    marginTop: spacing.sm,
-    padding: spacing.sm,
-  },
-  multiline: {
-    minHeight: 90,
-    textAlignVertical: "top",
-  },
-  save: {
-    alignItems: "center",
-    backgroundColor: colors.brand,
-    borderRadius: 10,
-    marginTop: spacing.md,
-    padding: spacing.sm,
-  },
-  saveText: {
-    color: colors.surface,
-    fontWeight: "700",
   },
 });
