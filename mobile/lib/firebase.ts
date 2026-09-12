@@ -1,5 +1,11 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getApp, getApps, initializeApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
+import * as FirebaseAuth from "firebase/auth";
+import type { Auth, Persistence } from "firebase/auth";
+
+type ReactNativeAuthModule = typeof FirebaseAuth & {
+  getReactNativePersistence: (storage: typeof AsyncStorage) => Persistence;
+};
 
 const config = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -20,6 +26,16 @@ export function getFirebaseAuth() {
   if (required.length)
     throw new Error(`Firebase is not configured. Missing: ${required.join(", ")}`);
   const app = getApps().length ? getApp() : initializeApp(config);
-  auth = getAuth(app);
+
+  try {
+    const reactNativeAuth = FirebaseAuth as ReactNativeAuthModule;
+
+    auth = FirebaseAuth.initializeAuth(app, {
+      persistence: reactNativeAuth.getReactNativePersistence(AsyncStorage),
+    });
+  } catch {
+    auth = FirebaseAuth.getAuth(app);
+  }
+
   return auth;
 }
