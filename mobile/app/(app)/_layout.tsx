@@ -12,6 +12,7 @@ export default function AppLayout() {
     <Tabs.Screen name="claims" options={{ title: "Claims", tabBarIcon: () => <Text>C</Text> }} />
     <Tabs.Screen name="documents" options={{ title: "Documents", tabBarIcon: () => <Text>F</Text> }} />
     <Tabs.Screen name="notifications" options={{ title: "Alerts", tabBarIcon: () => <Text>N</Text> }} />
+    <Tabs.Screen name="billing" options={{ title: "Billing", tabBarIcon: () => <Text>B</Text> }} />
     <Tabs.Screen name="settings" options={{ title: "Settings", tabBarIcon: () => <Text>S</Text> }} />
   </Tabs>;
 }
