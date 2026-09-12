@@ -8,21 +8,23 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write \"app/**/*.tsx\" \"lib/**/*.ts\" \"providers/**/*.tsx\" \"app.json\" \"eas.json\" \"README.md\"",
+    "format:check": "prettier --check \"app/**/*.tsx\" \"lib/**/*.ts\" \"providers/**/*.tsx\" \"app.json\" \"eas.json\" \"README.md\""
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
     "expo": "~54.0.0",
+    "expo-auth-session": "~7.0.0",
     "expo-constants": "~18.0.0",
     "expo-document-picker": "~14.0.0",
     "expo-file-system": "~19.0.0",
     "expo-image-picker": "~17.0.0",
-    "expo-auth-session": "~7.0.0",
-    "expo-sharing": "~13.0.0",
-    "expo-web-browser": "~15.0.0",
     "expo-linking": "~8.0.0",
     "expo-router": "~6.0.0",
+    "expo-sharing": "~13.0.0",
     "expo-status-bar": "~3.0.0",
+    "expo-web-browser": "~15.0.0",
     "firebase": "^12.16.0",
     "react": "19.1.0",
     "react-native": "0.81.0",
@@ -31,6 +33,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
+    "prettier": "^3.9.6",
     "typescript": "~5.9.0"
   }
 }

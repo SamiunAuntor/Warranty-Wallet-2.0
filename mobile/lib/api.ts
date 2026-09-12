@@ -38,10 +38,15 @@ export async function apiRequest<T>(
       headers: requestHeaders,
     });
   } catch (error) {
-    throw new ApiError("Could not reach Warranty Wallet. Check your connection and try again.", 0, "NETWORK_ERROR", error);
+    throw new ApiError(
+      "Could not reach Warranty Wallet. Check your connection and try again.",
+      0,
+      "NETWORK_ERROR",
+      error,
+    );
   }
 
-  const payload = await response.json().catch(() => null) as ApiFailure | { data?: T } | null;
+  const payload = (await response.json().catch(() => null)) as ApiFailure | { data?: T } | null;
   if (!response.ok) {
     const failure = payload as ApiFailure | null;
     throw new ApiError(
@@ -52,7 +57,12 @@ export async function apiRequest<T>(
     );
   }
   if (!payload || typeof payload !== "object" || !("data" in payload)) {
-    throw new ApiError("Warranty Wallet returned an invalid response.", response.status, "INVALID_API_RESPONSE", payload);
+    throw new ApiError(
+      "Warranty Wallet returned an invalid response.",
+      response.status,
+      "INVALID_API_RESPONSE",
+      payload,
+    );
   }
   return payload.data as T;
 }

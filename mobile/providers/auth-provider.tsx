@@ -1,4 +1,16 @@
-import { confirmPasswordReset, createUserWithEmailAndPassword, GoogleAuthProvider, onAuthStateChanged, sendPasswordResetEmail, signInWithCredential, signInWithEmailAndPassword, signOut, updateProfile, verifyPasswordResetCode, type User } from "firebase/auth";
+import {
+  confirmPasswordReset,
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  signInWithCredential,
+  signInWithEmailAndPassword,
+  signOut,
+  updateProfile,
+  verifyPasswordResetCode,
+  type User,
+} from "firebase/auth";
 import { createContext, useContext, useEffect, useState, type PropsWithChildren } from "react";
 import { getFirebaseAuth } from "../lib/firebase";
 import { syncUser, type AppUser } from "../lib/auth-api";
@@ -16,7 +28,9 @@ type AuthContextValue = {
   resetPassword: (code: string, password: string) => Promise<void>;
   setAppUser: (user: AppUser) => void;
 };
-const unavailable = async () => { throw new Error("Authentication is not ready."); };
+const unavailable = async () => {
+  throw new Error("Authentication is not ready.");
+};
 const AuthContext = createContext<AuthContextValue>({
   loading: true,
   user: null,
@@ -64,7 +78,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }
 
   async function register(name: string, email: string, password: string) {
-    const credential = await createUserWithEmailAndPassword(getFirebaseAuth(), email.trim(), password);
+    const credential = await createUserWithEmailAndPassword(
+      getFirebaseAuth(),
+      email.trim(),
+      password,
+    );
     await updateProfile(credential.user, { displayName: name.trim() });
     setAppUser(await syncUser(credential.user, name));
   }
@@ -89,7 +107,25 @@ export function AuthProvider({ children }: PropsWithChildren) {
     await sendPasswordResetEmail(getFirebaseAuth(), email.trim());
   }
 
-  return <AuthContext.Provider value={{ loading, user, appUser, login, register, logout, requestPasswordReset, loginWithGoogle, verifyResetCode, resetPassword, setAppUser }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        loading,
+        user,
+        appUser,
+        login,
+        register,
+        logout,
+        requestPasswordReset,
+        loginWithGoogle,
+        verifyResetCode,
+        resetPassword,
+        setAppUser,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export const useAuth = () => useContext(AuthContext);

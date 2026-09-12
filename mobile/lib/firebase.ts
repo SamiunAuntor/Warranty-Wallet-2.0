@@ -14,8 +14,11 @@ let auth: Auth | null = null;
 
 export function getFirebaseAuth() {
   if (auth) return auth;
-  const required = Object.entries(config).filter(([, value]) => !value).map(([key]) => key);
-  if (required.length) throw new Error(`Firebase is not configured. Missing: ${required.join(", ")}`);
+  const required = Object.entries(config)
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
+  if (required.length)
+    throw new Error(`Firebase is not configured. Missing: ${required.join(", ")}`);
   const app = getApps().length ? getApp() : initializeApp(config);
   auth = getAuth(app);
   return auth;
