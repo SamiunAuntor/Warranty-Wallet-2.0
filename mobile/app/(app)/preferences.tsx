@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -8,42 +7,18 @@ import {
   TextInput,
   View,
 } from "react-native";
-import {
-  getUserPreferences,
-  updateUserPreferences,
-  type UserPreferences,
-} from "../../lib/auth-api";
+import type { UserPreferences } from "../../lib/auth-api";
+import { usePreferences } from "../../hooks/use-preferences";
 import { colors, spacing } from "../../lib/theme";
-import { useAuth } from "../../providers/auth-provider";
 export default function PreferencesScreen() {
-  const { user } = useAuth();
-  const [preferences, setPreferences] = useState<UserPreferences | null>(null);
-  const [message, setMessage] = useState("");
-  const [saving, setSaving] = useState(false);
-  useEffect(() => {
-    if (!user) return;
-    void getUserPreferencesFromUser(user.getIdToken())
-      .then(setPreferences)
-      .catch(() => setMessage("Could not load preferences."));
-  }, [user]);
-  async function save() {
-    if (!user || !preferences) return;
-    setSaving(true);
-    try {
-      setPreferences(await updateUserPreferences(await user.getIdToken(), preferences));
-      setMessage("Preferences saved.");
-    } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : "Could not save preferences.");
-    } finally {
-      setSaving(false);
-    }
-  }
-  if (!preferences)
+  const { loading, message, preferences, save, saving, updateField } = usePreferences();
+  if (loading || !preferences) {
     return (
       <View style={styles.center}>
         <ActivityIndicator color={colors.brand} />
       </View>
     );
+  }
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.eyebrow}>ACCOUNT</Text>
@@ -52,10 +27,7 @@ export default function PreferencesScreen() {
         <Text style={styles.section}>Warranty reminders</Text>
         <Pressable
           onPress={() =>
-            setPreferences({
-              ...preferences,
-              warrantyReminders: !preferences.warrantyReminders,
-            })
+            updateField("warrantyReminders", !preferences.warrantyReminders)
           }
           style={styles.toggle}
         >
@@ -67,39 +39,28 @@ export default function PreferencesScreen() {
         <TextInput
           keyboardType="numbers-and-punctuation"
           onChangeText={(value) =>
-            setPreferences({
-              ...preferences,
-              reminderDays: value.split(",").map(Number).filter(Number.isFinite),
-            })
+            updateField("reminderDays", value.split(",").map(Number).filter(Number.isFinite))
           }
           style={styles.input}
           value={preferences.reminderDays.join(", ")}
         />
         <Text style={styles.label}>Time zone</Text>
         <TextInput
-          onChangeText={(value) => setPreferences({ ...preferences, timezone: value })}
+          onChangeText={(value) => updateField("timezone", value)}
           style={styles.input}
           value={preferences.timezone}
         />
         <Text style={styles.label}>Currency</Text>
         <TextInput
           autoCapitalize="characters"
-          onChangeText={(value) =>
-            setPreferences({
-              ...preferences,
-              currency: value as UserPreferences["currency"],
-            })
-          }
+          onChangeText={(value) => updateField("currency", value as UserPreferences["currency"])}
           style={styles.input}
           value={preferences.currency}
         />
         <Text style={styles.label}>Date format</Text>
         <TextInput
           onChangeText={(value) =>
-            setPreferences({
-              ...preferences,
-              dateFormat: value as UserPreferences["dateFormat"],
-            })
+            updateField("dateFormat", value as UserPreferences["dateFormat"])
           }
           style={styles.input}
           value={preferences.dateFormat}
@@ -111,9 +72,6 @@ export default function PreferencesScreen() {
       </View>
     </ScrollView>
   );
-}
-async function getUserPreferencesFromUser(tokenPromise: Promise<string>) {
-  return getUserPreferences(await tokenPromise);
 }
 const styles = StyleSheet.create({
   container: {

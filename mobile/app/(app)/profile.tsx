@@ -1,4 +1,3 @@
-import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -10,63 +9,13 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { updateAppUser, uploadProfilePhoto } from "../../lib/auth-api";
+import { useProfile } from "../../hooks/use-profile";
 import { colors, spacing } from "../../lib/theme";
-import { useAuth } from "../../providers/auth-provider";
 
 export default function ProfileScreen() {
-  const { user, appUser, setAppUser } = useAuth();
+  const { appUser, choosePhoto, error, message, save, saving } = useProfile();
   const [name, setName] = useState(appUser?.name ?? "");
   const [phone, setPhone] = useState(appUser?.phone ?? "");
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-  async function photo() {
-    if (!user) return;
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) return setError("Photo access is required to choose a profile image.");
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: true,
-      mediaTypes: ["images"],
-      quality: 0.85,
-    });
-    if (result.canceled) return;
-    const asset = result.assets[0];
-    setSaving(true);
-    try {
-      setAppUser(
-        await uploadProfilePhoto(await user.getIdToken(), {
-          uri: asset.uri,
-          name: asset.fileName ?? "profile.jpg",
-          mimeType: asset.mimeType,
-          size: asset.fileSize,
-        }),
-      );
-      setMessage("Profile photo updated.");
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not update photo.");
-    } finally {
-      setSaving(false);
-    }
-  }
-  async function save() {
-    if (!user || !name.trim()) return setError("Name is required.");
-    setSaving(true);
-    setError("");
-    try {
-      setAppUser(
-        await updateAppUser(await user.getIdToken(), {
-          name: name.trim(),
-          phone: phone.trim() || null,
-        }),
-      );
-      setMessage("Profile updated.");
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not update profile.");
-    } finally {
-      setSaving(false);
-    }
-  }
   if (!appUser)
     return (
       <View style={styles.center}>
@@ -85,7 +34,7 @@ export default function ProfileScreen() {
             <Text style={styles.initial}>{appUser.name.charAt(0).toUpperCase()}</Text>
           </View>
         )}
-        <Pressable disabled={saving} onPress={() => void photo()} style={styles.outline}>
+        <Pressable disabled={saving} onPress={() => void choosePhoto()} style={styles.outline}>
           <Text style={styles.outlineText}>Change photo</Text>
         </Pressable>
         <Text style={styles.label}>Name</Text>
@@ -98,7 +47,7 @@ export default function ProfileScreen() {
           value={phone}
         />
         <Text style={styles.email}>{appUser.email}</Text>
-        <Pressable disabled={saving} onPress={() => void save()} style={styles.save}>
+        <Pressable disabled={saving} onPress={() => void save(name, phone)} style={styles.save}>
           <Text style={styles.saveText}>{saving ? "Saving..." : "Save profile"}</Text>
         </Pressable>
         {message ? <Text style={styles.message}>{message}</Text> : null}
