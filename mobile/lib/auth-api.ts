@@ -11,7 +11,9 @@ export type AppUser = {
   status: "ACTIVE" | "BLOCKED" | "DELETED";
   plan: "BASIC" | "PLUS" | "PRO";
   emailVerified: boolean;
+  phone?: string | null;
 };
+export type UserPreferences = { id: string; userId: string; warrantyReminders: boolean; reminderDays: number[]; timezone: string; currency: "USD" | "BDT" | "EUR" | "GBP" | "CAD" | "AUD"; dateFormat: "MMM_D_YYYY" | "DD_MM_YYYY" | "MM_DD_YYYY" };
 
 export async function syncUser(firebaseUser: User, preferredName?: string) {
   const token = await firebaseUser.getIdToken();
@@ -25,3 +27,6 @@ export async function syncUser(firebaseUser: User, preferredName?: string) {
     }),
   });
 }
+export function updateAppUser(token: string, input: { name?: string; phone?: string | null }) { return apiRequest<AppUser>("/users/profile", { method: "PATCH", token, body: JSON.stringify(input) }); }
+export function getUserPreferences(token: string) { return apiRequest<UserPreferences>("/users/preferences", { token }); }
+export function updateUserPreferences(token: string, input: Partial<Omit<UserPreferences, "id" | "userId">>) { return apiRequest<UserPreferences>("/users/preferences", { method: "PATCH", token, body: JSON.stringify(input) }); }

@@ -11,6 +11,7 @@ type AuthContextValue = {
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
+  setAppUser: (user: AppUser) => void;
 };
 const unavailable = async () => { throw new Error("Authentication is not ready."); };
 const AuthContext = createContext<AuthContextValue>({
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextValue>({
   register: unavailable,
   logout: unavailable,
   requestPasswordReset: unavailable,
+  setAppUser: () => undefined,
 });
 
 export function AuthProvider({ children }: PropsWithChildren) {
@@ -69,7 +71,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     await sendPasswordResetEmail(getFirebaseAuth(), email.trim());
   }
 
-  return <AuthContext.Provider value={{ loading, user, appUser, login, register, logout, requestPasswordReset }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ loading, user, appUser, login, register, logout, requestPasswordReset, setAppUser }}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => useContext(AuthContext);
