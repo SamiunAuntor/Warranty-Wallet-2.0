@@ -10,32 +10,79 @@ type MoreItem = {
 };
 
 const commonItems: MoreItem[] = [
-  { label: "Documents", route: "/(app)/documents", description: "Receipts and warranty files" },
-  { label: "Notifications", route: "/(app)/notifications", description: "Warranty reminders and alerts" },
-  { label: "Billing", route: "/(app)/billing", description: "Plans and payment history" },
-  { label: "Scan invoice", route: "/(app)/scan", description: "Extract purchase details from an invoice" },
-  { label: "Activity", route: "/(app)/activity", description: "Review account activity" },
-  { label: "Profile", route: "/(app)/profile", description: "Manage your account profile" },
-  { label: "Preferences", route: "/(app)/preferences", description: "Customize app preferences" },
-  { label: "Settings", route: "/(app)/settings", description: "Account and reminder settings" },
+  {
+    label: "Documents",
+    route: "/(app)/documents",
+    description: "Receipts and warranty files",
+  },
+  {
+    label: "Notifications",
+    route: "/(app)/notifications",
+    description: "Warranty reminders and alerts",
+  },
+  {
+    label: "Billing",
+    route: "/(app)/billing",
+    description: "Plans and payment history",
+  },
+  {
+    label: "Scan invoice",
+    route: "/(app)/scan",
+    description: "Extract purchase details from an invoice",
+  },
+  {
+    label: "Activity",
+    route: "/(app)/activity",
+    description: "Review account activity",
+  },
+  {
+    label: "Profile",
+    route: "/(app)/profile",
+    description: "Manage your account profile",
+  },
+  {
+    label: "Preferences",
+    route: "/(app)/preferences",
+    description: "Customize app preferences",
+  },
+  {
+    label: "Settings",
+    route: "/(app)/settings",
+    description: "Account and reminder settings",
+  },
 ];
 
 export default function MoreScreen() {
   const { appUser } = useAuth();
-  const items = appUser?.role === "ADMIN"
-    ? [
-        ...commonItems,
-        { label: "Admin dashboard", route: "/(app)/admin", description: "Review platform activity" },
-        { label: "Catalog", route: "/(app)/admin-catalog", description: "Manage catalog data" },
-        { label: "Operations", route: "/(app)/admin-operations", description: "Manage operational queues" },
-      ]
-    : commonItems;
+  const items =
+    appUser?.role === "ADMIN"
+      ? [
+          ...commonItems,
+          {
+            label: "Admin dashboard",
+            route: "/(app)/admin",
+            description: "Review platform activity",
+          },
+          {
+            label: "Catalog",
+            route: "/(app)/admin-catalog",
+            description: "Manage catalog data",
+          },
+          {
+            label: "Operations",
+            route: "/(app)/admin-operations",
+            description: "Manage operational queues",
+          },
+        ]
+      : commonItems;
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.eyebrow}>WARRANTY WALLET</Text>
       <Text style={styles.title}>More</Text>
-      <Text style={styles.copy}>Everything else you need to manage your warranty wallet.</Text>
+      <Text style={styles.copy}>
+        Everything else you need to manage your warranty wallet.
+      </Text>
       <View style={styles.list}>
         {items.map((item) => (
           <Pressable
@@ -47,7 +94,7 @@ export default function MoreScreen() {
               <Text style={styles.itemLabel}>{item.label}</Text>
               <Text style={styles.itemDescription}>{item.description}</Text>
             </View>
-            <Text style={styles.arrow}>›</Text>
+            <Text style={styles.arrow}>{"\u203a"}</Text>
           </Pressable>
         ))}
       </View>
