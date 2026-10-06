@@ -1,26 +1,30 @@
-import { Pressable, StyleSheet, Text } from "react-native";
-import { colors, spacing } from "../../lib/theme";
+import type { LucideIcon } from "lucide-react-native";
+import { Plus } from "lucide-react-native";
+import { Pressable, StyleSheet } from "react-native";
+import { colors, radius, shadow, spacing } from "../../lib/theme";
+import { Text } from "./Text";
 
-type ActionButtonProps = {
-  label: string;
-  onPress: () => void;
-  disabled?: boolean;
-  variant?: "primary" | "outline" | "danger";
-};
-
+/** Floating primary action, pinned above the tab bar on list screens. */
 export function ActionButton({
-  disabled = false,
   label,
   onPress,
-  variant = "primary",
-}: ActionButtonProps) {
+  icon: Icon = Plus,
+}: {
+  label: string;
+  onPress: () => void;
+  icon?: LucideIcon;
+}) {
   return (
     <Pressable
-      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
       onPress={onPress}
-      style={[styles.button, styles[variant], disabled && styles.disabled]}
+      style={({ pressed }) => [styles.button, pressed && styles.pressed]}
     >
-      <Text style={[styles.text, variant === "outline" ? styles.outlineText : null]}>{label}</Text>
+      <Icon size={20} color={colors.white} strokeWidth={2.4} />
+      <Text variant="subheading" color={colors.white}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -28,28 +32,16 @@ export function ActionButton({
 const styles = StyleSheet.create({
   button: {
     alignItems: "center",
-    borderRadius: 10,
-    padding: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radius.pill,
+    bottom: spacing.md,
+    flexDirection: "row",
+    gap: spacing.xs,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    position: "absolute",
+    right: spacing.md,
+    ...shadow.raised,
   },
-  primary: {
-    backgroundColor: colors.brand,
-  },
-  outline: {
-    borderColor: colors.brand,
-    borderWidth: 1,
-  },
-  danger: {
-    borderColor: colors.danger,
-    borderWidth: 1,
-  },
-  disabled: {
-    opacity: 0.5,
-  },
-  text: {
-    color: colors.surface,
-    fontWeight: "700",
-  },
-  outlineText: {
-    color: colors.brand,
-  },
+  pressed: { backgroundColor: colors.primaryPressed, transform: [{ scale: 0.98 }] },
 });

@@ -1,71 +1,41 @@
 import type { User } from "firebase/auth";
-import { apiRequest } from "./api";
-import type { NativeFile } from "./documents-api";
+import { apiRequest, filePart } from "./api";
+import type { AppUser, NativeFile, UserPreferences } from "./types";
 
-export type AppUser = {
-  id: string;
-  firebaseUid: string;
-  name: string;
-  email: string;
-  photoURL: string | null;
-  role: "USER" | "ADMIN";
-  status: "ACTIVE" | "BLOCKED" | "DELETED";
-  plan: "BASIC" | "PLUS" | "PRO";
-  emailVerified: boolean;
-  phone?: string | null;
-};
-export type UserPreferences = {
-  id: string;
-  userId: string;
-  warrantyReminders: boolean;
-  reminderDays: number[];
-  timezone: string;
-  currency: "USD" | "BDT" | "EUR" | "GBP" | "CAD" | "AUD";
-  dateFormat: "MMM_D_YYYY" | "DD_MM_YYYY" | "MM_DD_YYYY";
-};
+const MIN_NAME_LENGTH = 2;
 
-export async function syncUser(firebaseUser: User, preferredName?: string) {
-  const token = await firebaseUser.getIdToken();
-  const fallbackName = firebaseUser.email?.split("@")[0] ?? "Warranty Wallet User";
+function displayNameFor(user: User, preferredName?: string) {
+  const candidates = [preferredName, user.displayName, user.email?.split("@")[0]];
+  const name = candidates
+    .map((value) => value?.trim())
+    .find((value) => value && value.length >= MIN_NAME_LENGTH);
+  return name ?? "Warranty Wallet User";
+}
+
+/** Creates or refreshes the backend record for a signed-in Firebase user. */
+export async function syncUser(user: User, preferredName?: string) {
   return apiRequest<AppUser>("/users/sync", {
     method: "POST",
-    token,
-    body: JSON.stringify({
-      name: preferredName?.trim() || firebaseUser.displayName || fallbackName,
-      ...(firebaseUser.photoURL ? { photoURL: firebaseUser.photoURL } : {}),
-    }),
+    token: await user.getIdToken(),
+    body: {
+      name: displayNameFor(user, preferredName),
+      ...(user.photoURL ? { photoURL: user.photoURL } : {}),
+    },
   });
 }
-export function updateAppUser(token: string, input: { name?: string; phone?: string | null }) {
-  return apiRequest<AppUser>("/users/profile", {
-    method: "PATCH",
-    token,
-    body: JSON.stringify(input),
-  });
-}
-export function getUserPreferences(token: string) {
-  return apiRequest<UserPreferences>("/users/preferences", { token });
-}
-export function updateUserPreferences(
-  token: string,
-  input: Partial<Omit<UserPreferences, "id" | "userId">>,
-) {
-  return apiRequest<UserPreferences>("/users/preferences", {
-    method: "PATCH",
-    token,
-    body: JSON.stringify(input),
-  });
-}
-export function uploadProfilePhoto(token: string, file: NativeFile) {
+
+export const getProfile = () => apiRequest<AppUser>("/users/profile");
+
+export const updateProfile = (input: { name?: string; phone?: string | null }) =>
+  apiRequest<AppUser>("/users/profile", { method: "PATCH", body: input });
+
+export function uploadProfilePhoto(file: NativeFile) {
   const body = new FormData();
-  body.append("file", {
-    uri: file.uri,
-    name: file.name,
-    type: file.mimeType ?? "image/jpeg",
-  } as unknown as Blob);
-  return apiRequest<AppUser>("/users/profile/avatar", {
-    method: "POST",
-    token,
-    body,
-  });
+  body.append("file", filePart(file));
+  return apiRequest<AppUser>("/users/profile/avatar", { method: "POST", body });
 }
+
+export const getPreferences = () => apiRequest<UserPreferences>("/users/preferences");
+
+export const updatePreferences = (input: Partial<Omit<UserPreferences, "id" | "userId">>) =>
+  apiRequest<UserPreferences>("/users/preferences", { method: "PATCH", body: input });

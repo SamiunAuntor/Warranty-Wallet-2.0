@@ -1,207 +1,245 @@
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import type { Plan } from "../../lib/billing-api";
-import { useBilling } from "../../hooks/use-billing";
-import { colors, spacing } from "../../lib/theme";
+import { Check, Crown } from "lucide-react-native";
+import { StyleSheet, View } from "react-native";
+import { Badge, PlanBadge } from "../../components/ui/Badge";
+import { Button } from "../../components/ui/Button";
+import { Card, Section } from "../../components/ui/Card";
+import { Screen } from "../../components/ui/Screen";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
+import { ErrorState, InlineMessage, LoadingState } from "../../components/ui/ScreenStates";
+import { Text } from "../../components/ui/Text";
+import {
+  useBillingActions,
+  usePaymentList,
+  usePlans,
+  useSubscription,
+  type CheckoutOutcome,
+} from "../../hooks/use-billing";
+import { useFormatters } from "../../hooks/use-preferences";
+import { confirm } from "../../lib/confirm";
+import { paymentStatusLabels, planNames, subscriptionStatusLabels } from "../../lib/labels";
+import { colors, planColors, spacing } from "../../lib/theme";
+import type { PaidPlan, PlanInfo } from "../../lib/types";
+import { useCurrentUser } from "../../providers/auth-provider";
+import { useToast } from "../../providers/toast-provider";
 
-const plans: Array<{ name: Plan; description: string; price: string }> = [
-  {
-    name: "BASIC",
-    description: "Track your essential warranties.",
-    price: "Free",
-  },
-  {
-    name: "PLUS",
-    description: "More assets and richer reminders.",
-    price: "Paid",
-  },
-  {
-    name: "PRO",
-    description: "Full warranty management capacity.",
-    price: "Paid",
-  },
-];
+const outcomeMessages: Record<CheckoutOutcome, string> = {
+  paid: "Payment complete. Your plan is active.",
+  pending: "Payment received. Your plan will update in a moment.",
+  cancelled: "Checkout was cancelled. You have not been charged.",
+};
+
 export default function BillingScreen() {
-  const { busy, error, loading, payments, subscription, toggleCancel, upgrade } = useBilling();
-  if (loading) {
+  const user = useCurrentUser();
+  const toast = useToast();
+  const format = useFormatters();
+  const plans = usePlans();
+  const subscription = useSubscription();
+  const payments = usePaymentList();
+  const actions = useBillingActions();
+  const current = subscription.data;
+  const hasPaidPlan = user.plan !== "BASIC" && Boolean(current?.isActive);
+  const busy =
+    actions.checkout.isPending ||
+    actions.switchPlan.isPending ||
+    actions.cancel.isPending ||
+    actions.resume.isPending;
+
+  async function choose(plan: PlanInfo) {
+    const target = plan.id as PaidPlan;
+    try {
+      if (hasPaidPlan) {
+        const ok = await confirm({
+          title: `Switch to ${plan.name}?`,
+          message: `Your subscription changes to ${format.money(plan.price, "USD")} per month.`,
+          confirmLabel: "Switch plan",
+        });
+        if (!ok) return;
+        await actions.switchPlan.mutateAsync(target);
+        toast.success(`Your plan is changing to ${plan.name}.`);
+        return;
+      }
+      const outcome = await actions.checkout.mutateAsync(target);
+      if (outcome === "cancelled") toast.info(outcomeMessages.cancelled);
+      else toast.success(outcomeMessages[outcome]);
+    } catch (error) {
+      toast.error(error, "Could not start checkout.");
+    }
+  }
+
+  async function toggleCancellation() {
+    if (!current) return;
+    try {
+      if (current.cancelAtPeriodEnd) {
+        await actions.resume.mutateAsync();
+        toast.success("Your subscription will renew.");
+        return;
+      }
+      const ok = await confirm({
+        title: "Cancel your subscription?",
+        message: `You keep ${planNames[current.plan]} until ${format.date(current.currentPeriodEnd ?? current.expiresAt)}, then move to Basic.`,
+        confirmLabel: "Cancel subscription",
+        destructive: true,
+      });
+      if (!ok) return;
+      await actions.cancel.mutateAsync();
+      toast.success("Your subscription will end after this billing period.");
+    } catch (error) {
+      toast.error(error, "Could not update the subscription.");
+    }
+  }
+
+  const header = <ScreenHeader title="Plan and billing" fallbackHref="/(app)/more" />;
+  if (plans.isPending || subscription.isPending) return <Screen header={header}><LoadingState /></Screen>;
+  if (plans.isError) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.brand} />
-      </View>
+      <Screen header={header}>
+        <ErrorState error={plans.error} onRetry={() => void plans.refetch()} />
+      </Screen>
     );
   }
+
+  const status = current ? subscriptionStatusLabels[current.status] : null;
+  const pendingPlan = current?.pendingPlan ?? current?.scheduledPlan;
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.eyebrow}>PLAN AND PAYMENTS</Text>
-      <Text style={styles.title}>Billing</Text>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      <View style={styles.card}>
-        <Text style={styles.section}>Current plan</Text>
-        <Text style={styles.current}>{subscription?.plan ?? "BASIC"}</Text>
-        <Text style={styles.muted}>
-          {subscription?.isActive
-            ? `Active until ${
-                subscription.currentPeriodEnd
-                  ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
-                  : "the current period"
-              }.`
-            : "You are using the basic plan."}
-        </Text>
-        {subscription && subscription.plan !== "BASIC" ? (
-          <Pressable disabled={busy} onPress={() => void toggleCancel()} style={styles.outline}>
-            <Text style={styles.outlineText}>
-              {subscription.cancelAtPeriodEnd ? "Resume subscription" : "Cancel at period end"}
-            </Text>
-          </Pressable>
-        ) : null}
-      </View>
-      <Text style={styles.section}>Available plans</Text>
-      {plans.map((plan) => (
-        <View key={plan.name} style={styles.plan}>
-          <View style={styles.planCopy}>
-            <Text style={styles.planName}>{plan.name}</Text>
-            <Text style={styles.muted}>{plan.description}</Text>
-          </View>
-          {plan.name === "BASIC" || subscription?.plan === plan.name ? (
-            <Text style={styles.activeText}>
-              {subscription?.plan === plan.name ? "Current" : "Included"}
-            </Text>
-          ) : (
-            <Pressable
-              disabled={busy}
-              onPress={() => void upgrade(plan.name as "PLUS" | "PRO")}
-              style={styles.upgrade}
-            >
-              <Text style={styles.upgradeText}>Choose</Text>
-            </Pressable>
-          )}
+    <Screen
+      header={header}
+      refreshing={subscription.isRefetching}
+      onRefresh={() => {
+        void subscription.refetch();
+        void payments.refetch();
+      }}
+    >
+      <Card>
+        <View style={styles.rowBetween}>
+          <Text variant="overline">Current plan</Text>
+          {status && user.plan !== "BASIC" ? <Badge label={status.label} tone={status.tone} /> : null}
         </View>
-      ))}
-      <Text style={styles.section}>Payment history</Text>
-      {payments.length ? (
-        payments.map((payment) => (
-          <View key={payment.id} style={styles.payment}>
-            <View>
-              <Text style={styles.planName}>{payment.plan ?? "Plan"}</Text>
-              <Text style={styles.muted}>{new Date(payment.createdAt).toLocaleDateString()}</Text>
-            </View>
-            <Text style={styles.paymentStatus}>{payment.status}</Text>
-          </View>
-        ))
-      ) : (
-        <Text style={styles.muted}>No payments yet.</Text>
-      )}
-    </ScrollView>
+        <View style={styles.currentPlan}>
+          <Crown size={22} color={planColors[user.plan].foreground} />
+          <Text variant="title">{planNames[user.plan]}</Text>
+        </View>
+        <Text variant="bodySmall" color={colors.muted}>
+          {user.plan === "BASIC"
+            ? "You're on the free plan. Upgrade for more assets and features."
+            : current?.cancelAtPeriodEnd
+              ? `Ends on ${format.date(current.currentPeriodEnd ?? current.expiresAt)}. You won't be charged again.`
+              : `Renews on ${format.date(current?.currentPeriodEnd ?? current?.expiresAt)}.`}
+        </Text>
+        {pendingPlan && pendingPlan !== user.plan ? (
+          <InlineMessage tone="info" message={`Changing to ${planNames[pendingPlan]} at the next billing date.`} />
+        ) : null}
+        {hasPaidPlan && current ? (
+          <Button
+            title={current.cancelAtPeriodEnd ? "Keep my subscription" : "Cancel subscription"}
+            variant={current.cancelAtPeriodEnd ? "secondary" : "dangerOutline"}
+            size="sm"
+            loading={actions.cancel.isPending || actions.resume.isPending}
+            disabled={busy}
+            onPress={() => void toggleCancellation()}
+          />
+        ) : null}
+      </Card>
+
+      <Section title="Plans">
+        <Text variant="bodySmall" color={colors.muted}>
+          Every plan includes reminders, documents, claims, and reports. Upgrade when your asset
+          collection grows.
+        </Text>
+        {plans.data.map((plan) => {
+          const isCurrent = plan.id === user.plan;
+          const palette = planColors[plan.id];
+          return (
+            <Card key={plan.id} style={isCurrent ? [styles.planCard, { borderColor: palette.border }] : styles.planCard}>
+              <View style={styles.rowBetween}>
+                <PlanBadge plan={plan.id} />
+                <Text variant="heading">
+                  {plan.price ? `${format.money(plan.price, "USD")}` : "Free"}
+                  {plan.price ? <Text variant="caption"> / month</Text> : null}
+                </Text>
+              </View>
+              <View style={styles.feature}>
+                <Check size={16} color={colors.success} />
+                <Text variant="bodySmall" color={colors.heading} weight="medium">
+                  Store up to {plan.assetLimit} assets
+                </Text>
+              </View>
+              {isCurrent ? (
+                <Button title="Current plan" variant="outline" size="sm" disabled onPress={() => undefined} />
+              ) : plan.id === "BASIC" ? null : (
+                <Button
+                  title={hasPaidPlan ? `Switch to ${plan.name}` : `Upgrade to ${plan.name}`}
+                  size="sm"
+                  loading={
+                    (actions.checkout.isPending && actions.checkout.variables === plan.id) ||
+                    (actions.switchPlan.isPending && actions.switchPlan.variables === plan.id)
+                  }
+                  disabled={busy}
+                  onPress={() => void choose(plan)}
+                />
+              )}
+            </Card>
+          );
+        })}
+        <Text variant="caption" align="center">
+          Payments are processed securely by Stripe.
+        </Text>
+      </Section>
+
+      <Section title="Payment history">
+        <Card padded={false}>
+          {payments.items.length ? (
+            payments.items.map((payment, index) => {
+              const label = paymentStatusLabels[payment.status];
+              return (
+                <View key={payment.id} style={[styles.payment, index > 0 && styles.divider]}>
+                  <View style={styles.flex}>
+                    <Text variant="subheading">
+                      {payment.plan ? `${planNames[payment.plan]} plan` : "Payment"}
+                    </Text>
+                    <Text variant="caption">{format.date(payment.createdAt)}</Text>
+                  </View>
+                  <View style={styles.paymentRight}>
+                    <Text variant="subheading">{format.money(payment.amount, payment.currency)}</Text>
+                    <Badge label={label.label} tone={label.tone} />
+                  </View>
+                </View>
+              );
+            })
+          ) : (
+            <Text variant="bodySmall" color={colors.muted} style={styles.empty}>
+              {payments.isPending ? "Loading payments…" : "No payments yet."}
+            </Text>
+          )}
+          {payments.hasNextPage ? (
+            <Button
+              title="Load more"
+              variant="ghost"
+              size="sm"
+              loading={payments.isFetchingNextPage}
+              onPress={payments.loadMore}
+            />
+          ) : null}
+        </Card>
+      </Section>
+    </Screen>
   );
 }
+
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.canvas,
-    gap: spacing.md,
-    padding: spacing.lg,
-  },
-  center: {
-    alignItems: "center",
-    flex: 1,
-    justifyContent: "center",
-  },
-  eyebrow: {
-    color: colors.brand,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 2,
-  },
-  title: {
-    color: colors.ink,
-    fontSize: 30,
-    fontWeight: "800",
-  },
-  section: {
-    color: colors.ink,
-    fontSize: 17,
-    fontWeight: "700",
-    marginTop: spacing.sm,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: spacing.lg,
-  },
-  current: {
-    color: colors.brand,
-    fontSize: 32,
-    fontWeight: "800",
-    marginTop: spacing.sm,
-  },
-  muted: {
-    color: colors.muted,
-    fontSize: 13,
-    lineHeight: 20,
-    marginTop: spacing.xs,
-  },
-  outline: {
-    alignSelf: "flex-start",
-    borderColor: colors.brand,
-    borderRadius: 10,
-    borderWidth: 1,
-    marginTop: spacing.md,
-    padding: spacing.sm,
-  },
-  outlineText: {
-    color: colors.brand,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  plan: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    flexDirection: "row",
-    padding: spacing.md,
-  },
-  planCopy: {
-    flex: 1,
-  },
-  planName: {
-    color: colors.ink,
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  upgrade: {
-    backgroundColor: colors.brand,
-    borderRadius: 9,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  upgradeText: {
-    color: colors.surface,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  activeText: {
-    color: colors.brand,
-    fontSize: 12,
-    fontWeight: "700",
-  },
+  flex: { flex: 1, gap: 2 },
+  rowBetween: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  currentPlan: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
+  planCard: { gap: spacing.sm },
+  feature: { alignItems: "center", flexDirection: "row", gap: spacing.sm },
   payment: {
     alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 12,
-    borderWidth: 1,
     flexDirection: "row",
-    justifyContent: "space-between",
-    padding: spacing.md,
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 4,
   },
-  paymentStatus: {
-    color: colors.brand,
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  error: {
-    color: colors.danger,
-  },
+  paymentRight: { alignItems: "flex-end", gap: 4 },
+  divider: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth },
+  empty: { padding: spacing.md },
 });

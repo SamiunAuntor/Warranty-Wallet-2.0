@@ -1,349 +1,391 @@
-import { useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
 import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import {
-  updateAsset,
-  type Asset,
-  type Category,
-} from "../../../lib/assets-api";
-import { useAssetDetails } from "../../../hooks/use-asset-details";
+  Archive,
+  ArchiveRestore,
+  ExternalLink,
+  FilePlus2,
+  MoreVertical,
+  Pencil,
+  RefreshCw,
+  ShieldPlus,
+  Trash2,
+} from "lucide-react-native";
+import { useState } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
+import { AssetThumbnail } from "../../../components/assets/AssetCard";
+import { DocumentCard, openDocument } from "../../../components/documents/DocumentCard";
+import { DocumentUploadForm } from "../../../components/documents/DocumentUploadForm";
+import { FileSourceSheet } from "../../../components/documents/FileSourceSheet";
+import { ClaimBadge, WarrantyBadge } from "../../../components/ui/Badge";
+import { Button } from "../../../components/ui/Button";
+import { Card, Section } from "../../../components/ui/Card";
+import { ProgressBar } from "../../../components/ui/Display";
+import { IconButton } from "../../../components/ui/IconButton";
+import { InfoGrid, InfoRow } from "../../../components/ui/Rows";
+import { Screen } from "../../../components/ui/Screen";
+import { ScreenHeader } from "../../../components/ui/ScreenHeader";
+import { ErrorState, LoadingState } from "../../../components/ui/ScreenStates";
+import { ActionSheet } from "../../../components/ui/Sheet";
+import { Text } from "../../../components/ui/Text";
+import { useAssetActions } from "../../../hooks/use-asset-details";
+import { useAsset } from "../../../hooks/use-assets";
+import { useDocumentActions } from "../../../hooks/use-documents";
+import { useFormatters } from "../../../hooks/use-preferences";
+import { confirm } from "../../../lib/confirm";
+import { daysUntil, describeDaysUntil } from "../../../lib/format";
+import { warrantyTypeLabels } from "../../../lib/labels";
 import { colors, spacing } from "../../../lib/theme";
+import type { AssetDocumentSummary } from "../../../lib/types";
+import { useToast } from "../../../providers/toast-provider";
 
-export default function AssetDetailsScreen() {
+export default function AssetDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { asset, categories, error, loading, remove: removeAsset, save, saving } =
-    useAssetDetails(id);
-  const [editing, setEditing] = useState(false);
-  function remove() {
-    if (!asset) return;
-    Alert.alert("Delete asset?", `Remove ${asset.name} and its records?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await removeAsset();
-            router.back();
-          } catch {
-            return;
-          }
-        },
-      },
-    ]);
-  }
-  if (loading || !asset)
+  const toast = useToast();
+  const format = useFormatters();
+  const asset = useAsset(id);
+  const actions = useAssetActions(id);
+  const documents = useDocumentActions();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [documentMenu, setDocumentMenu] = useState<AssetDocumentSummary | null>(null);
+  const [replacing, setReplacing] = useState<AssetDocumentSummary | null>(null);
+
+  const header = (
+    <ScreenHeader
+      title={asset.data?.name ?? "Asset"}
+      fallbackHref="/(app)/assets"
+      actions={
+        asset.data ? (
+          <>
+            <IconButton
+              icon={Pencil}
+              label="Edit asset"
+              onPress={() => router.push(`/(app)/assets/form?id=${id}`)}
+            />
+            <IconButton icon={MoreVertical} label="More actions" onPress={() => setMenuOpen(true)} />
+          </>
+        ) : null
+      }
+    />
+  );
+
+  if (asset.isPending) return <Screen header={header}><LoadingState /></Screen>;
+  if (asset.isError || !asset.data) {
     return (
-      <View style={styles.center}>
-        {error ? (
-          <Text style={styles.error}>{error}</Text>
-        ) : (
-          <ActivityIndicator color={colors.brand} />
-        )}
-      </View>
+      <Screen header={header}>
+        <ErrorState error={asset.error} onRetry={() => void asset.refetch()} />
+      </Screen>
     );
+  }
+
+  const item = asset.data;
+  const archived = item.lifecycleStatus === "ARCHIVED";
+  const assetDocuments = (item.documents ?? []).filter(
+    (document) => document.fileType !== "CLAIM_EVIDENCE" && document.fileType !== "CLAIM_CONDITION",
+  );
+  const claimDocuments = (item.documents ?? []).length - assetDocuments.length;
+
+  // Share of the warranty period already used, for the progress bar.
+  let elapsed = 0;
+  if (item.hasWarranty && item.expiryDate) {
+    const start = new Date(item.purchaseDate).getTime();
+    const end = new Date(item.expiryDate).getTime();
+    elapsed = end > start ? (Date.now() - start) / (end - start) : 1;
+  }
+  const daysLeft = item.expiryDate ? daysUntil(item.expiryDate) : null;
+
+  async function toggleArchive() {
+    try {
+      await actions.setLifecycle.mutateAsync(archived ? "ADDED" : "ARCHIVED");
+      toast.success(archived ? "Asset restored." : "Asset archived.");
+    } catch (error) {
+      toast.error(error, "Could not update the asset.");
+    }
+  }
+
+  async function remove() {
+    const ok = await confirm({
+      title: "Delete this asset?",
+      message: `${item.name}, its documents, and its claims will be removed. This cannot be undone.`,
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await actions.remove.mutateAsync();
+      toast.success("Asset deleted.");
+      router.back();
+    } catch (error) {
+      toast.error(error, "Could not delete the asset.");
+    }
+  }
+
+  async function removeDocument(document: AssetDocumentSummary) {
+    const ok = await confirm({
+      title: "Delete this document?",
+      message: document.fileName,
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await documents.remove.mutateAsync(document.id);
+      toast.success("Document deleted.");
+    } catch (error) {
+      toast.error(error, "Could not delete the document.");
+    }
+  }
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Pressable onPress={() => router.back()}>
-        <Text style={styles.back}>Back to assets</Text>
-      </Pressable>
-      <Text style={styles.eyebrow}>{asset.category.name}</Text>
-      <Text style={styles.title}>{asset.name}</Text>
-      <Text style={styles.subtitle}>
-        {asset.brand}
-        {asset.model ? ` · ${asset.model}` : ""}
-      </Text>
-      <View style={styles.card}>
-        <Info label="Warranty status" value={asset.warrantyStatus.replaceAll("_", " ")} />
-        <Info label="Purchase date" value={new Date(asset.purchaseDate).toLocaleDateString()} />
-        <Info label="Purchase price" value={asset.purchasePrice} />
-        <Info
-          label="Expiry date"
-          value={
-            asset.expiryDate
-              ? new Date(asset.expiryDate).toLocaleDateString()
-              : "No warranty expiry"
-          }
-        />
-        <Info label="Serial number" value={asset.serialNumber ?? "Not provided"} />
-        <Info label="Seller" value={asset.sellerName ?? "Not provided"} />
-      </View>
-      {editing ? (
-        <EditForm
-          asset={asset}
-          categories={categories}
-          saving={saving}
-          onSave={async (input) => {
-            await save(input);
-            setEditing(false);
-          }}
-        />
-      ) : (
-        <View style={styles.actions}>
-          <Pressable onPress={() => setEditing(true)} style={styles.primary}>
-            <Text style={styles.primaryText}>Edit asset</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => void save({ lifecycleStatus: "ARCHIVED" })}
-            style={styles.outline}
-          >
-            <Text style={styles.outlineText}>Archive</Text>
-          </Pressable>
-          <Pressable onPress={remove} style={styles.deleteButton}>
-            <Text style={styles.deleteText}>Delete</Text>
-          </Pressable>
-        </View>
-      )}
-      {asset.documents?.length ? (
-        <View style={styles.card}>
-          <Text style={styles.section}>Documents</Text>
-          {asset.documents.map((document) => (
-            <Text key={document.id} style={styles.document}>
-              {document.fileName}
+    <Screen
+      header={header}
+      refreshing={asset.isRefetching}
+      onRefresh={() => void asset.refetch()}
+    >
+      <Card>
+        <View style={styles.hero}>
+          <AssetThumbnail asset={item} size={72} />
+          <View style={styles.flex}>
+            <Text variant="heading">{item.name}</Text>
+            <Text variant="bodySmall" color={colors.muted}>
+              {[item.brand, item.model].filter(Boolean).join(" · ")}
             </Text>
-          ))}
+            <View style={styles.badges}>
+              <WarrantyBadge status={item.warrantyStatus} />
+              {archived ? <Text variant="caption">Archived</Text> : null}
+            </View>
+          </View>
         </View>
-      ) : null}
-    </ScrollView>
-  );
-}
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.info}>
-      <Text style={styles.label}>{label}</Text>
-      <Text style={styles.value}>{value}</Text>
-    </View>
-  );
-}
-function EditForm({
-  asset,
-  categories,
-  saving,
-  onSave,
-}: {
-  asset: Asset;
-  categories: Category[];
-  saving: boolean;
-  onSave: (input: Partial<Parameters<typeof updateAsset>[2]>) => void;
-}) {
-  const [name, setName] = useState(asset.name);
-  const [brand, setBrand] = useState(asset.brand);
-  const [model, setModel] = useState(asset.model ?? "");
-  const [serialNumber, setSerialNumber] = useState(asset.serialNumber ?? "");
-  const [purchasePrice, setPurchasePrice] = useState(asset.purchasePrice);
-  const [purchaseDate, setPurchaseDate] = useState(asset.purchaseDate.slice(0, 10));
-  const [categoryId, setCategoryId] = useState(asset.category.id);
-  return (
-    <View style={styles.card}>
-      <Text style={styles.section}>Edit details</Text>
-      <Field value={name} onChangeText={setName} placeholder="Name" />
-      <Field value={brand} onChangeText={setBrand} placeholder="Brand" />
-      <Field value={model} onChangeText={setModel} placeholder="Model" />
-      <Field value={serialNumber} onChangeText={setSerialNumber} placeholder="Serial number" />
-      <Field
-        keyboardType="decimal-pad"
-        value={purchasePrice}
-        onChangeText={setPurchasePrice}
-        placeholder="Purchase price"
-      />
-      <Field value={purchaseDate} onChangeText={setPurchaseDate} placeholder="Purchase date" />
-      <Text style={styles.label}>Category</Text>
-      <View style={styles.categoryRow}>
-        {categories
-          .filter((item) => item.isActive)
-          .map((category) => (
-            <Pressable
-              key={category.id}
-              onPress={() => setCategoryId(category.id)}
-              style={[styles.category, category.id === categoryId && styles.categorySelected]}
-            >
-              <Text
-                style={
-                  category.id === categoryId ? styles.categoryTextSelected : styles.categoryText
+        <InfoGrid>
+          <InfoRow label="Price" value={format.money(item.purchasePrice)} />
+          <InfoRow label="Purchased" value={format.date(item.purchaseDate)} />
+          <InfoRow label="Category" value={item.category?.name ?? "—"} />
+          <InfoRow label="Serial number" value={item.serialNumber || "—"} />
+        </InfoGrid>
+      </Card>
+
+      <Section title="Warranty">
+        <Card>
+          {item.hasWarranty && item.expiryDate ? (
+            <>
+              <View style={styles.rowBetween}>
+                <Text variant="subheading">
+                  {item.warrantyType ? warrantyTypeLabels[item.warrantyType] : "Warranty"} ·{" "}
+                  {item.warrantyDuration} months
+                </Text>
+                <Text
+                  variant="label"
+                  color={daysLeft !== null && daysLeft < 0 ? colors.danger : colors.heading}
+                >
+                  {describeDaysUntil(item.expiryDate)}
+                </Text>
+              </View>
+              <ProgressBar
+                value={elapsed}
+                tone={
+                  item.warrantyStatus === "EXPIRED"
+                    ? "danger"
+                    : item.warrantyStatus === "EXPIRING_SOON"
+                      ? "warning"
+                      : "success"
                 }
-              >
-                {category.name}
+              />
+              <View style={styles.rowBetween}>
+                <Text variant="caption">Started {format.date(item.purchaseDate)}</Text>
+                <Text variant="caption">Ends {format.date(item.expiryDate)}</Text>
+              </View>
+            </>
+          ) : (
+            <View style={styles.emptyWarranty}>
+              <Text variant="bodySmall" color={colors.muted}>
+                No warranty is recorded for this asset.
               </Text>
-            </Pressable>
-          ))}
-      </View>
-      <Pressable
-        disabled={saving}
-        onPress={() =>
-          onSave({
-            name: name.trim(),
-            brand: brand.trim(),
-            model: model.trim(),
-            serialNumber: serialNumber.trim(),
-            purchasePrice: Number(purchasePrice),
-            purchaseDate,
-            categoryId,
-          })
+              <Button
+                title="Add warranty details"
+                variant="secondary"
+                size="sm"
+                onPress={() => router.push(`/(app)/assets/form?id=${id}`)}
+              />
+            </View>
+          )}
+        </Card>
+      </Section>
+
+      {item.sellerName || item.sellerPhone || item.sellerAddress || item.notes ? (
+        <Section title="Seller and notes">
+          <Card>
+            <InfoGrid>
+              {item.sellerName ? <InfoRow label="Seller" value={item.sellerName} /> : null}
+              {item.sellerPhone ? <InfoRow label="Phone" value={item.sellerPhone} /> : null}
+            </InfoGrid>
+            {item.sellerAddress ? <InfoRow label="Address" value={item.sellerAddress} /> : null}
+            {item.notes ? <InfoRow label="Notes" value={item.notes} /> : null}
+          </Card>
+        </Section>
+      ) : null}
+
+      <Section
+        title={`Documents (${assetDocuments.length})`}
+        action={
+          <Button title="Add" icon={FilePlus2} size="sm" variant="ghost" onPress={() => setUploadOpen(true)} />
         }
-        style={styles.primary}
       >
-        <Text style={styles.primaryText}>{saving ? "Saving..." : "Save changes"}</Text>
-      </Pressable>
-    </View>
+        {assetDocuments.length ? (
+          <View style={styles.list}>
+            {assetDocuments.map((document) => (
+              <DocumentCard
+                key={document.id}
+                document={document}
+                onMore={() => setDocumentMenu(document)}
+              />
+            ))}
+          </View>
+        ) : (
+          <Card>
+            <Text variant="bodySmall" color={colors.muted}>
+              Keep the invoice, receipt, and warranty card here so they are ready when you need them.
+            </Text>
+            <Button
+              title="Upload a document"
+              variant="secondary"
+              size="sm"
+              icon={FilePlus2}
+              onPress={() => setUploadOpen(true)}
+            />
+          </Card>
+        )}
+        {claimDocuments ? (
+          <Text variant="caption">
+            {claimDocuments} claim evidence {claimDocuments === 1 ? "file is" : "files are"} shown on
+            the related claims.
+          </Text>
+        ) : null}
+      </Section>
+
+      <Section
+        title={`Claims (${item.claims?.length ?? 0})`}
+        action={
+          <Button
+            title="New claim"
+            icon={ShieldPlus}
+            size="sm"
+            variant="ghost"
+            onPress={() => router.push(`/(app)/claims/form?productId=${id}`)}
+          />
+        }
+      >
+        {item.claims?.length ? (
+          <Card padded={false}>
+            {item.claims.map((claim, index) => (
+              <Pressable
+                key={claim.id}
+                onPress={() => router.push(`/(app)/claims/${claim.id}`)}
+                style={({ pressed }) => [
+                  styles.claimRow,
+                  index > 0 && styles.divider,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <View style={styles.flex}>
+                  <Text variant="subheading" numberOfLines={1}>
+                    {claim.title}
+                  </Text>
+                  <Text variant="caption">
+                    #{claim.claimNumber} · {format.date(claim.updatedAt)}
+                  </Text>
+                </View>
+                <ClaimBadge status={claim.status} />
+              </Pressable>
+            ))}
+          </Card>
+        ) : (
+          <Card>
+            <Text variant="bodySmall" color={colors.muted}>
+              No claims yet. Start one if this product needs repair or replacement.
+            </Text>
+          </Card>
+        )}
+      </Section>
+
+      <ActionSheet
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        title={item.name}
+        actions={[
+          {
+            label: "Edit details",
+            icon: Pencil,
+            onPress: () => router.push(`/(app)/assets/form?id=${id}`),
+          },
+          {
+            label: archived ? "Restore asset" : "Archive asset",
+            description: archived ? "Show it with your active assets again" : "Hide it from everyday lists",
+            icon: archived ? ArchiveRestore : Archive,
+            onPress: () => void toggleArchive(),
+          },
+          { label: "Delete asset", icon: Trash2, destructive: true, onPress: () => void remove() },
+        ]}
+      />
+
+      <ActionSheet
+        visible={documentMenu !== null}
+        onClose={() => setDocumentMenu(null)}
+        title={documentMenu?.fileName}
+        actions={
+          documentMenu
+            ? [
+                { label: "Open", icon: ExternalLink, onPress: () => void openDocument(documentMenu) },
+                { label: "Replace file", icon: RefreshCw, onPress: () => setReplacing(documentMenu) },
+                {
+                  label: "Delete",
+                  icon: Trash2,
+                  destructive: true,
+                  onPress: () => void removeDocument(documentMenu),
+                },
+              ]
+            : []
+        }
+      />
+
+      <FileSourceSheet
+        visible={replacing !== null}
+        title="Choose the replacement file"
+        imagesOnly={replacing?.fileType === "PRODUCT_IMAGE"}
+        onClose={() => setReplacing(null)}
+        onPicked={(file) => {
+          const target = replacing;
+          if (!target) return;
+          documents.replace
+            .mutateAsync({ id: target.id, file })
+            .then(() => toast.success("Document replaced."))
+            .catch((error: unknown) => toast.error(error, "Could not replace the document."));
+        }}
+      />
+
+      <DocumentUploadForm
+        visible={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        productId={id}
+        existingDocuments={item.documents ?? []}
+      />
+    </Screen>
   );
 }
-function Field(props: {
-  value: string;
-  onChangeText: (value: string) => void;
-  placeholder: string;
-  keyboardType?: "default" | "decimal-pad";
-}) {
-  return <TextInput {...props} placeholderTextColor={colors.muted} style={styles.input} />;
-}
+
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.canvas,
-    gap: spacing.md,
-    padding: spacing.lg,
-  },
-  center: {
+  flex: { flex: 1, gap: 2 },
+  hero: { flexDirection: "row", gap: spacing.md, marginBottom: spacing.sm },
+  badges: { alignItems: "center", flexDirection: "row", gap: spacing.sm, marginTop: spacing.xs },
+  rowBetween: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  emptyWarranty: { alignItems: "flex-start", gap: spacing.sm },
+  list: { gap: spacing.sm },
+  claimRow: {
     alignItems: "center",
-    flex: 1,
-    justifyContent: "center",
-    padding: spacing.lg,
-  },
-  back: {
-    color: colors.brand,
-    fontWeight: "700",
-  },
-  eyebrow: {
-    color: colors.brand,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 2,
-  },
-  title: {
-    color: colors.ink,
-    fontSize: 30,
-    fontWeight: "800",
-  },
-  subtitle: {
-    color: colors.muted,
-    fontSize: 15,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: spacing.lg,
-  },
-  info: {
-    borderBottomColor: colors.border,
-    borderBottomWidth: 1,
-    paddingVertical: spacing.sm,
-  },
-  label: {
-    color: colors.muted,
-    fontSize: 12,
-  },
-  value: {
-    color: colors.ink,
-    fontSize: 15,
-    fontWeight: "600",
-    marginTop: spacing.xs,
-  },
-  actions: {
-    gap: spacing.sm,
-  },
-  primary: {
-    alignItems: "center",
-    backgroundColor: colors.brand,
-    borderRadius: 10,
-    marginTop: spacing.md,
-    padding: spacing.md,
-  },
-  primaryText: {
-    color: colors.surface,
-    fontWeight: "700",
-  },
-  outline: {
-    alignItems: "center",
-    borderColor: colors.brand,
-    borderRadius: 10,
-    borderWidth: 1,
-    padding: spacing.md,
-  },
-  outlineText: {
-    color: colors.brand,
-    fontWeight: "700",
-  },
-  deleteButton: {
-    alignItems: "center",
-    borderColor: colors.danger,
-    borderRadius: 10,
-    borderWidth: 1,
-    padding: spacing.md,
-  },
-  deleteText: {
-    color: colors.danger,
-    fontWeight: "700",
-  },
-  delete: {
-    color: colors.brand,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  error: {
-    color: colors.danger,
-    textAlign: "center",
-  },
-  section: {
-    color: colors.ink,
-    fontSize: 17,
-    fontWeight: "700",
-  },
-  document: {
-    borderBottomColor: colors.border,
-    borderBottomWidth: 1,
-    color: colors.muted,
-    paddingVertical: spacing.sm,
-  },
-  input: {
-    borderColor: colors.border,
-    borderRadius: 10,
-    borderWidth: 1,
-    color: colors.ink,
-    marginTop: spacing.sm,
-    padding: spacing.sm,
-  },
-  categoryRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.xs,
-    marginTop: spacing.sm,
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 4,
   },
-  category: {
-    borderColor: colors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  categorySelected: {
-    backgroundColor: colors.brand,
-    borderColor: colors.brand,
-  },
-  categoryText: {
-    color: colors.muted,
-    fontSize: 12,
-  },
-  categoryTextSelected: {
-    color: colors.surface,
-    fontSize: 12,
-  },
+  divider: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth },
+  pressed: { backgroundColor: colors.surfaceMuted },
 });

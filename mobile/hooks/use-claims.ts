@@ -1,71 +1,51 @@
-import { useCallback, useEffect, useState } from "react";
-import {
-  createClaim,
-  getClaims,
-  updateClaim,
-  type Claim,
-  type ClaimStatus,
-  type CreateClaimInput,
-} from "../lib/claims-api";
-import { useAuth } from "../providers/auth-provider";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { createClaim, getClaim, getClaims, updateClaim, type ClaimQuery } from "../lib/claims-api";
+import { uploadDocument } from "../lib/documents-api";
+import type { ClaimInput, ClaimUpdate, EvidenceType, NativeFile } from "../lib/types";
+import { keys, useInvalidate, useSignedIn } from "./query-keys";
+import { usePagedQuery } from "./use-paged-query";
 
-export function useClaims(search: string) {
-  const { user } = useAuth();
-  const [claims, setClaims] = useState<Claim[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+export function useClaimList(query: ClaimQuery) {
+  return usePagedQuery(keys.claims(query), (page) => getClaims({ ...query, page }), {
+    enabled: useSignedIn(),
+  });
+}
 
-  const load = useCallback(async () => {
-    if (!user) return;
+export const useClaim = (id: string | undefined) =>
+  useQuery({
+    queryKey: keys.claim(id ?? ""),
+    queryFn: () => getClaim(id as string),
+    enabled: useSignedIn() && Boolean(id),
+  });
 
-    setLoading(true);
-    setError("");
+export type PendingEvidence = { file: NativeFile; kind: "CLAIM_EVIDENCE" | "CLAIM_CONDITION" };
 
-    try {
-      const result = await getClaims(await user.getIdToken(), search);
-      setClaims(result.data);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load claims.");
-    } finally {
-      setLoading(false);
-    }
-  }, [search, user]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const addClaim = useCallback(
-    async (input: CreateClaimInput) => {
-      if (!user) throw new Error("You must be signed in to create a claim.");
-
-      const claim = await createClaim(await user.getIdToken(), input);
-      setClaims((current) => [claim, ...current]);
-    },
-    [user],
-  );
-
-  const changeStatus = useCallback(
-    async (claim: Claim, status: ClaimStatus) => {
-      if (!user) return;
-
-      try {
-        const updated = await updateClaim(await user.getIdToken(), claim.id, { status });
-        setClaims((current) =>
-          current.map((item) => (item.id === updated.id ? updated : item)),
-        );
-      } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Could not update claim.");
+/**
+ * Creates a claim. Evidence files are uploaded to the asset first, then
+ * attached when the claim is created, the same way the web app does it.
+ */
+export function useCreateClaim() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: async ({ input, evidence }: { input: ClaimInput; evidence: PendingEvidence[] }) => {
+      const attached: Array<{ documentId: string; evidenceType: EvidenceType }> = [];
+      for (const item of evidence) {
+        const document = await uploadDocument(input.productId, item.kind, item.file);
+        attached.push({
+          documentId: document.id,
+          evidenceType: item.kind === "CLAIM_CONDITION" ? "CONDITION_PHOTO" : "SUPPORTING_DOCUMENT",
+        });
       }
+      return createClaim({ ...input, ...(attached.length ? { evidence: attached } : {}) });
     },
-    [user],
-  );
+    onSuccess: () => Promise.all([invalidate.claims(), invalidate.documents()]),
+  });
+}
 
-  return {
-    addClaim,
-    changeStatus,
-    claims,
-    error,
-    loading,
-  };
+export function useUpdateClaim(id: string) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (input: ClaimUpdate) => updateClaim(id, input),
+    onSuccess: () => invalidate.claims(),
+  });
 }

@@ -1,29 +1,25 @@
-import { useCallback, useState } from "react";
-import { downloadReport } from "../lib/reports-api";
-import { useAuth } from "../providers/auth-provider";
+import { useState } from "react";
+import { downloadReport, type ReportFormat } from "../lib/reports-api";
+import { getFirebaseAuth } from "../lib/firebase";
+import { useToast } from "../providers/toast-provider";
 
+/** Downloads a report and opens the share sheet. Tracks which one is running. */
 export function useReports() {
-  const { user } = useAuth();
-  const [busy, setBusy] = useState("");
-  const [error, setError] = useState("");
+  const toast = useToast();
+  const [busy, setBusy] = useState<string | null>(null);
 
-  const download = useCallback(
-    async (report: string, format: "PDF" | "EXCEL") => {
-      if (!user) return;
+  async function download(report: string, format: ReportFormat) {
+    const user = getFirebaseAuth().currentUser;
+    if (!user || busy) return;
+    setBusy(`${report}:${format}`);
+    try {
+      await downloadReport(await user.getIdToken(), report, format);
+    } catch (error) {
+      toast.error(error, "Could not download the report.");
+    } finally {
+      setBusy(null);
+    }
+  }
 
-      setBusy(`${report}-${format}`);
-      setError("");
-
-      try {
-        await downloadReport(await user.getIdToken(), report, format);
-      } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Could not download report.");
-      } finally {
-        setBusy("");
-      }
-    },
-    [user],
-  );
-
-  return { busy, download, error };
+  return { busy, download };
 }

@@ -10,11 +10,17 @@ const syncUser = async (firebaseUser, payload) => {
     const existing = await repository.findByFirebaseUid(firebaseUser.uid);
     const providerPhoto = payload.photoURL || firebaseUser.picture || null;
     const preserveCustomAvatar = existing?.avatarSource === "CUSTOM";
+    const email = firebaseUser.email.trim().toLowerCase();
+    // Keep a name the user already chose. Only replace the generated
+    // email-prefix fallback, which a client may create while registration
+    // is still finishing.
+    const generatedName = email.split("@")[0];
+    const keepExistingName = existing && existing.name && existing.name !== generatedName;
     return repository.syncUser({
         firebaseUid: firebaseUser.uid,
-        email: firebaseUser.email.trim().toLowerCase(),
+        email,
         emailVerified: Boolean(firebaseUser.email_verified),
-        name: payload.name.trim(),
+        name: keepExistingName ? existing.name : payload.name.trim(),
         ...(!preserveCustomAvatar && providerPhoto ? { photoURL: providerPhoto, avatarSource: "GOOGLE" } : {}),
         lastLoginAt: new Date(),
     });

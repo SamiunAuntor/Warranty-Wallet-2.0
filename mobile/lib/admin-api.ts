@@ -1,4 +1,15 @@
-import { apiRequest } from "./api";
+import { apiList, apiRequest, queryString } from "./api";
+import type {
+  AppUser,
+  Asset,
+  Brand,
+  Category,
+  Claim,
+  ClaimStatus,
+  Payment,
+  PaymentStatus,
+  UserStatus,
+} from "./types";
 
 export type AdminStats = {
   totalUsers: number;
@@ -10,133 +21,76 @@ export type AdminStats = {
   totalPayments: number;
   totalRevenue: string | number;
 };
-export type AdminUser = {
-  id: string;
-  name: string;
-  email: string;
-  role: "USER" | "ADMIN";
-  status: "ACTIVE" | "BLOCKED" | "DELETED";
-  plan: "BASIC" | "PLUS" | "PRO";
-  createdAt: string;
-};
-export type AdminUserList = {
-  data: AdminUser[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-};
-export function getAdminStats(token: string) {
-  return apiRequest<AdminStats>("/admin/dashboard", { token });
-}
-export function getAdminUsers(token: string) {
-  return apiRequest<AdminUserList>("/admin/users?page=1&limit=50", { token });
-}
-export function setUserBlocked(token: string, id: string, blocked: boolean) {
-  return apiRequest<AdminUser>(`/admin/users/${id}/${blocked ? "block" : "unblock"}`, {
+export type AdminUser = AppUser & { createdAt: string };
+export type AdminAsset = Asset & { user: { id: string; name: string; email: string } };
+export type AdminClaim = Claim & { user: { id: string; name: string; email: string } };
+export type AdminPayment = Payment & { user: { id: string; name: string; email: string } };
+export type RevenuePoint = { createdAt: string; _sum?: { amount?: string | number | null } };
+export type GrowthPoint = { createdAt: string; _count?: { id?: number } };
+
+type ListQuery = { page?: number; limit?: number; search?: string };
+
+const list = <T>(path: string, query: Record<string, string | number | undefined>) =>
+  apiList<T>(`${path}${queryString({ page: 1, limit: 20, ...query })}`);
+
+export const getAdminStats = () => apiRequest<AdminStats>("/admin/dashboard");
+export const getRevenue = (year: number) =>
+  apiRequest<RevenuePoint[]>(`/dashboard/admin/revenue?year=${year}`);
+export const getProductGrowth = (year: number) =>
+  apiRequest<GrowthPoint[]>(`/dashboard/admin/product-growth?year=${year}`);
+
+export const getAdminUsers = (query: ListQuery & { status?: UserStatus }) =>
+  list<AdminUser>("/admin/users", query);
+export const setUserBlocked = (id: string, blocked: boolean) =>
+  apiRequest<AdminUser>(`/admin/users/${id}/${blocked ? "block" : "unblock"}`, {
     method: "PATCH",
-    token,
   });
-}
-export function broadcast(token: string, input: { title: string; message: string; type: string }) {
-  return apiRequest<null>("/admin/notifications", {
-    method: "POST",
-    token,
-    body: JSON.stringify(input),
-  });
-}
-export type CatalogItem = {
-  id: string;
+export const deleteAdminUser = (id: string) =>
+  apiRequest<null>(`/admin/users/${id}`, { method: "DELETE" });
+
+export const getAdminAssets = (query: ListQuery) => list<AdminAsset>("/admin/products", query);
+export const deleteAdminAsset = (id: string) =>
+  apiRequest<null>(`/admin/products/${id}`, { method: "DELETE" });
+
+export const getAdminClaims = (query: ListQuery & { status?: ClaimStatus }) =>
+  list<AdminClaim>("/admin/claims", query);
+export const updateAdminClaimStatus = (id: string, status: ClaimStatus) =>
+  apiRequest<AdminClaim>(`/admin/claims/${id}/status`, { method: "PATCH", body: { status } });
+
+export const getAdminPayments = (query: ListQuery & { status?: PaymentStatus }) =>
+  list<AdminPayment>("/admin/payments", query);
+
+export const getAdminCategories = (query: ListQuery = {}) =>
+  list<Category>("/admin/categories", { limit: 100, ...query });
+export const createCategory = (input: { name: string; description?: string | null }) =>
+  apiRequest<Category>("/categories", { method: "POST", body: input });
+export const updateCategory = (
+  id: string,
+  input: { name?: string; description?: string | null; isActive?: boolean },
+) => apiRequest<Category>(`/categories/${id}`, { method: "PATCH", body: input });
+export const deleteCategory = (id: string) =>
+  apiRequest<null>(`/categories/${id}`, { method: "DELETE" });
+
+export const getAdminBrands = (query: ListQuery = {}) =>
+  list<Brand>("/admin/brands", { limit: 100, ...query });
+export const createBrand = (input: {
   name: string;
   description?: string | null;
   websiteUrl?: string | null;
-  isActive?: boolean;
-  _count?: { products: number };
-};
-export type AdminAsset = {
-  id: string;
-  name: string;
-  brand: string;
-  warrantyStatus: string;
-  lifecycleStatus: string;
-  user: {
-    name: string;
-    email: string;
-  };
-};
-export type AdminClaim = {
-  id: string;
-  claimNumber: string;
-  title: string;
-  status: string;
-  product: {
-    name: string;
-  };
-  user: {
-    name: string;
-    email: string;
-  };
-};
-export type AdminPayment = {
-  id: string;
-  amount: string | number;
-  currency: string;
-  plan: string | null;
-  status: string;
-  user: {
-    name: string;
-    email: string;
-  };
-  createdAt: string;
-};
-export function getAdminCategories(token: string) {
-  return apiRequest<CatalogItem[]>("/admin/categories?page=1&limit=50", {
-    token,
-  });
-}
-export function getAdminBrands(token: string) {
-  return apiRequest<CatalogItem[]>("/admin/brands?page=1&limit=50", { token });
-}
-export function createCategory(token: string, name: string, description: string) {
-  return apiRequest<CatalogItem>("/categories", {
+}) => apiRequest<Brand>("/brands", { method: "POST", body: input });
+export const updateBrand = (
+  id: string,
+  input: {
+    name?: string;
+    description?: string | null;
+    websiteUrl?: string | null;
+    isActive?: boolean;
+  },
+) => apiRequest<Brand>(`/brands/${id}`, { method: "PATCH", body: input });
+export const deleteBrand = (id: string) => apiRequest<null>(`/brands/${id}`, { method: "DELETE" });
+
+export const broadcastNotification = (input: { title: string; message: string }) =>
+  apiRequest<null>("/admin/notifications", {
     method: "POST",
-    token,
-    body: JSON.stringify({ name, description }),
+    body: { ...input, type: "SYSTEM" },
   });
-}
-export function createBrand(token: string, name: string, description: string) {
-  return apiRequest<CatalogItem>("/brands", {
-    method: "POST",
-    token,
-    body: JSON.stringify({ name, description }),
-  });
-}
-export function deleteCategory(token: string, id: string) {
-  return apiRequest<null>(`/categories/${id}`, { method: "DELETE", token });
-}
-export function deleteBrand(token: string, id: string) {
-  return apiRequest<null>(`/brands/${id}`, { method: "DELETE", token });
-}
-export function getAdminAssets(token: string) {
-  return apiRequest<AdminAsset[]>("/admin/products?page=1&limit=50", { token });
-}
-export function deleteAdminAsset(token: string, id: string) {
-  return apiRequest<null>(`/admin/products/${id}`, { method: "DELETE", token });
-}
-export function getAdminClaims(token: string) {
-  return apiRequest<AdminClaim[]>("/admin/claims?page=1&limit=50", { token });
-}
-export function updateAdminClaim(token: string, id: string, status: string) {
-  return apiRequest<AdminClaim>(`/admin/claims/${id}/status`, {
-    method: "PATCH",
-    token,
-    body: JSON.stringify({ status }),
-  });
-}
-export function getAdminPayments(token: string) {
-  return apiRequest<AdminPayment[]>("/admin/payments?page=1&limit=50", {
-    token,
-  });
-}

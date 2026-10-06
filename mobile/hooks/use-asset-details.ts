@@ -1,63 +1,21 @@
-import { useCallback, useEffect, useState } from "react";
-import {
-  deleteAsset,
-  getAsset,
-  getCategories,
-  updateAsset,
-  type Asset,
-  type Category,
-} from "../lib/assets-api";
-import { useAuth } from "../providers/auth-provider";
+import { useMutation } from "@tanstack/react-query";
+import { deleteAsset, updateAsset } from "../lib/assets-api";
+import type { LifecycleStatus } from "../lib/types";
+import { useInvalidate } from "./query-keys";
 
-export function useAssetDetails(id: string | undefined) {
-  const { user } = useAuth();
-  const [asset, setAsset] = useState<Asset | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+/** Changes made from the asset detail screen. */
+export function useAssetActions(id: string) {
+  const invalidate = useInvalidate();
 
-  const load = useCallback(async () => {
-    if (!user || !id) return;
+  const setLifecycle = useMutation({
+    mutationFn: (lifecycleStatus: LifecycleStatus) => updateAsset(id, { lifecycleStatus }),
+    onSuccess: () => invalidate.assets(),
+  });
 
-    try {
-      const token = await user.getIdToken();
-      const [nextAsset, catalog] = await Promise.all([getAsset(token, id), getCategories()]);
-      setAsset(nextAsset);
-      setCategories(catalog);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load asset.");
-    } finally {
-      setLoading(false);
-    }
-  }, [id, user]);
+  const remove = useMutation({
+    mutationFn: () => deleteAsset(id),
+    onSuccess: () => Promise.all([invalidate.assets(), invalidate.claims()]),
+  });
 
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const save = useCallback(
-    async (input: Parameters<typeof updateAsset>[2]) => {
-      if (!user || !asset) return;
-
-      setSaving(true);
-
-      try {
-        setAsset(await updateAsset(await user.getIdToken(), asset.id, input));
-      } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Could not update asset.");
-      } finally {
-        setSaving(false);
-      }
-    },
-    [asset, user],
-  );
-
-  const remove = useCallback(async () => {
-    if (!user || !asset) return;
-
-    await deleteAsset(await user.getIdToken(), asset.id);
-  }, [asset, user]);
-
-  return { asset, categories, error, loading, remove, save, saving };
+  return { setLifecycle, remove };
 }

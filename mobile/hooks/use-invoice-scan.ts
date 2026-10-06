@@ -1,43 +1,38 @@
-import * as DocumentPicker from "expo-document-picker";
-import { useCallback, useState } from "react";
-import { extractInvoice, type ExtractedAssetData } from "../lib/ai-api";
-import { useAuth } from "../providers/auth-provider";
+import { useMutation } from "@tanstack/react-query";
+import { extractInvoice } from "../lib/ai-api";
+import type { Brand, Category, ExtractedAssetData, NativeFile } from "../lib/types";
 
-export function useInvoiceScan() {
-  const { user } = useAuth();
-  const [data, setData] = useState<ExtractedAssetData | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+const normalize = (value: string) => value.trim().toLowerCase();
 
-  const pick = useCallback(async () => {
-    if (!user) return;
+/** Finds the catalog entry whose name best matches text from an invoice. */
+function matchByName<T extends { id: string; name: string }>(items: T[], text?: string | null) {
+  if (!text?.trim()) return undefined;
+  const target = normalize(text);
+  return (
+    items.find((item) => normalize(item.name) === target) ??
+    items.find((item) => target.includes(normalize(item.name)) || normalize(item.name).includes(target))
+  );
+}
 
-    const result = await DocumentPicker.getDocumentAsync({
-      copyToCacheDirectory: true,
-      type: ["application/pdf", "image/*"],
-    });
+export type InvoiceScanResult = {
+  data: ExtractedAssetData;
+  file: NativeFile;
+  categoryId?: string;
+  brandId?: string | null;
+};
 
-    if (result.canceled) return;
-
-    setBusy(true);
-    setError("");
-
-    try {
-      const item = result.assets[0];
-      setData(
-        await extractInvoice(await user.getIdToken(), {
-          uri: item.uri,
-          name: item.name,
-          mimeType: item.mimeType,
-          size: item.size,
-        }),
-      );
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not extract invoice data.");
-    } finally {
-      setBusy(false);
-    }
-  }, [user]);
-
-  return { busy, data, error, pick };
+/** Sends an invoice to the AI extraction endpoint and matches the catalog. */
+export function useInvoiceScan(categories: Category[], brands: Brand[]) {
+  return useMutation({
+    mutationFn: async (file: NativeFile): Promise<InvoiceScanResult> => {
+      const data = await extractInvoice(file);
+      const brand = matchByName(brands, data.brand);
+      return {
+        data,
+        file,
+        categoryId: matchByName(categories, data.category)?.id,
+        brandId: brand ? brand.id : data.brand ? null : undefined,
+      };
+    },
+  });
 }

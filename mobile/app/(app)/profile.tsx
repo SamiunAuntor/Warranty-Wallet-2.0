@@ -1,159 +1,139 @@
-import { useState } from "react";
-import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { useProfile } from "../../hooks/use-profile";
-import { colors, spacing } from "../../lib/theme";
+import { Camera, Mail, Phone, UserRound } from "lucide-react-native";
+import { useEffect, useState } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
+import { FileSourceSheet } from "../../components/documents/FileSourceSheet";
+import { PlanBadge } from "../../components/ui/Badge";
+import { Button } from "../../components/ui/Button";
+import { Card } from "../../components/ui/Card";
+import { Avatar } from "../../components/ui/Display";
+import { Screen } from "../../components/ui/Screen";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
+import { InlineMessage } from "../../components/ui/ScreenStates";
+import { Text } from "../../components/ui/Text";
+import { TextField } from "../../components/ui/TextField";
+import { useProfileActions } from "../../hooks/use-profile";
+import { errorMessage } from "../../lib/api";
+import { colors, radius, spacing } from "../../lib/theme";
+import { useCurrentUser } from "../../providers/auth-provider";
+import { useToast } from "../../providers/toast-provider";
 
 export default function ProfileScreen() {
-  const { appUser, choosePhoto, error, message, save, saving } = useProfile();
-  const [name, setName] = useState(appUser?.name ?? "");
-  const [phone, setPhone] = useState(appUser?.phone ?? "");
-  if (!appUser)
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.brand} />
-      </View>
-    );
+  const user = useCurrentUser();
+  const toast = useToast();
+  const { save, uploadPhoto } = useProfileActions();
+  const [name, setName] = useState(user.name);
+  const [phone, setPhone] = useState(user.phone ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [photoOpen, setPhotoOpen] = useState(false);
+
+  useEffect(() => {
+    setName(user.name);
+    setPhone(user.phone ?? "");
+  }, [user.name, user.phone]);
+
+  const dirty = name.trim() !== user.name || phone.trim() !== (user.phone ?? "");
+
+  async function submit() {
+    const trimmedName = name.trim();
+    const trimmedPhone = phone.trim();
+    if (trimmedName.length < 2) {
+      setError("Enter a name of at least 2 characters.");
+      return;
+    }
+    if (trimmedPhone && trimmedPhone.length < 7) {
+      setError("Enter a full phone number, or leave it empty.");
+      return;
+    }
+    setError(null);
+    try {
+      await save.mutateAsync({ name: trimmedName, phone: trimmedPhone || null });
+      toast.success("Profile saved.");
+    } catch (cause) {
+      setError(errorMessage(cause, "Could not save your profile."));
+    }
+  }
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.eyebrow}>ACCOUNT</Text>
-      <Text style={styles.title}>Profile</Text>
-      <View style={styles.card}>
-        {appUser.photoURL ? (
-          <Image source={{ uri: appUser.photoURL }} style={styles.avatar} />
-        ) : (
-          <View style={styles.avatarFallback}>
-            <Text style={styles.initial}>{appUser.name.charAt(0).toUpperCase()}</Text>
-          </View>
-        )}
-        <Pressable disabled={saving} onPress={() => void choosePhoto()} style={styles.outline}>
-          <Text style={styles.outlineText}>Change photo</Text>
-        </Pressable>
-        <Text style={styles.label}>Name</Text>
-        <TextInput onChangeText={setName} style={styles.input} value={name} />
-        <Text style={styles.label}>Phone</Text>
-        <TextInput
-          keyboardType="phone-pad"
-          onChangeText={setPhone}
-          style={styles.input}
-          value={phone}
+    <Screen
+      header={<ScreenHeader title="Profile" fallbackHref="/(app)/more" />}
+      footer={
+        <Button
+          title="Save profile"
+          fullWidth
+          disabled={!dirty}
+          loading={save.isPending}
+          onPress={() => void submit()}
         />
-        <Text style={styles.email}>{appUser.email}</Text>
-        <Pressable disabled={saving} onPress={() => void save(name, phone)} style={styles.save}>
-          <Text style={styles.saveText}>{saving ? "Saving..." : "Save profile"}</Text>
+      }
+    >
+      <Card style={styles.hero}>
+        <Pressable
+          accessibilityLabel="Change profile photo"
+          onPress={() => setPhotoOpen(true)}
+          disabled={uploadPhoto.isPending}
+        >
+          <Avatar name={user.name} photoUrl={user.photoURL} size={88} />
+          <View style={styles.cameraBadge}>
+            <Camera size={14} color={colors.white} />
+          </View>
         </Pressable>
-        {message ? <Text style={styles.message}>{message}</Text> : null}
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-      </View>
-    </ScrollView>
+        <Text variant="heading">{user.name}</Text>
+        <PlanBadge plan={user.plan} />
+        {uploadPhoto.isPending ? <Text variant="caption">Uploading photo…</Text> : null}
+      </Card>
+
+      <InlineMessage message={error} />
+
+      <Card style={styles.form}>
+        <TextField label="Full name" icon={UserRound} value={name} onChangeText={setName} autoComplete="name" />
+        <TextField
+          label="Phone"
+          optional
+          icon={Phone}
+          keyboardType="phone-pad"
+          autoComplete="tel"
+          value={phone}
+          onChangeText={setPhone}
+        />
+        <TextField
+          label="Email"
+          icon={Mail}
+          value={user.email}
+          editable={false}
+          hint="Your sign-in email can't be changed here."
+        />
+      </Card>
+
+      <FileSourceSheet
+        visible={photoOpen}
+        imagesOnly
+        title="Profile photo"
+        onClose={() => setPhotoOpen(false)}
+        onPicked={(file) =>
+          uploadPhoto
+            .mutateAsync(file)
+            .then(() => toast.success("Profile photo updated."))
+            .catch((cause: unknown) => toast.error(cause, "Could not update your photo."))
+        }
+      />
+    </Screen>
   );
 }
+
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.canvas,
-    gap: spacing.md,
-    padding: spacing.lg,
-  },
-  center: {
+  hero: { alignItems: "center", gap: spacing.sm, paddingVertical: spacing.lg },
+  cameraBadge: {
     alignItems: "center",
-    flex: 1,
+    backgroundColor: colors.primary,
+    borderColor: colors.surface,
+    borderRadius: radius.pill,
+    borderWidth: 2,
+    bottom: 0,
+    height: 30,
     justifyContent: "center",
+    position: "absolute",
+    right: 0,
+    width: 30,
   },
-  eyebrow: {
-    color: colors.brand,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 2,
-  },
-  title: {
-    color: colors.ink,
-    fontSize: 30,
-    fontWeight: "800",
-  },
-  card: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: spacing.lg,
-  },
-  avatar: {
-    borderRadius: 48,
-    height: 96,
-    width: 96,
-  },
-  avatarFallback: {
-    alignItems: "center",
-    backgroundColor: colors.brandSoft,
-    borderRadius: 48,
-    height: 96,
-    justifyContent: "center",
-    width: 96,
-  },
-  initial: {
-    color: colors.brand,
-    fontSize: 36,
-    fontWeight: "800",
-  },
-  outline: {
-    borderColor: colors.brand,
-    borderRadius: 10,
-    borderWidth: 1,
-    marginTop: spacing.md,
-    padding: spacing.sm,
-  },
-  outlineText: {
-    color: colors.brand,
-    fontWeight: "700",
-  },
-  label: {
-    alignSelf: "stretch",
-    color: colors.muted,
-    fontSize: 12,
-    marginTop: spacing.md,
-  },
-  input: {
-    alignSelf: "stretch",
-    borderColor: colors.border,
-    borderRadius: 10,
-    borderWidth: 1,
-    color: colors.ink,
-    marginTop: spacing.xs,
-    padding: spacing.sm,
-  },
-  email: {
-    alignSelf: "stretch",
-    color: colors.muted,
-    fontSize: 13,
-    marginTop: spacing.md,
-  },
-  save: {
-    alignSelf: "stretch",
-    alignItems: "center",
-    backgroundColor: colors.brand,
-    borderRadius: 10,
-    marginTop: spacing.lg,
-    padding: spacing.md,
-  },
-  saveText: {
-    color: colors.surface,
-    fontWeight: "700",
-  },
-  message: {
-    color: colors.brand,
-    marginTop: spacing.md,
-  },
-  error: {
-    color: colors.danger,
-    marginTop: spacing.md,
-  },
+  form: { gap: spacing.md },
 });

@@ -1,29 +1,8 @@
-import { apiRequest } from "./api";
-import type { NativeFile } from "./documents-api";
-export type ExtractedAssetData = {
-  productName?: string | null;
-  brand?: string | null;
-  model?: string | null;
-  serialNumber?: string | null;
-  category?: string | null;
-  purchaseDate?: string | null;
-  purchasePrice?: number | null;
-  sellerName?: string | null;
-  invoiceNumber?: string | null;
-  warrantyDuration?: number | null;
-  warrantyType?: "MANUFACTURER" | "EXTENDED" | null;
-  confidence?: number | null;
-};
-export function extractInvoice(token: string, file: NativeFile) {
+import { apiRequest, filePart } from "./api";
+import type { ExtractedAssetData, NativeFile } from "./types";
+
+export function extractInvoice(file: NativeFile) {
   const body = new FormData();
-  body.append("file", {
-    uri: file.uri,
-    name: file.name,
-    type: file.mimeType ?? "application/octet-stream",
-  } as unknown as Blob);
-  return apiRequest<ExtractedAssetData>("/ai/extract-invoice", {
-    method: "POST",
-    token,
-    body,
-  });
+  body.append("file", filePart(file));
+  return apiRequest<ExtractedAssetData>("/ai/extract-invoice", { method: "POST", body });
 }

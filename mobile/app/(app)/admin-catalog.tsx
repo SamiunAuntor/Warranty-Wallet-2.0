@@ -1,228 +1,231 @@
+import { Pencil, Plus, Tags, Trash2 } from "lucide-react-native";
 import { useState } from "react";
+import { FlatList, RefreshControl, StyleSheet, Switch, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { AdminGate } from "../../components/AdminGate";
+import { Button } from "../../components/ui/Button";
+import { Card } from "../../components/ui/Card";
+import { Segmented } from "../../components/ui/Chips";
+import { SearchBar } from "../../components/ui/Display";
+import { IconButton } from "../../components/ui/IconButton";
+import { EmptyState, ErrorState, InlineMessage, LoadingState } from "../../components/ui/ScreenStates";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
+import { Sheet } from "../../components/ui/Sheet";
+import { Text } from "../../components/ui/Text";
+import { TextField } from "../../components/ui/TextField";
 import {
-  Alert,
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import type { CatalogItem } from "../../lib/admin-api";
-import { useAdminCatalog } from "../../hooks/use-admin-catalog";
-import { AccessDeniedState, LoadingState } from "../../components/ui/ScreenStates";
+  useAdminCatalog,
+  useCatalogActions,
+  type CatalogItem,
+  type CatalogKind,
+} from "../../hooks/use-admin-catalog";
+import { useDebouncedValue } from "../../hooks/use-debounced-value";
+import { errorMessage } from "../../lib/api";
+import { confirm } from "../../lib/confirm";
 import { colors, spacing } from "../../lib/theme";
+import { useToast } from "../../providers/toast-provider";
+
 export default function AdminCatalogScreen() {
-  const {
-    add: addCatalog,
-    appUser,
-    brands,
-    categories,
-    error,
-    loading,
-    remove: removeCatalog,
-  } = useAdminCatalog();
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [kind, setKind] = useState<"category" | "brand">("category");
-  async function addItem() {
-    if (!name.trim()) return;
-    try {
-      await addCatalog(kind, name, description);
-      setName("");
-      setDescription("");
-    } catch {
-      return;
-    }
-  }
-  function removeItem(item: CatalogItem, itemKind: "category" | "brand") {
-    Alert.alert("Delete catalog item?", item.name, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          await removeCatalog(item, itemKind);
-        },
-      },
-    ]);
-  }
-  if (appUser?.role !== "ADMIN")
-    return <AccessDeniedState />;
-  if (loading)
-    return <LoadingState />;
   return (
-    <FlatList
-      contentContainerStyle={styles.container}
-      data={[
-        { title: "Categories", items: categories, kind: "category" as const },
-        { title: "Brands", items: brands, kind: "brand" as const },
-      ]}
-      keyExtractor={(item) => item.kind}
-      ListHeaderComponent={
-        <>
-          <Text style={styles.eyebrow}>CATALOG</Text>
-          <Text style={styles.title}>Categories and brands</Text>
-          <TextInput
-            onChangeText={setName}
-            placeholder={`${kind} name`}
-            placeholderTextColor={colors.muted}
-            style={styles.input}
-            value={name}
-          />
-          <TextInput
-            onChangeText={setDescription}
-            placeholder="Description"
-            placeholderTextColor={colors.muted}
-            style={styles.input}
-            value={description}
-          />
-          <View style={styles.switch}>
-            <Pressable
-              onPress={() => setKind("category")}
-              style={[styles.choice, kind === "category" && styles.selected]}
-            >
-              <Text style={kind === "category" ? styles.selectedText : styles.choiceText}>
-                Category
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setKind("brand")}
-              style={[styles.choice, kind === "brand" && styles.selected]}
-            >
-              <Text style={kind === "brand" ? styles.selectedText : styles.choiceText}>Brand</Text>
-            </Pressable>
-          </View>
-          <Pressable onPress={() => void addItem()} style={styles.save}>
-            <Text style={styles.saveText}>Add {kind}</Text>
-          </Pressable>
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-        </>
-      }
-      renderItem={({ item }) => (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{item.title}</Text>
-          {item.items.map((entry) => (
-            <View key={entry.id} style={styles.row}>
-              <View style={styles.copy}>
-                <Text style={styles.name}>{entry.name}</Text>
-                <Text style={styles.muted}>{entry.description || "No description"}</Text>
-              </View>
-              <Pressable onPress={() => removeItem(entry, item.kind)}>
-                <Text style={styles.delete}>Delete</Text>
-              </Pressable>
-            </View>
-          ))}
-        </View>
-      )}
-    />
+    <AdminGate>
+      <Catalog />
+    </AdminGate>
   );
 }
+
+type Editing = { item?: CatalogItem } | null;
+
+function Catalog() {
+  const toast = useToast();
+  const [kind, setKind] = useState<CatalogKind>("category");
+  const [search, setSearch] = useState("");
+  const [editing, setEditing] = useState<Editing>(null);
+  const debounced = useDebouncedValue(search.trim());
+  const catalog = useAdminCatalog(kind, debounced);
+  const actions = useCatalogActions(kind);
+  const noun = kind === "category" ? "category" : "brand";
+
+  async function remove(item: CatalogItem) {
+    const ok = await confirm({
+      title: `Delete ${item.name}?`,
+      message: item._count?.products
+        ? `${item._count.products} assets use this ${noun}. Consider turning it off instead.`
+        : undefined,
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
+    actions.remove.mutate(item.id, {
+      onSuccess: () => toast.success(`${item.name} deleted.`),
+      onError: (error) => toast.error(error, `Could not delete the ${noun}.`),
+    });
+  }
+
+  return (
+    <SafeAreaView edges={["top", "bottom"]} style={styles.safe}>
+      <ScreenHeader
+        title="Catalog"
+        fallbackHref="/(app)/admin"
+        actions={<IconButton icon={Plus} label={`Add ${noun}`} tone="primary" onPress={() => setEditing({})} />}
+      />
+      <FlatList
+        data={catalog.data ?? []}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.content}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={catalog.isRefetching}
+            onRefresh={() => void catalog.refetch()}
+            tintColor={colors.primary}
+          />
+        }
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <Segmented<CatalogKind>
+              options={[
+                { value: "category", label: "Categories" },
+                { value: "brand", label: "Brands" },
+              ]}
+              value={kind}
+              onChange={setKind}
+            />
+            <SearchBar value={search} onChangeText={setSearch} placeholder={`Search ${noun === "category" ? "categories" : "brands"}`} />
+          </View>
+        }
+        ListEmptyComponent={
+          catalog.isPending ? (
+            <LoadingState />
+          ) : catalog.isError ? (
+            <ErrorState error={catalog.error} onRetry={() => void catalog.refetch()} />
+          ) : (
+            <EmptyState
+              icon={Tags}
+              title={`No ${noun === "category" ? "categories" : "brands"} yet`}
+              actionLabel={`Add ${noun}`}
+              onAction={() => setEditing({})}
+            />
+          )
+        }
+        renderItem={({ item }) => (
+          <Card>
+            <View style={styles.row}>
+              <View style={styles.flex}>
+                <Text variant="subheading">{item.name}</Text>
+                <Text variant="caption" numberOfLines={2}>
+                  {item.description || "No description"}
+                  {item._count ? ` · ${item._count.products} assets` : ""}
+                </Text>
+              </View>
+              <Switch
+                accessibilityLabel={`${item.name} active`}
+                value={item.isActive}
+                trackColor={{ true: colors.primary, false: colors.borderStrong }}
+                thumbColor={colors.white}
+                onValueChange={(isActive) =>
+                  actions.setActive.mutate(
+                    { id: item.id, isActive },
+                    { onError: (error) => toast.error(error, `Could not update the ${noun}.`) },
+                  )
+                }
+              />
+            </View>
+            <View style={styles.actions}>
+              <Button title="Edit" icon={Pencil} size="sm" variant="outline" style={styles.flex} onPress={() => setEditing({ item })} />
+              <Button title="Delete" icon={Trash2} size="sm" variant="dangerOutline" style={styles.flex} onPress={() => void remove(item)} />
+            </View>
+          </Card>
+        )}
+      />
+      <CatalogEditor kind={kind} editing={editing} onClose={() => setEditing(null)} />
+    </SafeAreaView>
+  );
+}
+
+function CatalogEditor({
+  kind,
+  editing,
+  onClose,
+}: {
+  kind: CatalogKind;
+  editing: Editing;
+  onClose: () => void;
+}) {
+  const toast = useToast();
+  const { save } = useCatalogActions(kind);
+  const item = editing?.item;
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [openedFor, setOpenedFor] = useState<Editing>(null);
+
+  // Reset the fields each time the sheet opens for a different item.
+  if (editing !== openedFor) {
+    setOpenedFor(editing);
+    setName(item?.name ?? "");
+    setDescription(item?.description ?? "");
+    setWebsiteUrl(item && "websiteUrl" in item ? (item.websiteUrl ?? "") : "");
+    setError(null);
+  }
+
+  async function submit() {
+    if (name.trim().length < 2) {
+      setError("Enter a name of at least 2 characters.");
+      return;
+    }
+    if (websiteUrl.trim() && !/^https?:\/\//i.test(websiteUrl.trim())) {
+      setError("Website must start with http:// or https://");
+      return;
+    }
+    try {
+      await save.mutateAsync({
+        id: item?.id,
+        input: {
+          name: name.trim(),
+          description: description.trim() || null,
+          ...(kind === "brand" ? { websiteUrl: websiteUrl.trim() || null } : {}),
+        },
+      });
+      toast.success(item ? "Saved." : "Added.");
+      onClose();
+    } catch (cause) {
+      setError(errorMessage(cause));
+    }
+  }
+
+  const noun = kind === "category" ? "category" : "brand";
+  return (
+    <Sheet visible={editing !== null} onClose={onClose} title={item ? `Edit ${noun}` : `New ${noun}`}>
+      <View style={styles.editor}>
+        <InlineMessage message={error} />
+        <TextField label="Name" value={name} onChangeText={setName} />
+        <TextField label="Description" optional multiline value={description} onChangeText={setDescription} />
+        {kind === "brand" ? (
+          <TextField
+            label="Website"
+            optional
+            autoCapitalize="none"
+            keyboardType="url"
+            placeholder="https://"
+            value={websiteUrl}
+            onChangeText={setWebsiteUrl}
+          />
+        ) : null}
+        <Button title={item ? "Save changes" : `Add ${noun}`} loading={save.isPending} fullWidth onPress={() => void submit()} />
+      </View>
+    </Sheet>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.canvas,
-    gap: spacing.md,
-    padding: spacing.lg,
-  },
-  center: {
-    alignItems: "center",
-    flex: 1,
-    justifyContent: "center",
-  },
-  eyebrow: {
-    color: colors.brand,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 2,
-  },
-  title: {
-    color: colors.ink,
-    fontSize: 28,
-    fontWeight: "800",
-  },
-  input: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 10,
-    borderWidth: 1,
-    color: colors.ink,
-    marginTop: spacing.sm,
-    padding: spacing.sm,
-  },
-  switch: {
-    flexDirection: "row",
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-  },
-  choice: {
-    borderColor: colors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: spacing.sm,
-  },
-  selected: {
-    backgroundColor: colors.brand,
-    borderColor: colors.brand,
-  },
-  choiceText: {
-    color: colors.muted,
-    fontSize: 12,
-  },
-  selectedText: {
-    color: colors.surface,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  save: {
-    alignItems: "center",
-    backgroundColor: colors.brand,
-    borderRadius: 10,
-    marginTop: spacing.sm,
-    padding: spacing.sm,
-  },
-  saveText: {
-    color: colors.surface,
-    fontWeight: "700",
-  },
-  error: {
-    color: colors.danger,
-  },
-  section: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: spacing.md,
-  },
-  sectionTitle: {
-    color: colors.ink,
-    fontSize: 17,
-    fontWeight: "700",
-    marginBottom: spacing.sm,
-  },
-  row: {
-    alignItems: "center",
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
-    flexDirection: "row",
-    paddingVertical: spacing.sm,
-  },
-  copy: {
-    flex: 1,
-  },
-  name: {
-    color: colors.ink,
-    fontWeight: "700",
-  },
-  muted: {
-    color: colors.muted,
-    fontSize: 12,
-    marginTop: spacing.xs,
-  },
-  delete: {
-    color: colors.danger,
-    fontSize: 12,
-    fontWeight: "700",
-  },
+  safe: { backgroundColor: colors.canvas, flex: 1 },
+  content: { flexGrow: 1, padding: spacing.md, paddingBottom: spacing.xl },
+  header: { gap: spacing.md, marginBottom: spacing.md },
+  separator: { height: spacing.sm },
+  row: { alignItems: "center", flexDirection: "row", gap: spacing.md },
+  flex: { flex: 1 },
+  actions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.xs },
+  editor: { gap: spacing.md, paddingBottom: spacing.sm },
 });

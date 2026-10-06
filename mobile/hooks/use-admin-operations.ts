@@ -1,70 +1,70 @@
-import { useCallback, useEffect, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import {
+  deleteAdminAsset,
+  deleteAdminUser,
   getAdminAssets,
   getAdminClaims,
   getAdminPayments,
-  updateAdminClaim,
-  type AdminAsset,
-  type AdminClaim,
-  type AdminPayment,
+  getAdminUsers,
+  setUserBlocked,
+  updateAdminClaimStatus,
 } from "../lib/admin-api";
+import type { ClaimStatus, PaymentStatus, UserStatus } from "../lib/types";
 import { useAuth } from "../providers/auth-provider";
+import { keys, useInvalidate } from "./query-keys";
+import { usePagedQuery } from "./use-paged-query";
 
-export function useAdminOperations() {
-  const { user, appUser } = useAuth();
-  const [assets, setAssets] = useState<AdminAsset[]>([]);
-  const [claims, setClaims] = useState<AdminClaim[]>([]);
-  const [payments, setPayments] = useState<AdminPayment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+function useAdminEnabled() {
+  const { status, isAdmin } = useAuth();
+  return status === "signedIn" && isAdmin;
+}
 
-  const load = useCallback(async () => {
-    if (!user || appUser?.role !== "ADMIN") return;
-
-    setLoading(true);
-
-    try {
-      const token = await user.getIdToken();
-      const [nextAssets, nextClaims, nextPayments] = await Promise.all([
-        getAdminAssets(token),
-        getAdminClaims(token),
-        getAdminPayments(token),
-      ]);
-      setAssets(nextAssets);
-      setClaims(nextClaims);
-      setPayments(nextPayments);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load admin operations.");
-    } finally {
-      setLoading(false);
-    }
-  }, [appUser?.role, user]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const changeClaimStatus = useCallback(
-    async (claim: AdminClaim, status: string) => {
-      if (!user) return;
-
-      try {
-        const updated = await updateAdminClaim(await user.getIdToken(), claim.id, status);
-        setClaims((current) => current.map((item) => (item.id === updated.id ? updated : item)));
-      } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Could not update claim.");
-      }
-    },
-    [user],
+export function useAdminUsers(search: string, status?: UserStatus) {
+  return usePagedQuery(
+    keys.admin("users", search, status),
+    (page) => getAdminUsers({ page, search, status }),
+    { enabled: useAdminEnabled() },
   );
+}
 
+export function useAdminAssets(search: string) {
+  return usePagedQuery(
+    keys.admin("assets", search),
+    (page) => getAdminAssets({ page, search }),
+    { enabled: useAdminEnabled() },
+  );
+}
+
+export function useAdminClaims(search: string, status?: ClaimStatus) {
+  return usePagedQuery(
+    keys.admin("claims", search, status),
+    (page) => getAdminClaims({ page, search, status }),
+    { enabled: useAdminEnabled() },
+  );
+}
+
+export function useAdminPayments(search: string, status?: PaymentStatus) {
+  return usePagedQuery(
+    keys.admin("payments", search, status),
+    (page) => getAdminPayments({ page, search, status }),
+    { enabled: useAdminEnabled() },
+  );
+}
+
+export function useAdminActions() {
+  const invalidate = useInvalidate();
+  const refresh = () => invalidate.admin();
   return {
-    appUser,
-    assets,
-    changeClaimStatus,
-    claims,
-    error,
-    loading,
-    payments,
+    setBlocked: useMutation({
+      mutationFn: ({ id, blocked }: { id: string; blocked: boolean }) => setUserBlocked(id, blocked),
+      onSuccess: refresh,
+    }),
+    deleteUser: useMutation({ mutationFn: deleteAdminUser, onSuccess: refresh }),
+    deleteAsset: useMutation({ mutationFn: deleteAdminAsset, onSuccess: refresh }),
+    setClaimStatus: useMutation({
+      mutationFn: ({ id, status }: { id: string; status: ClaimStatus }) =>
+        updateAdminClaimStatus(id, status),
+      onSuccess: refresh,
+    }),
   };
 }

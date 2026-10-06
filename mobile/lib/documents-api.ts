@@ -1,83 +1,34 @@
-import { apiRequest } from "./api";
+import { apiList, apiRequest, filePart, queryString } from "./api";
+import type { DocumentRecord, DocumentType, NativeFile } from "./types";
 
-export type DocumentType =
-  | "INVOICE"
-  | "WARRANTY_CARD"
-  | "PRODUCT_IMAGE"
-  | "RECEIPT"
-  | "OTHER"
-  | "CLAIM_EVIDENCE"
-  | "CLAIM_CONDITION";
-export type DocumentRecord = {
-  id: string;
-  productId: string;
-  fileName: string;
-  fileType: DocumentType;
-  fileSize: number | null;
-  fileUrl: string;
-  ocrProcessed: boolean;
-  createdAt: string;
-  product: {
-    id: string;
-    name: string;
-  };
-};
-export type DocumentList = {
-  data: DocumentRecord[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-};
-export type NativeFile = {
-  uri: string;
-  name: string;
-  mimeType?: string | null;
-  size?: number | null;
+export type DocumentQuery = {
+  page?: number;
+  limit?: number;
+  search?: string;
+  type?: DocumentType;
+  productId?: string;
 };
 
-export function getDocuments(token: string, search = "") {
-  const params = new URLSearchParams({ page: "1", limit: "50" });
-  if (search.trim()) params.set("search", search.trim());
-  return apiRequest<DocumentList>(`/documents?${params.toString()}`, { token });
-}
-export function getDocument(token: string, id: string) {
-  return apiRequest<DocumentRecord>(`/documents/${id}`, { token });
-}
-export function uploadDocument(
-  token: string,
-  productId: string,
-  type: DocumentType,
-  file: NativeFile,
-) {
+export const getDocuments = (query: DocumentQuery = {}) =>
+  apiList<DocumentRecord>(`/documents${queryString({ page: 1, limit: 20, ...query })}`);
+
+/** Uploads one file. The API accepts a single file per request. */
+export async function uploadDocument(productId: string, type: DocumentType, file: NativeFile) {
   const body = new FormData();
   body.append("type", type);
-  body.append("files", {
-    uri: file.uri,
-    name: file.name,
-    type: file.mimeType ?? "application/octet-stream",
-  } as unknown as Blob);
-  return apiRequest<DocumentRecord[]>(`/products/${productId}/documents`, {
+  body.append("files", filePart(file));
+  const [created] = await apiRequest<DocumentRecord[]>(`/products/${productId}/documents`, {
     method: "POST",
-    token,
     body,
   });
+  return created;
 }
-export function deleteDocument(token: string, id: string) {
-  return apiRequest<null>(`/documents/${id}`, { method: "DELETE", token });
-}
-export function replaceDocument(token: string, id: string, file: NativeFile) {
+
+export function replaceDocument(id: string, file: NativeFile) {
   const body = new FormData();
-  body.append("file", {
-    uri: file.uri,
-    name: file.name,
-    type: file.mimeType ?? "application/octet-stream",
-  } as unknown as Blob);
-  return apiRequest<DocumentRecord>(`/documents/${id}`, {
-    method: "PATCH",
-    token,
-    body,
-  });
+  body.append("file", filePart(file));
+  return apiRequest<DocumentRecord>(`/documents/${id}`, { method: "PATCH", body });
 }
+
+export const deleteDocument = (id: string) =>
+  apiRequest<null>(`/documents/${id}`, { method: "DELETE" });

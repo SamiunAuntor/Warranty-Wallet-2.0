@@ -9,7 +9,11 @@ const paymentService = require("./payment.service");
 const createCheckout = asyncHandler(async (req, res) => {
     const session = await paymentService.createCheckoutSession(
         req.user,
-        req.body.plan
+        req.body.plan,
+        {
+            returnUrl: req.body.returnUrl,
+            apiBaseUrl: `${req.protocol}://${req.get("host")}${req.baseUrl.replace(/\/payments$/, "")}`,
+        }
     );
 
     return res.status(201).json(
@@ -149,8 +153,16 @@ const resumeSubscription = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, "Subscription renewed successfully.", result));
 });
 
+const mobileReturn = (req, res) => {
+    const target = new URL(req.query.redirect);
+    target.searchParams.set("status", req.query.status);
+    if (req.query.session_id) target.searchParams.set("session_id", req.query.session_id);
+    return res.redirect(302, target.toString());
+};
+
 module.exports = {
     createCheckout,
+    mobileReturn,
     confirmCheckout,
     webhook,
     paymentHistory,

@@ -1,86 +1,59 @@
-import { useCallback, useEffect, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import {
-  broadcast,
+  broadcastNotification,
   getAdminStats,
-  getAdminUsers,
-  setUserBlocked,
-  type AdminStats,
-  type AdminUser,
+  getProductGrowth,
+  getRevenue,
+  type GrowthPoint,
+  type RevenuePoint,
 } from "../lib/admin-api";
 import { useAuth } from "../providers/auth-provider";
+import { keys } from "./query-keys";
 
-export function useAdminDashboard() {
-  const { user, appUser } = useAuth();
-  const [stats, setStats] = useState<AdminStats | null>(null);
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+const MONTHS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
 
-  const load = useCallback(async () => {
-    if (!user || appUser?.role !== "ADMIN") return;
+function useAdminEnabled() {
+  const { status, isAdmin } = useAuth();
+  return status === "signedIn" && isAdmin;
+}
 
-    try {
-      const token = await user.getIdToken();
-      const [nextStats, nextUsers] = await Promise.all([
-        getAdminStats(token),
-        getAdminUsers(token),
-      ]);
-      setStats(nextStats);
-      setUsers(nextUsers.data);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load admin data.");
-    } finally {
-      setLoading(false);
-    }
-  }, [appUser?.role, user]);
+/** The API groups by exact timestamp, so totals are bucketed by month here. */
+function byMonth<T extends { createdAt: string }>(points: T[] | undefined, read: (point: T) => number) {
+  const totals = new Array<number>(12).fill(0);
+  for (const point of points ?? []) {
+    const month = new Date(point.createdAt).getMonth();
+    if (month >= 0) totals[month] += read(point);
+  }
+  return totals.map((value, index) => ({ label: MONTHS[index], value }));
+}
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+export function useAdminOverview(year: number) {
+  const enabled = useAdminEnabled();
+  const stats = useQuery({ queryKey: keys.admin("stats"), queryFn: getAdminStats, enabled });
+  const revenue = useQuery({
+    queryKey: keys.admin("revenue", year),
+    queryFn: () => getRevenue(year),
+    enabled,
+  });
+  const growth = useQuery({
+    queryKey: keys.admin("growth", year),
+    queryFn: () => getProductGrowth(year),
+    enabled,
+  });
 
-  const toggleUser = useCallback(
-    async (item: AdminUser) => {
-      if (!user) return;
-
-      try {
-        const updated = await setUserBlocked(
-          await user.getIdToken(),
-          item.id,
-          item.status !== "BLOCKED",
-        );
-        setUsers((current) => current.map((entry) => (entry.id === updated.id ? updated : entry)));
-      } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Could not update user.");
-      }
-    },
-    [user],
+  const revenueByMonth = useMemo(
+    () => byMonth<RevenuePoint>(revenue.data, (point) => Number(point._sum?.amount ?? 0)),
+    [revenue.data],
+  );
+  const growthByMonth = useMemo(
+    () => byMonth<GrowthPoint>(growth.data, (point) => point._count?.id ?? 0),
+    [growth.data],
   );
 
-  const sendBroadcast = useCallback(
-    async (title: string, message: string) => {
-      if (!user) return;
-      if (!title.trim() || !message.trim()) {
-        setError("Enter a title and message.");
-        return;
-      }
+  return { stats, revenue, growth, revenueByMonth, growthByMonth };
+}
 
-      setBusy(true);
-
-      try {
-        await broadcast(await user.getIdToken(), {
-          title: title.trim(),
-          message: message.trim(),
-          type: "SYSTEM",
-        });
-      } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Could not broadcast notification.");
-      } finally {
-        setBusy(false);
-      }
-    },
-    [user],
-  );
-
-  return { appUser, busy, error, loading, sendBroadcast, stats, toggleUser, users };
+export function useBroadcast() {
+  return useMutation({ mutationFn: broadcastNotification });
 }

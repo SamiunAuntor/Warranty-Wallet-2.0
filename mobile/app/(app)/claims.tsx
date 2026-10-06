@@ -1,134 +1,96 @@
-import { useState } from "react";
 import { router } from "expo-router";
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ShieldCheck } from "lucide-react-native";
+import { useMemo, useState } from "react";
+import { StyleSheet, View } from "react-native";
 import { ClaimCard } from "../../components/claims/ClaimCard";
-import { ClaimForm } from "../../components/claims/ClaimForm";
-import { useClaims } from "../../hooks/use-claims";
-import type { ClaimStatus } from "../../lib/claims-api";
-import { colors, spacing } from "../../lib/theme";
+import { TabScreen } from "../../components/navigation/TabBar";
+import { ActionButton } from "../../components/ui/ActionButton";
+import { Chips } from "../../components/ui/Chips";
+import { SearchBar } from "../../components/ui/Display";
+import { PagedList } from "../../components/ui/PagedList";
+import { EmptyState } from "../../components/ui/ScreenStates";
+import { PageTitle } from "../../components/ui/ScreenHeader";
+import { useClaimList } from "../../hooks/use-claims";
+import { useDebouncedValue } from "../../hooks/use-debounced-value";
+import { claimStatuses, claimStatusLabels } from "../../lib/labels";
+import { spacing } from "../../lib/theme";
+import type { ClaimStatus } from "../../lib/types";
+
+type Filter = "ALL" | ClaimStatus;
+
+const FILTERS: Array<{ value: Filter; label: string }> = [
+  { value: "ALL", label: "All" },
+  ...claimStatuses.map((status) => ({ value: status, label: claimStatusLabels[status].label })),
+];
 
 export default function ClaimsScreen() {
+  const [filter, setFilter] = useState<Filter>("ALL");
   const [search, setSearch] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const { addClaim, changeStatus, claims, error, loading } = useClaims(search);
-
-  function handleStatusChange(claim: (typeof claims)[number], status: ClaimStatus) {
-    void changeStatus(claim, status);
-  }
+  const debouncedSearch = useDebouncedValue(search.trim());
+  const query = useMemo(
+    () => ({
+      search: debouncedSearch || undefined,
+      status: filter === "ALL" ? undefined : filter,
+    }),
+    [debouncedSearch, filter],
+  );
+  const claims = useClaimList(query);
+  const filtered = Boolean(debouncedSearch) || filter !== "ALL";
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.eyebrow}>WARRANTY SUPPORT</Text>
-          <Text style={styles.title}>Claims</Text>
-        </View>
-        <Pressable onPress={() => setShowForm((value) => !value)} style={styles.add}>
-          <Text style={styles.addText}>{showForm ? "Close" : "+ New"}</Text>
-        </Pressable>
-      </View>
-      <TextInput
-        onChangeText={setSearch}
-        placeholder="Search claims"
-        placeholderTextColor={colors.muted}
-        style={styles.search}
-        value={search}
-      />
-      {showForm ? (
-        <ClaimForm
-          onCreated={async (input) => {
-            await addClaim(input);
-            setShowForm(false);
-          }}
-        />
-      ) : null}
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      {loading ? (
-        <ActivityIndicator color={colors.brand} style={styles.loader} />
-      ) : (
-        <FlatList
-          contentContainerStyle={styles.list}
-          data={claims}
-          keyExtractor={(item) => item.id}
-          ListEmptyComponent={<Text style={styles.empty}>No claims found.</Text>}
-          renderItem={({ item }) => (
-            <ClaimCard
-              claim={item}
-              onPress={() => router.push(`/(app)/claims/${item.id}`)}
-              onStatusChange={(status) => handleStatusChange(item, status)}
-            />
+    <TabScreen>
+      <View style={styles.flex}>
+        <PagedList
+          query={claims}
+          bottomInset={72}
+          keyExtractor={(claim) => claim.id}
+          renderItem={(claim) => (
+            <ClaimCard claim={claim} onPress={() => router.push(`/(app)/claims/${claim.id}`)} />
           )}
+          header={
+            <View style={styles.header}>
+              <PageTitle
+                overline="Warranty support"
+                title="Claims"
+                subtitle={
+                  claims.isPending
+                    ? "Loading your claims…"
+                    : `${claims.total} ${claims.total === 1 ? "claim" : "claims"}`
+                }
+              />
+              <SearchBar
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Search claims or assets"
+              />
+              <Chips options={FILTERS} value={filter} onChange={setFilter} scrollable />
+            </View>
+          }
+          empty={
+            filtered ? (
+              <EmptyState
+                icon={ShieldCheck}
+                title="No matching claims"
+                message="Try a different search or status."
+              />
+            ) : (
+              <EmptyState
+                icon={ShieldCheck}
+                title="No claims yet"
+                message="When a product needs repair or replacement, file a claim and keep every update and document together."
+                actionLabel="File a claim"
+                onAction={() => router.push("/(app)/claims/form")}
+              />
+            )
+          }
         />
-      )}
-    </View>
+        <ActionButton label="New claim" onPress={() => router.push("/(app)/claims/form")} />
+      </View>
+    </TabScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.canvas,
-    flex: 1,
-    padding: spacing.lg,
-  },
-  header: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  eyebrow: {
-    color: colors.brand,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 2,
-  },
-  title: {
-    color: colors.ink,
-    fontSize: 30,
-    fontWeight: "800",
-    marginTop: spacing.xs,
-  },
-  add: {
-    backgroundColor: colors.brand,
-    borderRadius: 10,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  addText: {
-    color: colors.surface,
-    fontWeight: "700",
-  },
-  search: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 12,
-    borderWidth: 1,
-    color: colors.ink,
-    marginTop: spacing.lg,
-    padding: spacing.md,
-  },
-  list: {
-    gap: spacing.sm,
-    paddingBottom: spacing.xl,
-    paddingTop: spacing.md,
-  },
-  loader: {
-    marginTop: spacing.xl,
-  },
-  empty: {
-    color: colors.muted,
-    padding: spacing.xl,
-    textAlign: "center",
-  },
-  error: {
-    color: colors.danger,
-    marginTop: spacing.sm,
-  },
+  flex: { flex: 1 },
+  header: { gap: spacing.md },
 });

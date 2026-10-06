@@ -5,23 +5,44 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "scheme": "warrantywallet",
+    "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "light",
     "plugins": [
       "expo-router",
-      "expo-image-picker",
+      "expo-font",
       "expo-sharing",
-      "expo-status-bar",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "backgroundColor": "#f8f9ff"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Warranty Wallet uses your photos to attach receipts, product images, and your profile picture.",
+          "cameraPermission": "Warranty Wallet uses the camera to photograph receipts, warranty cards, and products."
+        }
+      ]
     ],
     "android": {
-      "package": "com.warrantywallet.app"
+      "package": "com.warrantywallet.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
     },
     "ios": {
       "bundleIdentifier": "com.warrantywallet.app",
       "supportsTablet": true
     },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "favicon": "./assets/images/favicon.png"
     }
   }
 }

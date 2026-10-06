@@ -1,126 +1,38 @@
-import { apiRequest } from "./api";
+import { apiList, apiRequest, queryString } from "./api";
+import type { Claim, ClaimInput, ClaimStatus, ClaimUpdate, EvidenceType } from "./types";
 
-export type ClaimStatus = "SUBMITTED" | "IN_PROGRESS" | "RESOLVED" | "REJECTED" | "CANCELLED";
-export type ClaimTimelineEvent = {
-  id: string;
-  claimId: string;
-  status: ClaimStatus | null;
-  title: string;
-  description: string | null;
-  createdAt: string;
-};
-export type ClaimDocument = {
-  claimId: string;
-  documentId: string;
-  attachedAt: string;
-  evidenceType: string;
-  claimStage: ClaimStatus | null;
-  note: string | null;
-  document: {
-    id: string;
-    fileName: string;
-    fileUrl: string;
-    fileType: string;
-  };
-};
-export type Claim = {
-  id: string;
-  claimNumber: string;
-  productId: string;
-  title: string;
-  issueDescription: string;
-  serviceCenter: string | null;
-  providerReference: string | null;
-  submittedCondition: string | null;
-  resolution: string | null;
-  status: ClaimStatus;
-  filedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-  product: {
-    id: string;
-    name: string;
-    brand: string;
-  };
-  timeline?: ClaimTimelineEvent[];
-  documents?: ClaimDocument[];
-};
-export type ClaimList = {
-  data: Claim[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
+export type ClaimQuery = {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: ClaimStatus;
+  productId?: string;
 };
 
-export type CreateClaimInput = {
-  productId: string;
-  title: string;
-  issueDescription: string;
-  serviceCenter?: string;
-  providerReference?: string;
-};
-export function getClaims(token: string, search = "") {
-  const params = new URLSearchParams({ page: "1", limit: "50" });
-  if (search.trim()) params.set("search", search.trim());
-  return apiRequest<ClaimList>(`/claims?${params.toString()}`, { token });
-}
-export function createClaim(token: string, input: CreateClaimInput) {
-  return apiRequest<Claim>("/claims", {
+export const getClaims = (query: ClaimQuery = {}) =>
+  apiList<Claim>(`/claims${queryString({ page: 1, limit: 20, ...query })}`);
+
+export const getClaim = (id: string) => apiRequest<Claim>(`/claims/${id}`);
+
+export const createClaim = (input: ClaimInput) =>
+  apiRequest<Claim>("/claims", { method: "POST", body: input });
+
+export const updateClaim = (id: string, input: ClaimUpdate) =>
+  apiRequest<Claim>(`/claims/${id}`, { method: "PATCH", body: input });
+
+export const deleteClaim = (id: string) => apiRequest<null>(`/claims/${id}`, { method: "DELETE" });
+
+export const addClaimTimelineEvent = (id: string, title: string, description?: string) =>
+  apiRequest<Claim>(`/claims/${id}/timeline`, {
     method: "POST",
-    token,
-    body: JSON.stringify(input),
+    body: { title, ...(description ? { description } : {}) },
   });
-}
-export function getClaim(token: string, id: string) {
-  return apiRequest<Claim>(`/claims/${id}`, { token });
-}
-export function updateClaim(
-  token: string,
-  id: string,
-  input: {
-    status?: ClaimStatus;
-    resolution?: string;
-  },
-) {
-  return apiRequest<Claim>(`/claims/${id}`, {
-    method: "PATCH",
-    token,
-    body: JSON.stringify(input),
-  });
-}
-export function deleteClaim(token: string, id: string) {
-  return apiRequest<null>(`/claims/${id}`, { method: "DELETE", token });
-}
-export function attachClaimDocument(
-  token: string,
-  id: string,
-  documentId: string,
-  evidenceType: string,
-) {
-  return apiRequest<Claim>(`/claims/${id}/documents`, {
+
+export const attachClaimDocument = (id: string, documentId: string, evidenceType: EvidenceType) =>
+  apiRequest<Claim>(`/claims/${id}/documents`, {
     method: "POST",
-    token,
-    body: JSON.stringify({ documentId, evidenceType }),
+    body: { documentId, evidenceType },
   });
-}
-export function detachClaimDocument(token: string, id: string, documentId: string) {
-  return apiRequest<Claim>(`/claims/${id}/documents/${documentId}`, {
-    method: "DELETE",
-    token,
-  });
-}
-export function addClaimTimelineEvent(
-  token: string,
-  id: string,
-  title: string,
-  description?: string,
-) {
-  return apiRequest<Claim>(`/claims/${id}/timeline`, {
-    method: "POST",
-    token,
-    body: JSON.stringify({ title, description }),
-  });
-}
+
+export const detachClaimDocument = (id: string, documentId: string) =>
+  apiRequest<Claim>(`/claims/${id}/documents/${documentId}`, { method: "DELETE" });

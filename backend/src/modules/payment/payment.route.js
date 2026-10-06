@@ -6,9 +6,11 @@ const controller = require("./payment.controller");
 
 const auth = require("../../middlewares/auth.middleware");
 const validate = require("../../middlewares/validate.middleware");
-const { checkoutSchema, confirmCheckoutSchema, changePlanSchema } = require("./payment.validation");
+const { checkoutSchema, mobileReturnSchema, confirmCheckoutSchema, changePlanSchema } = require("./payment.validation");
 
 router.get("/plans", controller.plans);
+
+router.get("/mobile-return", validate(mobileReturnSchema), controller.mobileReturn);
 
 router.post("/create-checkout", auth, validate(checkoutSchema), controller.createCheckout);
 

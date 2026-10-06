@@ -1,86 +1,72 @@
-import { useCallback, useEffect, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   addClaimTimelineEvent,
   attachClaimDocument,
   deleteClaim,
   detachClaimDocument,
-  getClaim,
   updateClaim,
-  type Claim,
-  type ClaimStatus,
 } from "../lib/claims-api";
-import { useAuth } from "../providers/auth-provider";
+import { uploadDocument } from "../lib/documents-api";
+import type { Claim, ClaimStatus, EvidenceType, NativeFile } from "../lib/types";
+import { keys, useInvalidate } from "./query-keys";
 
-export function useClaimDetails(id: string | undefined) {
-  const { user } = useAuth();
-  const [claim, setClaim] = useState<Claim | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+/** Changes made from the claim detail screen. Each one refreshes the claim. */
+export function useClaimActions(claim: Claim | undefined) {
+  const client = useQueryClient();
+  const invalidate = useInvalidate();
+  const id = claim?.id ?? "";
 
-  const load = useCallback(async () => {
-    if (!user || !id) return;
+  const applyClaim = async (updated: Claim) => {
+    client.setQueryData(keys.claim(id), updated);
+    await invalidate.claims();
+  };
 
-    try {
-      setClaim(await getClaim(await user.getIdToken(), id));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load claim.");
-    } finally {
-      setLoading(false);
-    }
-  }, [id, user]);
+  const setStatus = useMutation({
+    mutationFn: (status: ClaimStatus) => updateClaim(id, { status }),
+    onSuccess: applyClaim,
+  });
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const addEvent = useMutation({
+    mutationFn: ({ title, description }: { title: string; description?: string }) =>
+      addClaimTimelineEvent(id, title, description),
+    onSuccess: applyClaim,
+  });
 
-  const changeStatus = useCallback(
-    async (status: ClaimStatus) => {
-      if (!user || !claim) return;
-      setClaim(await updateClaim(await user.getIdToken(), claim.id, { status }));
-    },
-    [claim, user],
-  );
+  const attachExisting = useMutation({
+    mutationFn: ({ documentId, evidenceType }: { documentId: string; evidenceType: EvidenceType }) =>
+      attachClaimDocument(id, documentId, evidenceType),
+    onSuccess: applyClaim,
+  });
 
-  const addTimelineEvent = useCallback(
-    async (title: string, description?: string) => {
-      if (!user || !claim) return;
-      setClaim(await addClaimTimelineEvent(await user.getIdToken(), claim.id, title, description));
-    },
-    [claim, user],
-  );
-
-  const attachDocument = useCallback(
-    async (documentId: string, evidenceType: string) => {
-      if (!user || !claim) return;
-      setClaim(
-        await attachClaimDocument(await user.getIdToken(), claim.id, documentId, evidenceType),
+  const uploadEvidence = useMutation({
+    mutationFn: async ({ file, condition }: { file: NativeFile; condition: boolean }) => {
+      if (!claim) throw new Error("The claim is still loading.");
+      const document = await uploadDocument(
+        claim.productId,
+        condition ? "CLAIM_CONDITION" : "CLAIM_EVIDENCE",
+        file,
+      );
+      return attachClaimDocument(
+        id,
+        document.id,
+        condition ? "CONDITION_PHOTO" : "SUPPORTING_DOCUMENT",
       );
     },
-    [claim, user],
-  );
-
-  const detachDocument = useCallback(
-    async (documentId: string) => {
-      if (!user || !claim) return;
-      setClaim(await detachClaimDocument(await user.getIdToken(), claim.id, documentId));
+    onSuccess: async (updated) => {
+      await applyClaim(updated);
+      await invalidate.documents();
     },
-    [claim, user],
-  );
+  });
 
-  const remove = useCallback(async () => {
-    if (!user || !claim) return;
-    await deleteClaim(await user.getIdToken(), claim.id);
-  }, [claim, user]);
+  const detach = useMutation({
+    mutationFn: (documentId: string) => detachClaimDocument(id, documentId),
+    onSuccess: applyClaim,
+  });
 
-  return {
-    addTimelineEvent,
-    attachDocument,
-    changeStatus,
-    claim,
-    detachDocument,
-    error,
-    loading,
-    remove,
-    reportError: setError,
-  };
+  const remove = useMutation({
+    mutationFn: () => deleteClaim(id),
+    onSuccess: () => invalidate.claims(),
+  });
+
+  return { setStatus, addEvent, attachExisting, uploadEvidence, detach, remove };
 }

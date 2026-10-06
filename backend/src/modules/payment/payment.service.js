@@ -35,7 +35,25 @@ const localStatus = (status) => ({
     paused: "EXPIRED",
 }[status] || "EXPIRED");
 
-const createCheckoutSession = async (user, plan) => {
+// Web checkouts return to the web app. Native checkouts return through an API
+// endpoint that redirects to the app's deep link, because Stripe needs an
+// http(s) return URL.
+const checkoutReturnUrls = (returnUrl, apiBaseUrl) => {
+    if (!returnUrl || !apiBaseUrl) {
+        return {
+            success_url: `${CLIENT_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${CLIENT_URL}/payment/cancel`,
+        };
+    }
+    const redirect = encodeURIComponent(returnUrl);
+    const base = `${apiBaseUrl}/payments/mobile-return`;
+    return {
+        success_url: `${base}?status=success&session_id={CHECKOUT_SESSION_ID}&redirect=${redirect}`,
+        cancel_url: `${base}?status=cancel&redirect=${redirect}`,
+    };
+};
+
+const createCheckoutSession = async (user, plan, { returnUrl, apiBaseUrl } = {}) => {
     if (!PAID_PLANS.includes(plan)) {
         throw new ApiError(400, "Checkout is only available for Plus and Pro plans.");
     }
@@ -62,8 +80,7 @@ const createCheckoutSession = async (user, plan) => {
                 unit_amount: selectedPlan.price * 100,
             },
         }],
-        success_url: `${CLIENT_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${CLIENT_URL}/payment/cancel`,
+        ...checkoutReturnUrls(returnUrl, apiBaseUrl),
     });
 
     await paymentRepository.createPayment({

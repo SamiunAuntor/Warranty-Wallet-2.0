@@ -1,187 +1,111 @@
-import { Link, router } from "expo-router";
-import * as Google from "expo-auth-session/providers/google";
-import * as WebBrowser from "expo-web-browser";
-import { useEffect, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { normalizeEmail, validateLoginInput } from "../../lib/auth-validation";
+import { Link } from "expo-router";
+import { Lock, Mail } from "lucide-react-native";
+import { useCallback, useRef, useState } from "react";
+import { StyleSheet, TextInput, View } from "react-native";
+import { AuthShell } from "../../components/auth/AuthShell";
+import { GoogleSignInButton } from "../../components/auth/GoogleSignInButton";
+import { Button } from "../../components/ui/Button";
+import { InlineMessage } from "../../components/ui/ScreenStates";
+import { Text } from "../../components/ui/Text";
+import { TextField } from "../../components/ui/TextField";
+import { validateLoginInput } from "../../lib/auth-validation";
 import { colors, spacing } from "../../lib/theme";
 import { useAuth } from "../../providers/auth-provider";
 
-WebBrowser.maybeCompleteAuthSession();
-
 export default function LoginScreen() {
-  const { appUser, authError, login, loginWithGoogle } = useAuth();
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-  });
+  const { login, loginWithGoogle, notice, clearNotice } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const handledGoogleToken = useRef<string | null>(null);
-  useEffect(() => {
-    if (appUser) {
-      router.replace("/(app)");
-    }
-  }, [appUser]);
-
-  useEffect(() => {
-    if (authError) {
-      setError(authError);
-      setSubmitting(false);
-    }
-  }, [authError]);
-
-  useEffect(() => {
-    const idToken = response?.type === "success" ? response.params.id_token : undefined;
-
-    if (!idToken || handledGoogleToken.current === idToken) {
-      return;
-    }
-
-    handledGoogleToken.current = idToken;
-    setSubmitting(true);
-    void loginWithGoogle(idToken).catch(() => {
-      setError("Google sign-in could not be completed.");
-      setSubmitting(false);
-    });
-  }, [loginWithGoogle, response]);
+  const passwordRef = useRef<TextInput>(null);
 
   async function submit() {
-    setError("");
+    clearNotice();
     const validationError = validateLoginInput(email, password);
-
     if (validationError) {
       setError(validationError);
       return;
     }
-
+    setError("");
     setSubmitting(true);
     try {
-      await login(normalizeEmail(email), password);
-    } catch {
-      setError("The email or password is incorrect.");
+      // The auth layout redirects into the app once the session is ready.
+      await login(email, password);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not sign you in.");
       setSubmitting(false);
     }
   }
 
+  const handleGoogleToken = useCallback(
+    (idToken: string) => {
+      setError("");
+      setSubmitting(true);
+      loginWithGoogle(idToken).catch((cause: unknown) => {
+        setError(cause instanceof Error ? cause.message : "Google sign-in failed.");
+        setSubmitting(false);
+      });
+    },
+    [loginWithGoogle],
+  );
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.eyebrow}>WARRANTY WALLET</Text>
-      <Text style={styles.title}>Welcome back.</Text>
-      <Text style={styles.copy}>Sign in to access your warranties, documents, and claims.</Text>
-      <TextInput
+    <AuthShell
+      title="Welcome back"
+      subtitle="Sign in to see your warranties, documents, and claims."
+      footer={
+        <Text variant="bodySmall" color={colors.muted}>
+          New to Warranty Wallet?{" "}
+          <Link href="/(auth)/register" style={styles.link}>
+            Create an account
+          </Link>
+        </Text>
+      }
+    >
+      <InlineMessage message={error || notice} />
+      <TextField
+        label="Email"
+        icon={Mail}
         autoCapitalize="none"
         autoComplete="email"
         keyboardType="email-address"
-        onChangeText={setEmail}
-        placeholder="Email address"
-        placeholderTextColor={colors.muted}
-        style={styles.input}
+        textContentType="emailAddress"
+        returnKeyType="next"
+        onSubmitEditing={() => passwordRef.current?.focus()}
+        placeholder="you@example.com"
         value={email}
+        onChangeText={setEmail}
       />
-      <TextInput
-        autoCapitalize="none"
+      <TextField
+        ref={passwordRef}
+        label="Password"
+        icon={Lock}
         secureTextEntry
-        onChangeText={setPassword}
-        placeholder="Password"
-        placeholderTextColor={colors.muted}
-        style={styles.input}
+        autoComplete="current-password"
+        textContentType="password"
+        returnKeyType="go"
+        onSubmitEditing={() => void submit()}
+        placeholder="Your password"
         value={password}
+        onChangeText={setPassword}
       />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      <Pressable disabled={submitting} onPress={submit} style={styles.button}>
-        <Text style={styles.buttonText}>{submitting ? "Signing in..." : "Sign in"}</Text>
-      </Pressable>
-      <Pressable
-        disabled={!request || submitting}
-        onPress={() => void promptAsync()}
-        style={styles.google}
-      >
-        <Text style={styles.googleText}>Continue with Google</Text>
-      </Pressable>
-      <Link href="/(auth)/forgot-password" style={styles.secondaryLink}>
-        Forgot password?
-      </Link>
-      <Link href="/(auth)/register" style={styles.secondaryLink}>
-        Create an account
-      </Link>
-    </View>
+      <View style={styles.forgot}>
+        <Link href="/(auth)/forgot-password" style={styles.link}>
+          Forgot password?
+        </Link>
+      </View>
+      <Button title="Sign in" loading={submitting} fullWidth onPress={() => void submit()} />
+      <GoogleSignInButton
+        disabled={submitting}
+        onIdToken={handleGoogleToken}
+        onError={setError}
+      />
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    padding: spacing.xl,
-    backgroundColor: colors.canvas,
-  },
-  eyebrow: {
-    color: colors.brand,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 2,
-  },
-  title: {
-    color: colors.ink,
-    fontSize: 38,
-    fontWeight: "800",
-    lineHeight: 44,
-    marginTop: spacing.md,
-  },
-  copy: {
-    color: colors.muted,
-    fontSize: 16,
-    lineHeight: 24,
-    marginTop: spacing.md,
-  },
-  input: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 12,
-    borderWidth: 1,
-    color: colors.ink,
-    fontSize: 16,
-    marginTop: spacing.md,
-    padding: spacing.md,
-  },
-  error: {
-    color: colors.danger,
-    marginTop: spacing.sm,
-  },
-  button: {
-    alignItems: "center",
-    backgroundColor: colors.brand,
-    borderRadius: 12,
-    marginTop: spacing.lg,
-    padding: spacing.md,
-  },
-  buttonText: {
-    color: colors.surface,
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  google: {
-    alignItems: "center",
-    borderColor: colors.border,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginTop: spacing.sm,
-    padding: spacing.md,
-  },
-  googleText: {
-    color: colors.ink,
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  secondaryLink: {
-    color: colors.brand,
-    fontSize: 15,
-    fontWeight: "700",
-    marginTop: spacing.lg,
-    textAlign: "center",
-  },
+  forgot: { alignItems: "flex-end", marginTop: -spacing.xs },
+  link: { color: colors.primary, fontFamily: "Inter_600SemiBold", fontSize: 14 },
 });

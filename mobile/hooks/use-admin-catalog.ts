@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   createBrand,
   createCategory,
@@ -6,78 +6,58 @@ import {
   deleteCategory,
   getAdminBrands,
   getAdminCategories,
-  type CatalogItem,
+  updateBrand,
+  updateCategory,
 } from "../lib/admin-api";
+import type { Brand, Category, Paginated } from "../lib/types";
 import { useAuth } from "../providers/auth-provider";
+import { keys, useInvalidate } from "./query-keys";
 
-export function useAdminCatalog() {
-  const { user, appUser } = useAuth();
-  const [categories, setCategories] = useState<CatalogItem[]>([]);
-  const [brands, setBrands] = useState<CatalogItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+export type CatalogKind = "category" | "brand";
+export type CatalogItem = Category | Brand;
 
-  const load = useCallback(async () => {
-    if (!user || appUser?.role !== "ADMIN") return;
+export type CatalogInput = {
+  name: string;
+  description: string | null;
+  websiteUrl?: string | null;
+};
 
-    try {
-      const token = await user.getIdToken();
-      const [nextCategories, nextBrands] = await Promise.all([
-        getAdminCategories(token),
-        getAdminBrands(token),
-      ]);
-      setCategories(nextCategories);
-      setBrands(nextBrands);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load catalog.");
-    } finally {
-      setLoading(false);
-    }
-  }, [appUser?.role, user]);
+export function useAdminCatalog(kind: CatalogKind, search: string) {
+  const { status, isAdmin } = useAuth();
+  return useQuery({
+    queryKey: keys.admin("catalog", kind, search),
+    queryFn: (): Promise<Paginated<CatalogItem>> =>
+      kind === "category" ? getAdminCategories({ search }) : getAdminBrands({ search }),
+    enabled: status === "signedIn" && isAdmin,
+    select: (result) => result.data,
+  });
+}
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+export function useCatalogActions(kind: CatalogKind) {
+  const invalidate = useInvalidate();
+  const refresh = () => invalidate.catalog();
 
-  const add = useCallback(
-    async (kind: "category" | "brand", name: string, description: string) => {
-      if (!user || !name.trim()) return;
-
-      try {
-        const token = await user.getIdToken();
-        const item =
-          kind === "category"
-            ? await createCategory(token, name.trim(), description.trim())
-            : await createBrand(token, name.trim(), description.trim());
-
-        if (kind === "category") setCategories((current) => [item, ...current]);
-        else setBrands((current) => [item, ...current]);
-      } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Could not create catalog item.");
+  const save = useMutation({
+    mutationFn: ({ id, input }: { id?: string; input: CatalogInput }): Promise<CatalogItem> => {
+      if (kind === "category") {
+        const body = { name: input.name, description: input.description };
+        return id ? updateCategory(id, body) : createCategory(body);
       }
+      return id ? updateBrand(id, input) : createBrand(input);
     },
-    [user],
-  );
+    onSuccess: refresh,
+  });
 
-  const remove = useCallback(
-    async (item: CatalogItem, kind: "category" | "brand") => {
-      if (!user) return;
+  const setActive = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }): Promise<CatalogItem> =>
+      kind === "category" ? updateCategory(id, { isActive }) : updateBrand(id, { isActive }),
+    onSuccess: refresh,
+  });
 
-      try {
-        const token = await user.getIdToken();
-        if (kind === "category") {
-          await deleteCategory(token, item.id);
-          setCategories((current) => current.filter((entry) => entry.id !== item.id));
-        } else {
-          await deleteBrand(token, item.id);
-          setBrands((current) => current.filter((entry) => entry.id !== item.id));
-        }
-      } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Could not delete item.");
-      }
-    },
-    [user],
-  );
+  const remove = useMutation({
+    mutationFn: (id: string) => (kind === "category" ? deleteCategory(id) : deleteBrand(id)),
+    onSuccess: refresh,
+  });
 
-  return { appUser, add, brands, categories, error, loading, remove };
+  return { save, setActive, remove };
 }

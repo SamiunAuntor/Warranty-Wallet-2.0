@@ -1,65 +1,35 @@
-import { useCallback, useEffect, useState } from "react";
-import {
-  getUserPreferences,
-  updateUserPreferences,
-  type UserPreferences,
-} from "../lib/auth-api";
-import { useAuth } from "../providers/auth-provider";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { getPreferences, updatePreferences } from "../lib/auth-api";
+import { formatDate, formatDateTime, formatMoney } from "../lib/format";
+import type { Currency, UserPreferences } from "../lib/types";
+import { keys, useSignedIn } from "./query-keys";
 
-export function usePreferences() {
-  const { user } = useAuth();
-  const [preferences, setPreferences] = useState<UserPreferences | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
+export const usePreferences = () =>
+  useQuery({ queryKey: keys.preferences, queryFn: getPreferences, enabled: useSignedIn() });
 
-  const load = useCallback(async () => {
-    if (!user) return;
+export function useSavePreferences() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Partial<Omit<UserPreferences, "id" | "userId">>) => updatePreferences(input),
+    onSuccess: (saved) => client.setQueryData(keys.preferences, saved),
+  });
+}
 
-    setLoading(true);
-
-    try {
-      setPreferences(await getUserPreferences(await user.getIdToken()));
-    } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : "Could not load preferences.");
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const updateField = useCallback(
-    <K extends keyof UserPreferences>(field: K, value: UserPreferences[K]) => {
-      setPreferences((current) => (current ? { ...current, [field]: value } : current));
-    },
-    [],
+/** Formatters that follow the user's currency and date-format preferences. */
+export function useFormatters() {
+  const { data } = usePreferences();
+  const currency = data?.currency ?? "USD";
+  const dateFormat = data?.dateFormat ?? "MMM_D_YYYY";
+  return useMemo(
+    () => ({
+      currency,
+      /** Pass a currency code to show an amount in its own currency, such as a payment. */
+      money: (value: string | number | null | undefined, code?: string) =>
+        formatMoney(value, (code?.toUpperCase() as Currency | undefined) ?? currency),
+      date: (value: string | Date | null | undefined) => formatDate(value, dateFormat),
+      dateTime: (value: string | Date | null | undefined) => formatDateTime(value, dateFormat),
+    }),
+    [currency, dateFormat],
   );
-
-  const save = useCallback(async () => {
-    if (!user || !preferences) return;
-
-    setSaving(true);
-    setMessage("");
-
-    try {
-      setPreferences(await updateUserPreferences(await user.getIdToken(), preferences));
-      setMessage("Preferences saved.");
-    } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : "Could not save preferences.");
-    } finally {
-      setSaving(false);
-    }
-  }, [preferences, user]);
-
-  return {
-    loading,
-    message,
-    preferences,
-    save,
-    saving,
-    updateField,
-  };
 }

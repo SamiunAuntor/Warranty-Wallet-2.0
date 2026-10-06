@@ -1,100 +1,62 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import type { Claim, ClaimStatus } from "../../lib/claims-api";
+import { Paperclip } from "lucide-react-native";
+import { StyleSheet, View } from "react-native";
+import { useFormatters } from "../../hooks/use-preferences";
 import { colors, spacing } from "../../lib/theme";
+import type { Claim } from "../../lib/types";
+import { ClaimBadge } from "../ui/Badge";
+import { Card } from "../ui/Card";
+import { Text } from "../ui/Text";
 
-const statuses: ClaimStatus[] = [
-  "SUBMITTED",
-  "IN_PROGRESS",
-  "RESOLVED",
-  "REJECTED",
-  "CANCELLED",
-];
-
-type ClaimCardProps = {
+export function ClaimCard({
+  claim,
+  onPress,
+  showOwner = false,
+}: {
   claim: Claim;
   onPress: () => void;
-  onStatusChange: (status: ClaimStatus) => void;
-};
-
-export function ClaimCard({ claim, onPress, onStatusChange }: ClaimCardProps) {
+  showOwner?: boolean;
+}) {
+  const format = useFormatters();
+  const evidenceCount = claim._count?.documents ?? claim.documents?.length ?? 0;
   return (
-    <Pressable onPress={onPress} style={styles.card}>
-      <Text style={styles.claimNumber}>{claim.claimNumber}</Text>
-      <Text style={styles.claimTitle}>{claim.title}</Text>
-      <Text style={styles.muted}>
-        {claim.product.name} - {claim.product.brand}
-      </Text>
-      <Text style={styles.muted}>{claim.issueDescription}</Text>
-      <View style={styles.statusRow}>
-        {statuses.map((status) => {
-          const selected = claim.status === status;
-
-          return (
-            <Pressable
-              key={status}
-              onPress={() => onStatusChange(status)}
-              style={[styles.status, selected && styles.statusSelected]}
-            >
-              <Text style={selected ? styles.statusTextSelected : styles.statusText}>
-                {status.replaceAll("_", " ")}
-              </Text>
-            </Pressable>
-          );
-        })}
+    <Card onPress={onPress} accessibilityLabel={`Claim ${claim.title}`}>
+      <View style={styles.header}>
+        <Text variant="caption" weight="semibold" color={colors.primary}>
+          #{claim.claimNumber}
+        </Text>
+        <ClaimBadge status={claim.status} />
       </View>
-    </Pressable>
+      <Text variant="subheading" numberOfLines={2}>
+        {claim.title}
+      </Text>
+      <Text variant="bodySmall" color={colors.muted} numberOfLines={1}>
+        {claim.product.name} · {claim.product.brand}
+      </Text>
+      {showOwner && claim.user ? (
+        <Text variant="caption" numberOfLines={1}>
+          {claim.user.name} · {claim.user.email}
+        </Text>
+      ) : null}
+      <View style={styles.footer}>
+        <Text variant="caption">Updated {format.date(claim.updatedAt)}</Text>
+        {evidenceCount ? (
+          <View style={styles.evidence}>
+            <Paperclip size={12} color={colors.muted} />
+            <Text variant="caption">{evidenceCount}</Text>
+          </View>
+        ) : null}
+      </View>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: spacing.md,
-  },
-  claimNumber: {
-    color: colors.brand,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  claimTitle: {
-    color: colors.ink,
-    fontSize: 17,
-    fontWeight: "700",
-    marginTop: spacing.xs,
-  },
-  muted: {
-    color: colors.muted,
-    fontSize: 13,
-    lineHeight: 20,
-    marginTop: spacing.xs,
-  },
-  statusRow: {
+  header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  footer: {
+    alignItems: "center",
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.xs,
-    marginTop: spacing.md,
+    justifyContent: "space-between",
+    marginTop: spacing.xxs,
   },
-  status: {
-    borderColor: colors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  statusSelected: {
-    backgroundColor: colors.brand,
-    borderColor: colors.brand,
-  },
-  statusText: {
-    color: colors.muted,
-    fontSize: 10,
-  },
-  statusTextSelected: {
-    color: colors.surface,
-    fontSize: 10,
-    fontWeight: "700",
-  },
+  evidence: { alignItems: "center", flexDirection: "row", gap: 4 },
 });

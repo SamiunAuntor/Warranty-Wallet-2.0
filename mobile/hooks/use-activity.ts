@@ -1,28 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
-import { getActivities, type Activity } from "../lib/activity-api";
-import { useAuth } from "../providers/auth-provider";
+import { getActivities } from "../lib/activity-api";
+import { keys, useSignedIn } from "./query-keys";
+import { usePagedQuery } from "./use-paged-query";
 
-export function useActivity() {
-  const { user } = useAuth();
-  const [items, setItems] = useState<Activity[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const load = useCallback(async () => {
-    if (!user) return;
-
-    try {
-      setItems(await getActivities(await user.getIdToken()));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load activity.");
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  return { error, items, loading };
+export function useActivityList() {
+  return usePagedQuery(keys.activities, (page) => getActivities(page), { enabled: useSignedIn() });
 }

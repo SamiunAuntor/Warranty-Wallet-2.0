@@ -1,69 +1,33 @@
-import { apiRequest } from "./api";
-export type Plan = "BASIC" | "PLUS" | "PRO";
-export type Subscription = {
-  id: string;
-  plan: Plan;
-  scheduledPlan: Plan | null;
-  pendingPlan: Plan | null;
-  paymentUrl?: string | null;
-  status: "ACTIVE" | "INCOMPLETE" | "PAST_DUE" | "EXPIRED" | "CANCELLED";
-  startsAt: string;
-  expiresAt: string;
-  currentPeriodEnd: string | null;
-  cancelAtPeriodEnd: boolean;
-  isActive: boolean;
-} | null;
-export type Payment = {
-  id: string;
-  amount: string;
-  currency: string;
-  plan: Plan | null;
-  status: "PENDING" | "SUCCESS" | "FAILED" | "REFUNDED";
-  createdAt: string;
-};
-export type PaymentList = {
-  data: Payment[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-};
-export function getSubscription(token: string) {
-  return apiRequest<Subscription>("/payments/subscription", { token });
-}
-export async function getPayments(token: string) {
-  return {
-    data: await apiRequest<Payment[]>("/payments?page=1&limit=20", { token }),
-  };
-}
-export function createCheckout(token: string, plan: "PLUS" | "PRO") {
-  return apiRequest<{ url: string }>("/payments/create-checkout", {
+import { apiList, apiRequest, queryString } from "./api";
+import type { PaidPlan, Payment, PlanInfo, Subscription } from "./types";
+
+export const getPlans = () => apiRequest<PlanInfo[]>("/payments/plans", { auth: false });
+
+export const getSubscription = () => apiRequest<Subscription | null>("/payments/subscription");
+
+export const getPayments = (page = 1, limit = 20) =>
+  apiList<Payment>(`/payments${queryString({ page, limit })}`);
+
+export const createCheckout = (plan: PaidPlan, returnUrl: string) =>
+  apiRequest<{ url: string }>("/payments/create-checkout", {
     method: "POST",
-    token,
-    body: JSON.stringify({ plan }),
+    body: { plan, returnUrl },
   });
-}
-export function confirmCheckout(token: string, sessionId: string) {
-  return apiRequest<{
-    payment: Payment;
-    subscription: NonNullable<Subscription>;
-  }>("/payments/confirm-checkout", {
+
+export const confirmCheckout = (sessionId: string) =>
+  apiRequest<{ payment: Payment; subscription: Subscription }>("/payments/confirm-checkout", {
     method: "POST",
-    token,
-    body: JSON.stringify({ sessionId }),
+    body: { sessionId },
   });
-}
-export function cancelSubscription(token: string) {
-  return apiRequest<NonNullable<Subscription>>("/payments/cancel-subscription", {
+
+export const changePlan = (plan: PaidPlan) =>
+  apiRequest<{ subscription: Subscription; paymentUrl: string | null }>("/payments/change-plan", {
     method: "POST",
-    token,
+    body: { plan },
   });
-}
-export function resumeSubscription(token: string) {
-  return apiRequest<NonNullable<Subscription>>("/payments/resume-subscription", {
-    method: "POST",
-    token,
-  });
-}
+
+export const cancelSubscription = () =>
+  apiRequest<Subscription>("/payments/cancel-subscription", { method: "POST" });
+
+export const resumeSubscription = () =>
+  apiRequest<Subscription>("/payments/resume-subscription", { method: "POST" });

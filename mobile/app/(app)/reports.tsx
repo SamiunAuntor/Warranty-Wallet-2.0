@@ -1,122 +1,69 @@
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { FileSpreadsheet, FileText } from "lucide-react-native";
+import { StyleSheet, View } from "react-native";
+import { Button } from "../../components/ui/Button";
+import { Card, Section } from "../../components/ui/Card";
+import { Screen } from "../../components/ui/Screen";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
+import { Text } from "../../components/ui/Text";
 import { useReports } from "../../hooks/use-reports";
+import { reports, type ReportDefinition } from "../../lib/reports-api";
 import { colors, spacing } from "../../lib/theme";
 import { useAuth } from "../../providers/auth-provider";
 
-const reports = [
-  ["admin/users", "User directory"],
-  ["admin/revenue", "Revenue report"],
-  ["admin/categories", "Category report"],
-  ["products", "Asset report"],
-  ["warranty", "Warranty report"],
-  ["payments", "Payment report"],
-] as const;
 export default function ReportsScreen() {
-  const { appUser } = useAuth();
-  const { busy, download, error } = useReports();
-  if (appUser?.role !== "ADMIN")
+  const { isAdmin } = useAuth();
+  const { busy, download } = useReports();
+
+  function renderReport(report: ReportDefinition) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.title}>Admin access required.</Text>
-      </View>
-    );
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.eyebrow}>OPERATIONS</Text>
-      <Text style={styles.title}>Reports and audit</Text>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      {reports.map(([id, name]) => (
-        <View key={id} style={styles.card}>
-          <Text style={styles.name}>{name}</Text>
-          <View style={styles.actions}>
-            <Pressable
-              disabled={Boolean(busy)}
-              onPress={() => void download(id, "PDF")}
-              style={styles.secondary}
-            >
-              <Text style={styles.secondaryText}>{busy === `${id}-PDF` ? "..." : "PDF"}</Text>
-            </Pressable>
-            <Pressable
-              disabled={Boolean(busy)}
-              onPress={() => void download(id, "EXCEL")}
-              style={styles.primary}
-            >
-              <Text style={styles.primaryText}>{busy === `${id}-EXCEL` ? "..." : "Excel"}</Text>
-            </Pressable>
-          </View>
+      <Card key={report.id}>
+        <Text variant="subheading">{report.title}</Text>
+        <Text variant="bodySmall" color={colors.muted}>
+          {report.description}
+        </Text>
+        <View style={styles.actions}>
+          <Button
+            title="PDF"
+            icon={FileText}
+            variant="outline"
+            size="sm"
+            style={styles.flex}
+            loading={busy === `${report.id}:PDF`}
+            disabled={Boolean(busy)}
+            onPress={() => void download(report.id, "PDF")}
+          />
+          <Button
+            title="Excel"
+            icon={FileSpreadsheet}
+            variant="secondary"
+            size="sm"
+            style={styles.flex}
+            loading={busy === `${report.id}:EXCEL`}
+            disabled={Boolean(busy)}
+            onPress={() => void download(report.id, "EXCEL")}
+          />
         </View>
-      ))}
-      {busy ? <ActivityIndicator color={colors.brand} /> : null}
-    </ScrollView>
+      </Card>
+    );
+  }
+
+  return (
+    <Screen header={<ScreenHeader title="Reports" fallbackHref="/(app)/more" />}>
+      <Text variant="bodySmall" color={colors.muted}>
+        Reports are generated on the server, then opened in your share sheet so you can save or
+        send them.
+      </Text>
+      <Section title="Your reports">{reports.filter((report) => !report.adminOnly).map(renderReport)}</Section>
+      {isAdmin ? (
+        <Section title="Administrator reports">
+          {reports.filter((report) => report.adminOnly).map(renderReport)}
+        </Section>
+      ) : null}
+    </Screen>
   );
 }
+
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.canvas,
-    gap: spacing.md,
-    padding: spacing.lg,
-  },
-  center: {
-    alignItems: "center",
-    flex: 1,
-    justifyContent: "center",
-  },
-  eyebrow: {
-    color: colors.brand,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 2,
-  },
-  title: {
-    color: colors.ink,
-    fontSize: 30,
-    fontWeight: "800",
-  },
-  error: {
-    color: colors.danger,
-  },
-  card: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    padding: spacing.md,
-  },
-  name: {
-    color: colors.ink,
-    flex: 1,
-    fontSize: 15,
-    fontWeight: "700",
-    marginRight: spacing.sm,
-  },
-  actions: {
-    flexDirection: "row",
-    gap: spacing.xs,
-    flexShrink: 0,
-  },
-  primary: {
-    backgroundColor: colors.brand,
-    borderRadius: 8,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  primaryText: {
-    color: colors.surface,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  secondary: {
-    backgroundColor: colors.brandSoft,
-    borderRadius: 8,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  secondaryText: {
-    color: colors.brand,
-    fontSize: 12,
-    fontWeight: "700",
-  },
+  actions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.xs },
+  flex: { flex: 1 },
 });

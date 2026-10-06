@@ -1,133 +1,110 @@
-import { useState } from "react";
-import { router } from "expo-router";
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
+import { Package } from "lucide-react-native";
+import { useEffect, useMemo, useState } from "react";
+import { StyleSheet, View } from "react-native";
 import { AssetCard } from "../../components/assets/AssetCard";
-import { AssetForm } from "../../components/assets/AssetForm";
-import { useAssets } from "../../hooks/use-assets";
-import { colors, spacing } from "../../lib/theme";
+import { TabScreen } from "../../components/navigation/TabBar";
+import { ActionButton } from "../../components/ui/ActionButton";
+import { Chips } from "../../components/ui/Chips";
+import { SearchBar } from "../../components/ui/Display";
+import { PagedList } from "../../components/ui/PagedList";
+import { EmptyState } from "../../components/ui/ScreenStates";
+import { PageTitle } from "../../components/ui/ScreenHeader";
+import { useAssetList } from "../../hooks/use-assets";
+import { useDebouncedValue } from "../../hooks/use-debounced-value";
+import type { AssetQuery } from "../../lib/assets-api";
+import { spacing } from "../../lib/theme";
+import type { WarrantyStatus } from "../../lib/types";
+
+type Filter = "ALL" | WarrantyStatus | "ARCHIVED";
+
+const FILTERS: Array<{ value: Filter; label: string }> = [
+  { value: "ALL", label: "All" },
+  { value: "ACTIVE", label: "Active" },
+  { value: "EXPIRING_SOON", label: "Expiring soon" },
+  { value: "EXPIRED", label: "Expired" },
+  { value: "NO_WARRANTY", label: "No warranty" },
+  { value: "ARCHIVED", label: "Archived" },
+];
+
+const isFilter = (value: unknown): value is Filter =>
+  FILTERS.some((filter) => filter.value === value);
 
 export default function AssetsScreen() {
+  const params = useLocalSearchParams<{ status?: string }>();
+  const [filter, setFilter] = useState<Filter>(isFilter(params.status) ? params.status : "ALL");
   const [search, setSearch] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const { addAsset, assets, categories, error, loading } = useAssets(search);
+  const debouncedSearch = useDebouncedValue(search.trim());
+
+  // Home links here with a status, for example "expiring soon".
+  useEffect(() => {
+    if (isFilter(params.status)) setFilter(params.status);
+  }, [params.status]);
+
+  const query = useMemo<AssetQuery>(() => {
+    const next: AssetQuery = { search: debouncedSearch || undefined };
+    if (filter === "ARCHIVED") next.lifecycleStatus = "ARCHIVED";
+    else if (filter !== "ALL") next.warrantyStatus = filter;
+    return next;
+  }, [debouncedSearch, filter]);
+
+  const assets = useAssetList(query);
+  const filtered = Boolean(debouncedSearch) || filter !== "ALL";
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.eyebrow}>INVENTORY</Text>
-          <Text style={styles.title}>Your assets</Text>
-        </View>
-        <Pressable onPress={() => setShowForm((value) => !value)} style={styles.add}>
-          <Text style={styles.addText}>{showForm ? "Close" : "+ Add"}</Text>
-        </Pressable>
-      </View>
-      <TextInput
-        onChangeText={setSearch}
-        placeholder="Search assets"
-        placeholderTextColor={colors.muted}
-        style={styles.search}
-        value={search}
-      />
-      {showForm ? (
-        <AssetForm
-          categories={categories}
-          onCreated={async (input) => {
-            await addAsset(input);
-            setShowForm(false);
-          }}
-        />
-      ) : null}
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      {loading ? (
-        <ActivityIndicator color={colors.brand} style={styles.loader} />
-      ) : (
-        <FlatList
-          contentContainerStyle={styles.list}
-          data={assets}
-          keyExtractor={(item) => item.id}
-          ListEmptyComponent={
-            <Text style={styles.empty}>
-              No assets found. Add your first purchase to get started.
-            </Text>
-          }
-          renderItem={({ item }) => (
-            <AssetCard
-              asset={item}
-              onPress={() => router.push(`/(app)/assets/${item.id}`)}
-            />
+    <TabScreen>
+      <View style={styles.flex}>
+        <PagedList
+          query={assets}
+          bottomInset={72}
+          keyExtractor={(asset) => asset.id}
+          renderItem={(asset) => (
+            <AssetCard asset={asset} onPress={() => router.push(`/(app)/assets/${asset.id}`)} />
           )}
+          header={
+            <View style={styles.header}>
+              <PageTitle
+                overline="Inventory"
+                title="Assets"
+                subtitle={
+                  assets.isPending
+                    ? "Loading your purchases…"
+                    : `${assets.total} ${assets.total === 1 ? "asset" : "assets"}${filtered ? " found" : " tracked"}`
+                }
+              />
+              <SearchBar
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Search by name or brand"
+              />
+              <Chips options={FILTERS} value={filter} onChange={setFilter} scrollable />
+            </View>
+          }
+          empty={
+            filtered ? (
+              <EmptyState
+                icon={Package}
+                title="No matching assets"
+                message="Try a different search or filter."
+              />
+            ) : (
+              <EmptyState
+                icon={Package}
+                title="No assets yet"
+                message="Add a purchase to start tracking its warranty, receipts, and claims."
+                actionLabel="Add your first asset"
+                onAction={() => router.push("/(app)/assets/form")}
+              />
+            )
+          }
         />
-      )}
-    </View>
+        <ActionButton label="Add asset" onPress={() => router.push("/(app)/assets/form")} />
+      </View>
+    </TabScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.canvas,
-    flex: 1,
-    padding: spacing.lg,
-  },
-  header: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  eyebrow: {
-    color: colors.brand,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 2,
-  },
-  title: {
-    color: colors.ink,
-    fontSize: 30,
-    fontWeight: "800",
-    marginTop: spacing.xs,
-  },
-  add: {
-    backgroundColor: colors.brand,
-    borderRadius: 10,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  addText: {
-    color: colors.surface,
-    fontWeight: "700",
-  },
-  search: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 12,
-    borderWidth: 1,
-    color: colors.ink,
-    marginTop: spacing.lg,
-    padding: spacing.md,
-  },
-  loader: {
-    marginTop: spacing.xl,
-  },
-  list: {
-    gap: spacing.sm,
-    paddingBottom: spacing.xl,
-    paddingTop: spacing.md,
-  },
-  empty: {
-    color: colors.muted,
-    padding: spacing.xl,
-    textAlign: "center",
-  },
-  error: {
-    color: colors.danger,
-    marginTop: spacing.sm,
-  },
+  flex: { flex: 1 },
+  header: { gap: spacing.md },
 });

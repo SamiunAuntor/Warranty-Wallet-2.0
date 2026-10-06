@@ -1,103 +1,97 @@
+import { useMutation, useQuery } from "@tanstack/react-query";
+import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
-import { useCallback, useEffect, useState } from "react";
+import { getProfile } from "../lib/auth-api";
 import {
   cancelSubscription,
+  changePlan,
   confirmCheckout,
   createCheckout,
   getPayments,
+  getPlans,
   getSubscription,
   resumeSubscription,
-  type Payment,
-  type Subscription,
 } from "../lib/billing-api";
+import type { PaidPlan } from "../lib/types";
 import { useAuth } from "../providers/auth-provider";
+import { keys, useInvalidate, useSignedIn } from "./query-keys";
+import { usePagedQuery } from "./use-paged-query";
 
-export function useBilling() {
-  const { user } = useAuth();
-  const [subscription, setSubscription] = useState<Subscription>(null);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+export const PAYMENT_RETURN_PATH = "payment-return";
 
-  const load = useCallback(async () => {
-    if (!user) return;
+export const usePlans = () =>
+  useQuery({ queryKey: keys.plans, queryFn: getPlans, staleTime: 60 * 60_000 });
 
-    setLoading(true);
-    setError("");
+export const useSubscription = () =>
+  useQuery({ queryKey: keys.subscription, queryFn: getSubscription, enabled: useSignedIn() });
 
-    try {
-      const token = await user.getIdToken();
-      const [current, history] = await Promise.all([getSubscription(token), getPayments(token)]);
+export function usePaymentList() {
+  return usePagedQuery(keys.payments, (page) => getPayments(page), { enabled: useSignedIn() });
+}
 
-      setSubscription(current);
-      setPayments(history.data);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load billing.");
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
+export type CheckoutOutcome = "paid" | "cancelled" | "pending";
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+/** Refreshes billing data and the signed-in user, whose plan may have changed. */
+function useRefreshBilling() {
+  const invalidate = useInvalidate();
+  const { setAppUser } = useAuth();
+  return async () => {
+    await invalidate.billing();
+    setAppUser(await getProfile());
+  };
+}
 
-  const upgrade = useCallback(
-    async (plan: "PLUS" | "PRO") => {
-      if (!user) return;
+export function useBillingActions() {
+  const refresh = useRefreshBilling();
 
-      setBusy(true);
-      setError("");
+  /**
+   * Opens Stripe Checkout in an auth session. The API sends Stripe back to an
+   * app deep link, which closes the browser and returns the session id here.
+   */
+  const checkout = useMutation({
+    mutationFn: async (plan: PaidPlan): Promise<CheckoutOutcome> => {
+      const returnUrl = Linking.createURL(PAYMENT_RETURN_PATH);
+      const { url } = await createCheckout(plan, returnUrl);
+      const result = await WebBrowser.openAuthSessionAsync(url, returnUrl);
+      if (result.type !== "success") return "cancelled";
+
+      const { queryParams } = Linking.parse(result.url);
+      const sessionId = typeof queryParams?.session_id === "string" ? queryParams.session_id : null;
+      if (queryParams?.status !== "success" || !sessionId) return "cancelled";
 
       try {
-        const token = await user.getIdToken();
-        const { url } = await createCheckout(token, plan);
-        const result = await WebBrowser.openBrowserAsync(url);
-        const returnedUrl = "url" in result && typeof result.url === "string" ? result.url : "";
-        const sessionId = returnedUrl.match(/[?&]session_id=([^&]+)/)?.[1];
-
-        if (sessionId) {
-          await confirmCheckout(token, decodeURIComponent(sessionId));
-        }
-
-        await load();
-      } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Could not complete checkout.");
-      } finally {
-        setBusy(false);
+        await confirmCheckout(sessionId);
+        return "paid";
+      } catch {
+        // The Stripe webhook will still activate the plan once payment settles.
+        return "pending";
       }
     },
-    [load, user],
-  );
+    onSettled: refresh,
+  });
 
-  const toggleCancel = useCallback(async () => {
-    if (!user || !subscription) return;
+  const switchPlan = useMutation({
+    mutationFn: async (plan: PaidPlan) => {
+      const result = await changePlan(plan);
+      if (result.paymentUrl) await WebBrowser.openBrowserAsync(result.paymentUrl);
+      return result;
+    },
+    onSettled: refresh,
+  });
 
-    setBusy(true);
-    setError("");
+  const cancel = useMutation({ mutationFn: cancelSubscription, onSuccess: refresh });
+  const resume = useMutation({ mutationFn: resumeSubscription, onSuccess: refresh });
 
-    try {
-      const token = await user.getIdToken();
-      const nextSubscription = subscription.cancelAtPeriodEnd
-        ? await resumeSubscription(token)
-        : await cancelSubscription(token);
+  return { checkout, switchPlan, cancel, resume };
+}
 
-      setSubscription(nextSubscription);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not update subscription.");
-    } finally {
-      setBusy(false);
-    }
-  }, [subscription, user]);
-
-  return {
-    busy,
-    error,
-    loading,
-    payments,
-    subscription,
-    toggleCancel,
-    upgrade,
-  };
+/** Confirms a checkout that reached the app through the payment-return deep link. */
+export function useConfirmReturnedCheckout() {
+  const refresh = useRefreshBilling();
+  return useMutation({
+    mutationFn: async (sessionId: string | null) => {
+      if (sessionId) await confirmCheckout(sessionId).catch(() => undefined);
+    },
+    onSettled: refresh,
+  });
 }

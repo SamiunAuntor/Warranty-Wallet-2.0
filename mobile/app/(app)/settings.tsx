@@ -1,186 +1,60 @@
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import type { UserPreferences } from "../../lib/auth-api";
-import { useSettings } from "../../hooks/use-settings";
-import { colors, spacing } from "../../lib/theme";
+import Constants from "expo-constants";
+import { KeyRound, LogOut, Server, Smartphone } from "lucide-react-native";
+import { Platform } from "react-native";
+import { Card, Section } from "../../components/ui/Card";
+import { ListRow } from "../../components/ui/Rows";
+import { Screen } from "../../components/ui/Screen";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
+import { useAccountSettings } from "../../hooks/use-settings";
+import { API_URL } from "../../lib/config";
+import { confirm } from "../../lib/confirm";
+import { useToast } from "../../providers/toast-provider";
 
 export default function SettingsScreen() {
-  const settings = useSettings();
-  const {
-    appUser,
-    loading,
-    logout,
-    message,
-    name,
-    phone,
-    preferences,
-    save,
-    saving,
-    setName,
-    setPhone,
-    updatePreference,
-  } = settings;
-  if (loading || !appUser || !preferences) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.brand} />
-      </View>
-    );
+  const toast = useToast();
+  const { appUser, sendPasswordReset, signOut } = useAccountSettings();
+
+  async function resetPassword() {
+    const ok = await confirm({
+      title: "Reset your password?",
+      message: `We'll email a reset link to ${appUser?.email}.`,
+      confirmLabel: "Send link",
+    });
+    if (!ok) return;
+    sendPasswordReset.mutate(undefined, {
+      onSuccess: () => toast.success("Check your email for the reset link."),
+      onError: (error) => toast.error(error, "Could not send the reset email."),
+    });
   }
+
+  async function logout() {
+    const ok = await confirm({ title: "Sign out?", confirmLabel: "Sign out" });
+    if (ok) signOut.mutate();
+  }
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.eyebrow}>ACCOUNT</Text>
-      <Text style={styles.title}>Settings</Text>
-      <View style={styles.card}>
-        <Text style={styles.section}>Profile</Text>
-        <Text style={styles.label}>Name</Text>
-        <TextInput onChangeText={setName} style={styles.input} value={name} />
-        <Text style={styles.label}>Phone</Text>
-        <TextInput
-          keyboardType="phone-pad"
-          onChangeText={setPhone}
-          style={styles.input}
-          value={phone}
-        />
-        <Text style={styles.readonly}>{appUser.email}</Text>
-      </View>
-      <View style={styles.card}>
-        <Text style={styles.section}>Warranty reminders</Text>
-        <Pressable
-          onPress={() =>
-            updatePreference("warrantyReminders", !preferences.warrantyReminders)
-          }
-          style={styles.toggle}
-        >
-          <Text style={styles.toggleText}>
-            {preferences.warrantyReminders ? "Enabled" : "Disabled"}
-          </Text>
-        </Pressable>
-        <Text style={styles.label}>Reminder days, comma separated</Text>
-        <TextInput
-          keyboardType="numbers-and-punctuation"
-          onChangeText={(value) =>
-            updatePreference(
-              "reminderDays",
-              value.split(",").map(Number).filter((day) => Number.isFinite(day)),
-            )
-          }
-          style={styles.input}
-          value={preferences.reminderDays.join(", ")}
-        />
-        <Text style={styles.label}>Currency</Text>
-        <TextInput
-          autoCapitalize="characters"
-          onChangeText={(value) =>
-            updatePreference("currency", value as UserPreferences["currency"])
-          }
-          style={styles.input}
-          value={preferences.currency}
-        />
-      </View>
-      {message ? <Text style={styles.message}>{message}</Text> : null}
-      <Pressable disabled={saving} onPress={() => void save()} style={styles.save}>
-        <Text style={styles.saveText}>{saving ? "Saving..." : "Save settings"}</Text>
-      </Pressable>
-      <Pressable onPress={() => void logout()} style={styles.logout}>
-        <Text style={styles.logoutText}>Sign out</Text>
-      </Pressable>
-    </ScrollView>
+    <Screen header={<ScreenHeader title="Security and app" fallbackHref="/(app)/more" />}>
+      <Section title="Security">
+        <Card padded={false}>
+          <ListRow
+            icon={KeyRound}
+            title="Change password"
+            subtitle="Email yourself a secure reset link"
+            onPress={() => void resetPassword()}
+          />
+          <ListRow icon={LogOut} title="Sign out" destructive trailing={null} onPress={() => void logout()} />
+        </Card>
+      </Section>
+      <Section title="About">
+        <Card padded={false}>
+          <ListRow
+            icon={Smartphone}
+            title="Version"
+            subtitle={`${Constants.expoConfig?.version ?? "—"} · ${Platform.OS === "ios" ? "iOS" : "Android"}`}
+          />
+          <ListRow icon={Server} title="Server" subtitle={API_URL} />
+        </Card>
+      </Section>
+    </Screen>
   );
 }
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.canvas,
-    gap: spacing.md,
-    padding: spacing.lg,
-  },
-  center: {
-    alignItems: "center",
-    flex: 1,
-    justifyContent: "center",
-  },
-  eyebrow: {
-    color: colors.brand,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 2,
-  },
-  title: {
-    color: colors.ink,
-    fontSize: 30,
-    fontWeight: "800",
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: spacing.lg,
-  },
-  section: {
-    color: colors.ink,
-    fontSize: 17,
-    fontWeight: "700",
-    marginBottom: spacing.md,
-  },
-  label: {
-    color: colors.muted,
-    fontSize: 12,
-    marginTop: spacing.sm,
-  },
-  input: {
-    borderColor: colors.border,
-    borderRadius: 10,
-    borderWidth: 1,
-    color: colors.ink,
-    marginTop: spacing.xs,
-    padding: spacing.sm,
-  },
-  readonly: {
-    color: colors.muted,
-    fontSize: 13,
-    marginTop: spacing.md,
-  },
-  toggle: {
-    alignSelf: "flex-start",
-    backgroundColor: colors.brandSoft,
-    borderRadius: 16,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  toggleText: {
-    color: colors.brand,
-    fontWeight: "700",
-  },
-  message: {
-    color: colors.brand,
-  },
-  save: {
-    alignItems: "center",
-    backgroundColor: colors.brand,
-    borderRadius: 10,
-    padding: spacing.md,
-  },
-  saveText: {
-    color: colors.surface,
-    fontWeight: "700",
-  },
-  logout: {
-    alignItems: "center",
-    borderColor: colors.danger,
-    borderRadius: 10,
-    borderWidth: 1,
-    padding: spacing.md,
-  },
-  logoutText: {
-    color: colors.danger,
-    fontWeight: "700",
-  },
-});

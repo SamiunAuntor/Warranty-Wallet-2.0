@@ -1,70 +1,40 @@
-import { useCallback, useEffect, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import {
   deleteDocument,
   getDocuments,
+  replaceDocument,
   uploadDocument,
-  type DocumentRecord,
-  type DocumentType,
-  type NativeFile,
+  type DocumentQuery,
 } from "../lib/documents-api";
-import { useAuth } from "../providers/auth-provider";
+import type { DocumentType, NativeFile } from "../lib/types";
+import { keys, useInvalidate, useSignedIn } from "./query-keys";
+import { usePagedQuery } from "./use-paged-query";
 
-export function useDocuments(search: string) {
-  const { user } = useAuth();
-  const [documents, setDocuments] = useState<DocumentRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+export function useDocumentList(query: DocumentQuery) {
+  return usePagedQuery(keys.documents(query), (page) => getDocuments({ ...query, page }), {
+    enabled: useSignedIn(),
+  });
+}
 
-  const load = useCallback(async () => {
-    if (!user) return;
+export function useDocumentActions() {
+  const invalidate = useInvalidate();
+  const refresh = () => invalidate.documents();
 
-    setLoading(true);
-    setError("");
+  const upload = useMutation({
+    mutationFn: ({ productId, type, file }: { productId: string; type: DocumentType; file: NativeFile }) =>
+      uploadDocument(productId, type, file),
+    onSuccess: refresh,
+  });
 
-    try {
-      const result = await getDocuments(await user.getIdToken(), search);
-      setDocuments(result.data);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load documents.");
-    } finally {
-      setLoading(false);
-    }
-  }, [search, user]);
+  const replace = useMutation({
+    mutationFn: ({ id, file }: { id: string; file: NativeFile }) => replaceDocument(id, file),
+    onSuccess: refresh,
+  });
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteDocument(id),
+    onSuccess: refresh,
+  });
 
-  const addDocument = useCallback(
-    async (productId: string, type: DocumentType, file: NativeFile) => {
-      if (!user) throw new Error("You must be signed in to upload a document.");
-
-      const [created] = await uploadDocument(
-        await user.getIdToken(),
-        productId.trim(),
-        type,
-        file,
-      );
-      setDocuments((current) => [created, ...current]);
-    },
-    [user],
-  );
-
-  const removeDocument = useCallback(
-    async (document: DocumentRecord) => {
-      if (!user) throw new Error("You must be signed in to delete a document.");
-
-      await deleteDocument(await user.getIdToken(), document.id);
-      setDocuments((current) => current.filter((item) => item.id !== document.id));
-    },
-    [user],
-  );
-
-  return {
-    addDocument,
-    documents,
-    error,
-    loading,
-    removeDocument,
-  };
+  return { upload, replace, remove };
 }

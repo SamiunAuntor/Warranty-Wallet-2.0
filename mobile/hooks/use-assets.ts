@@ -1,76 +1,42 @@
-import { useCallback, useEffect, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   createAsset,
-  deleteAsset,
+  getAsset,
   getAssets,
+  getBrands,
   getCategories,
-  type Asset,
-  type AssetInput,
-  type Category,
+  updateAsset,
+  type AssetQuery,
 } from "../lib/assets-api";
-import { useAuth } from "../providers/auth-provider";
+import type { AssetInput } from "../lib/types";
+import { keys, useInvalidate, useSignedIn } from "./query-keys";
+import { usePagedQuery } from "./use-paged-query";
 
-export function useAssets(search: string) {
-  const { user } = useAuth();
-  const [assets, setAssets] = useState<Asset[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+export function useAssetList(query: AssetQuery) {
+  return usePagedQuery(keys.assets(query), (page) => getAssets({ ...query, page }), {
+    enabled: useSignedIn(),
+  });
+}
 
-  const load = useCallback(async () => {
-    if (!user) return;
+export const useAsset = (id: string | undefined) =>
+  useQuery({
+    queryKey: keys.asset(id ?? ""),
+    queryFn: () => getAsset(id as string),
+    enabled: useSignedIn() && Boolean(id),
+  });
 
-    setLoading(true);
-    setError("");
+export const useCategories = () =>
+  useQuery({ queryKey: keys.categories, queryFn: getCategories, staleTime: 5 * 60_000 });
 
-    try {
-      const token = await user.getIdToken();
-      const [list, catalog] = await Promise.all([getAssets(token, search), getCategories()]);
+export const useBrands = () =>
+  useQuery({ queryKey: keys.brands, queryFn: getBrands, staleTime: 5 * 60_000 });
 
-      setAssets(list.data);
-      setCategories(catalog.filter((category) => category.isActive));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load assets.");
-    } finally {
-      setLoading(false);
-    }
-  }, [search, user]);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      void load();
-    }, 250);
-
-    return () => clearTimeout(timeout);
-  }, [load]);
-
-  const addAsset = useCallback(
-    async (input: AssetInput) => {
-      if (!user) throw new Error("You must be signed in to add an asset.");
-
-      const asset = await createAsset(await user.getIdToken(), input);
-      setAssets((current) => [asset, ...current]);
-    },
-    [user],
-  );
-
-  const removeAsset = useCallback(
-    async (asset: Asset) => {
-      if (!user) throw new Error("You must be signed in to delete an asset.");
-
-      await deleteAsset(await user.getIdToken(), asset.id);
-      setAssets((current) => current.filter((item) => item.id !== asset.id));
-    },
-    [user],
-  );
-
-  return {
-    addAsset,
-    assets,
-    categories,
-    error,
-    loading,
-    removeAsset,
-    reload: load,
-  };
+/** Creates a new asset, or updates one when an id is given. */
+export function useSaveAsset(id?: string) {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (input: Partial<AssetInput>) =>
+      id ? updateAsset(id, input) : createAsset(input as AssetInput),
+    onSuccess: () => invalidate.assets(),
+  });
 }

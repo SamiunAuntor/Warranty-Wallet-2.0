@@ -1,315 +1,345 @@
-import * as DocumentPicker from "expo-document-picker";
-import * as Linking from "expo-linking";
-import { useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
 import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import type { ClaimStatus } from "../../../lib/claims-api";
-import { useClaimDetails } from "../../../hooks/use-claim-details";
-import { uploadDocument } from "../../../lib/documents-api";
-import { colors, spacing } from "../../../lib/theme";
-import { useAuth } from "../../../providers/auth-provider";
+  FileText,
+  ImagePlus,
+  MoreVertical,
+  Package,
+  Pencil,
+  Trash2,
+  X,
+} from "lucide-react-native";
+import { useState } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
+import { openDocument } from "../../../components/documents/DocumentCard";
+import { FileSourceSheet } from "../../../components/documents/FileSourceSheet";
+import { ClaimBadge } from "../../../components/ui/Badge";
+import { Button } from "../../../components/ui/Button";
+import { Card, Section } from "../../../components/ui/Card";
+import { IconButton } from "../../../components/ui/IconButton";
+import { InfoGrid, InfoRow } from "../../../components/ui/Rows";
+import { Screen } from "../../../components/ui/Screen";
+import { ScreenHeader } from "../../../components/ui/ScreenHeader";
+import { ErrorState, LoadingState } from "../../../components/ui/ScreenStates";
+import { SelectField } from "../../../components/ui/SelectField";
+import { ActionSheet } from "../../../components/ui/Sheet";
+import { Text } from "../../../components/ui/Text";
+import { TextField } from "../../../components/ui/TextField";
+import { useClaimActions } from "../../../hooks/use-claim-details";
+import { useClaim } from "../../../hooks/use-claims";
+import { useFormatters } from "../../../hooks/use-preferences";
+import { confirm } from "../../../lib/confirm";
+import { claimStatuses, claimStatusLabels, evidenceTypeLabels } from "../../../lib/labels";
+import { colors, radius, spacing } from "../../../lib/theme";
+import type { ClaimStatus } from "../../../lib/types";
+import { useToast } from "../../../providers/toast-provider";
 
-const statuses: ClaimStatus[] = ["SUBMITTED", "IN_PROGRESS", "RESOLVED", "REJECTED", "CANCELLED"];
-export default function ClaimDetailsScreen() {
+export default function ClaimDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user } = useAuth();
-  const {
-    addTimelineEvent,
-    attachDocument,
-    changeStatus,
-    claim,
-    error,
-    loading,
-    remove: removeClaim,
-    reportError,
-    detachDocument,
-  } = useClaimDetails(id);
+  const toast = useToast();
+  const format = useFormatters();
+  const claim = useClaim(id);
+  const actions = useClaimActions(claim.data);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [picker, setPicker] = useState<"document" | "photo" | null>(null);
   const [eventTitle, setEventTitle] = useState("");
-  async function status(value: ClaimStatus) {
-    await changeStatus(value);
+  const [eventDescription, setEventDescription] = useState("");
+
+  const header = (
+    <ScreenHeader
+      title={claim.data ? `Claim #${claim.data.claimNumber}` : "Claim"}
+      fallbackHref="/(app)/claims"
+      actions={
+        claim.data ? (
+          <>
+            <IconButton
+              icon={Pencil}
+              label="Edit claim"
+              onPress={() => router.push(`/(app)/claims/form?id=${id}`)}
+            />
+            <IconButton icon={MoreVertical} label="More actions" onPress={() => setMenuOpen(true)} />
+          </>
+        ) : null
+      }
+    />
+  );
+
+  if (claim.isPending) return <Screen header={header}><LoadingState /></Screen>;
+  if (claim.isError || !claim.data) {
+    return (
+      <Screen header={header}>
+        <ErrorState error={claim.error} onRetry={() => void claim.refetch()} />
+      </Screen>
+    );
   }
-  async function timeline() {
-    if (!eventTitle.trim()) return;
-    await addTimelineEvent(eventTitle.trim());
-    setEventTitle("");
-  }
-  async function evidence() {
-    if (!user || !claim) return;
-    const picked = await DocumentPicker.getDocumentAsync({
-      copyToCacheDirectory: true,
-      type: ["application/pdf", "image/*"],
-    });
-    if (picked.canceled) return;
+
+  const item = claim.data;
+
+  async function changeStatus(status: ClaimStatus) {
+    if (status === item.status) return;
     try {
-      const file = picked.assets[0];
-      const [document] = await uploadDocument(
-        await user.getIdToken(),
-        claim.productId,
-        "CLAIM_EVIDENCE",
-        {
-          uri: file.uri,
-          name: file.name,
-          mimeType: file.mimeType,
-          size: file.size,
-        },
-      );
-      await attachDocument(document.id, "SUPPORTING_DOCUMENT");
-    } catch (cause) {
-      reportError(cause instanceof Error ? cause.message : "Could not attach evidence.");
+      await actions.setStatus.mutateAsync(status);
+      toast.success(`Claim marked ${claimStatusLabels[status].label.toLowerCase()}.`);
+    } catch (error) {
+      toast.error(error, "Could not update the status.");
     }
   }
-  async function deleteCurrentClaim() {
-    try {
-      await removeClaim();
-      router.back();
-    } catch {
+
+  async function addEvent() {
+    const title = eventTitle.trim();
+    if (title.length < 2) {
+      toast.error("Give the update a short title.");
       return;
     }
+    try {
+      await actions.addEvent.mutateAsync({
+        title,
+        description: eventDescription.trim() || undefined,
+      });
+      setEventTitle("");
+      setEventDescription("");
+      toast.success("Update added to the timeline.");
+    } catch (error) {
+      toast.error(error, "Could not add the update.");
+    }
   }
-  if (loading || !claim)
-    return (
-      <View style={styles.center}>
-        {error ? (
-          <Text style={styles.error}>{error}</Text>
-        ) : (
-          <ActivityIndicator color={colors.brand} />
-        )}
-      </View>
-    );
+
+  async function detach(documentId: string, name: string) {
+    const ok = await confirm({
+      title: "Remove this evidence?",
+      message: `${name} stays on the asset but is no longer attached to this claim.`,
+      confirmLabel: "Remove",
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await actions.detach.mutateAsync(documentId);
+      toast.success("Evidence removed.");
+    } catch (error) {
+      toast.error(error, "Could not remove the evidence.");
+    }
+  }
+
+  async function remove() {
+    const ok = await confirm({
+      title: "Delete this claim?",
+      message: "Its timeline is removed. Attached files stay on the asset.",
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await actions.remove.mutateAsync();
+      toast.success("Claim deleted.");
+      router.back();
+    } catch (error) {
+      toast.error(error, "Could not delete the claim.");
+    }
+  }
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Pressable onPress={() => router.back()}>
-        <Text style={styles.back}>Back to claims</Text>
-      </Pressable>
-      <Text style={styles.eyebrow}>{claim.claimNumber}</Text>
-      <Text style={styles.title}>{claim.title}</Text>
-      <Text style={styles.muted}>
-        {claim.product.name} · {claim.product.brand}
-      </Text>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      <View style={styles.card}>
-        <Text style={styles.section}>Status</Text>
-        <View style={styles.statusRow}>
-          {statuses.map((item) => (
-            <Pressable
-              key={item}
-              onPress={() => void status(item)}
-              style={[styles.status, item === claim.status && styles.statusSelected]}
-            >
-              <Text style={item === claim.status ? styles.statusTextSelected : styles.statusText}>
-                {item.replaceAll("_", " ")}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-        <Text style={styles.section}>Issue</Text>
-        <Text style={styles.body}>{claim.issueDescription}</Text>
-        {claim.resolution ? (
-          <>
-            <Text style={styles.section}>Resolution</Text>
-            <Text style={styles.body}>{claim.resolution}</Text>
-          </>
-        ) : null}
-      </View>
-      <View style={styles.card}>
-        <Text style={styles.section}>Timeline</Text>
-        {claim.timeline?.map((item) => (
-          <View key={item.id} style={styles.timeline}>
-            <Text style={styles.timelineTitle}>{item.title}</Text>
-            <Text style={styles.muted}>{new Date(item.createdAt).toLocaleString()}</Text>
-            {item.description ? <Text style={styles.body}>{item.description}</Text> : null}
-          </View>
-        ))}
-        <TextInput
-          onChangeText={setEventTitle}
-          placeholder="Add timeline event"
-          placeholderTextColor={colors.muted}
-          style={styles.input}
-          value={eventTitle}
+    <Screen header={header} refreshing={claim.isRefetching} onRefresh={() => void claim.refetch()}>
+      <Card>
+        <ClaimBadge status={item.status} />
+        <Text variant="heading">{item.title}</Text>
+        <Pressable
+          onPress={() => router.push(`/(app)/assets/${item.productId}`)}
+          style={styles.assetLink}
+        >
+          <Package size={16} color={colors.primary} />
+          <Text variant="label" color={colors.primary} numberOfLines={1}>
+            {item.product.name} · {item.product.brand}
+          </Text>
+        </Pressable>
+        <SelectField
+          label="Status"
+          value={item.status}
+          options={claimStatuses.map((status) => ({
+            value: status,
+            label: claimStatusLabels[status].label,
+          }))}
+          disabled={actions.setStatus.isPending}
+          onChange={(value) => void changeStatus(value as ClaimStatus)}
         />
-        <Pressable onPress={() => void timeline()} style={styles.outline}>
-          <Text style={styles.outlineText}>Add event</Text>
-        </Pressable>
-      </View>
-      <View style={styles.card}>
-        <Text style={styles.section}>Evidence</Text>
-        {claim.documents?.map((item) => (
-          <View key={item.documentId} style={styles.document}>
-            <Pressable onPress={() => void Linking.openURL(item.document.fileUrl)}>
-              <Text style={styles.link}>{item.document.fileName}</Text>
-            </Pressable>
-            <Pressable onPress={() => void detachDocument(item.documentId)}>
-              <Text style={styles.remove}>Remove</Text>
-            </Pressable>
+      </Card>
+
+      <Section title="Details">
+        <Card>
+          <InfoRow label="Issue" value={item.issueDescription} />
+          {item.submittedCondition ? (
+            <InfoRow label="Product condition" value={item.submittedCondition} />
+          ) : null}
+          <InfoGrid>
+            <InfoRow label="Service center" value={item.serviceCenter || "Not provided"} />
+            <InfoRow label="Reference" value={item.providerReference || "Not provided"} />
+            <InfoRow label="Filed" value={format.date(item.filedAt ?? item.createdAt)} />
+            <InfoRow
+              label={item.resolvedAt ? "Resolved" : "Last update"}
+              value={format.date(item.resolvedAt ?? item.updatedAt)}
+            />
+          </InfoGrid>
+          {item.resolution ? <InfoRow label="Resolution" value={item.resolution} /> : null}
+        </Card>
+      </Section>
+
+      <Section title={`Evidence (${item.documents?.length ?? 0})`}>
+        <Card>
+          {item.documents?.length ? (
+            item.documents.map((evidence) => (
+              <View key={evidence.documentId} style={styles.evidence}>
+                <Pressable
+                  style={styles.evidenceBody}
+                  onPress={() => void openDocument(evidence.document)}
+                >
+                  <FileText size={18} color={colors.primary} />
+                  <View style={styles.flex}>
+                    <Text variant="bodySmall" color={colors.heading} weight="medium" numberOfLines={1}>
+                      {evidence.document.fileName}
+                    </Text>
+                    <Text variant="caption">
+                      {evidenceTypeLabels[evidence.evidenceType] ?? evidence.evidenceType} ·{" "}
+                      {format.date(evidence.attachedAt)}
+                    </Text>
+                  </View>
+                </Pressable>
+                <Pressable
+                  accessibilityLabel={`Remove ${evidence.document.fileName}`}
+                  hitSlop={10}
+                  onPress={() => void detach(evidence.documentId, evidence.document.fileName)}
+                >
+                  <X size={18} color={colors.muted} />
+                </Pressable>
+              </View>
+            ))
+          ) : (
+            <Text variant="bodySmall" color={colors.muted}>
+              Attach receipts, photos of the damage, or messages from the service center.
+            </Text>
+          )}
+          <View style={styles.row}>
+            <Button
+              title="Document"
+              icon={FileText}
+              variant="secondary"
+              size="sm"
+              style={styles.flex}
+              loading={actions.uploadEvidence.isPending && picker === null}
+              onPress={() => setPicker("document")}
+            />
+            <Button
+              title="Photo"
+              icon={ImagePlus}
+              variant="secondary"
+              size="sm"
+              style={styles.flex}
+              onPress={() => setPicker("photo")}
+            />
           </View>
-        ))}
-        <Pressable onPress={() => void evidence()} style={styles.primary}>
-          <Text style={styles.primaryText}>Attach evidence</Text>
-        </Pressable>
-      </View>
-      <Pressable onPress={() => void deleteCurrentClaim()} style={styles.deleteButton}>
-        <Text style={styles.deleteText}>Delete claim</Text>
-      </Pressable>
-    </ScrollView>
+        </Card>
+      </Section>
+
+      <Section title="Timeline">
+        <Card>
+          <TextField
+            placeholder="Add an update, e.g. Technician visited"
+            value={eventTitle}
+            onChangeText={setEventTitle}
+          />
+          {eventTitle.trim() ? (
+            <>
+              <TextField
+                multiline
+                placeholder="Details (optional)"
+                value={eventDescription}
+                onChangeText={setEventDescription}
+              />
+              <Button
+                title="Add update"
+                size="sm"
+                loading={actions.addEvent.isPending}
+                onPress={() => void addEvent()}
+              />
+            </>
+          ) : null}
+          <View style={styles.timeline}>
+            {item.timeline?.map((event, index) => (
+              <View key={event.id} style={styles.event}>
+                <View style={styles.rail}>
+                  <View style={[styles.dot, index === 0 && styles.dotActive]} />
+                  {index < (item.timeline?.length ?? 0) - 1 ? <View style={styles.line} /> : null}
+                </View>
+                <View style={styles.eventBody}>
+                  <Text variant="bodySmall" color={colors.heading} weight="semibold">
+                    {event.title}
+                  </Text>
+                  {event.description ? <Text variant="bodySmall">{event.description}</Text> : null}
+                  <Text variant="caption">{format.dateTime(event.createdAt)}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </Card>
+      </Section>
+
+      <ActionSheet
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        title={item.title}
+        actions={[
+          {
+            label: "Edit claim",
+            icon: Pencil,
+            onPress: () => router.push(`/(app)/claims/form?id=${id}`),
+          },
+          {
+            label: "View asset",
+            icon: Package,
+            onPress: () => router.push(`/(app)/assets/${item.productId}`),
+          },
+          { label: "Delete claim", icon: Trash2, destructive: true, onPress: () => void remove() },
+        ]}
+      />
+
+      <FileSourceSheet
+        visible={picker !== null}
+        imagesOnly={picker === "photo"}
+        title={picker === "photo" ? "Add a condition photo" : "Add a document"}
+        onClose={() => setPicker(null)}
+        onPicked={(file) => {
+          const condition = picker === "photo";
+          actions.uploadEvidence
+            .mutateAsync({ file, condition })
+            .then(() => toast.success("Evidence attached."))
+            .catch((error: unknown) => toast.error(error, "Could not attach the file."));
+        }}
+      />
+    </Screen>
   );
 }
+
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.canvas,
-    gap: spacing.md,
-    padding: spacing.lg,
-  },
-  center: {
+  flex: { flex: 1 },
+  row: { flexDirection: "row", gap: spacing.sm },
+  assetLink: { alignItems: "center", flexDirection: "row", gap: spacing.xs },
+  evidence: {
     alignItems: "center",
-    flex: 1,
-    justifyContent: "center",
-  },
-  back: {
-    color: colors.brand,
-    fontWeight: "700",
-  },
-  eyebrow: {
-    color: colors.brand,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 2,
-  },
-  title: {
-    color: colors.ink,
-    fontSize: 30,
-    fontWeight: "800",
-  },
-  muted: {
-    color: colors.muted,
-    fontSize: 13,
-    marginTop: spacing.xs,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: spacing.lg,
-  },
-  section: {
-    color: colors.ink,
-    fontSize: 16,
-    fontWeight: "700",
-    marginTop: spacing.md,
-  },
-  body: {
-    color: colors.muted,
-    fontSize: 14,
-    lineHeight: 21,
-    marginTop: spacing.sm,
-  },
-  statusRow: {
+    backgroundColor: colors.primaryTint,
+    borderRadius: radius.md,
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-  },
-  status: {
-    borderColor: colors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    color: colors.muted,
-    fontSize: 10,
-    overflow: "hidden",
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  statusSelected: {
-    backgroundColor: colors.brand,
-    borderColor: colors.brand,
-  },
-  statusText: {
-    color: colors.muted,
-    fontSize: 10,
-  },
-  statusTextSelected: {
-    color: colors.surface,
-    fontSize: 10,
-    fontWeight: "700",
-  },
-  timeline: {
-    borderBottomColor: colors.border,
-    borderBottomWidth: 1,
-    paddingVertical: spacing.sm,
-  },
-  timelineTitle: {
-    color: colors.ink,
-    fontWeight: "600",
-  },
-  input: {
-    borderColor: colors.border,
-    borderRadius: 10,
-    borderWidth: 1,
-    color: colors.ink,
-    marginTop: spacing.md,
+    gap: spacing.sm,
     padding: spacing.sm,
   },
-  outline: {
-    alignItems: "center",
-    borderColor: colors.brand,
-    borderRadius: 10,
-    borderWidth: 1,
-    marginTop: spacing.sm,
-    padding: spacing.sm,
+  evidenceBody: { alignItems: "center", flex: 1, flexDirection: "row", gap: spacing.sm },
+  timeline: { marginTop: spacing.xs },
+  event: { flexDirection: "row", gap: spacing.sm },
+  rail: { alignItems: "center", width: 14 },
+  dot: {
+    backgroundColor: colors.primaryBorder,
+    borderRadius: 6,
+    height: 12,
+    marginTop: 4,
+    width: 12,
   },
-  outlineText: {
-    color: colors.brand,
-    fontWeight: "700",
-  },
-  document: {
-    alignItems: "center",
-    borderBottomColor: colors.border,
-    borderBottomWidth: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: spacing.sm,
-  },
-  link: {
-    color: colors.brand,
-    flex: 1,
-    fontWeight: "600",
-  },
-  remove: {
-    color: colors.danger,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  primary: {
-    alignItems: "center",
-    backgroundColor: colors.brand,
-    borderRadius: 10,
-    marginTop: spacing.md,
-    padding: spacing.md,
-  },
-  primaryText: {
-    color: colors.surface,
-    fontWeight: "700",
-  },
-  deleteButton: {
-    alignItems: "center",
-    borderColor: colors.danger,
-    borderRadius: 10,
-    borderWidth: 1,
-    padding: spacing.md,
-  },
-  deleteText: {
-    color: colors.danger,
-    fontWeight: "700",
-  },
-  error: {
-    color: colors.danger,
-  },
+  dotActive: { backgroundColor: colors.primary },
+  line: { backgroundColor: colors.primaryBorder, flex: 1, marginVertical: 2, width: 2 },
+  eventBody: { flex: 1, gap: 2, paddingBottom: spacing.md },
 });

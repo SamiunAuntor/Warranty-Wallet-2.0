@@ -1,81 +1,58 @@
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
-import { useActivity } from "../../hooks/use-activity";
-import { colors, spacing } from "../../lib/theme";
+import { Activity as ActivityIcon, History } from "lucide-react-native";
+import { StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Card } from "../../components/ui/Card";
+import { PagedList } from "../../components/ui/PagedList";
+import { EmptyState } from "../../components/ui/ScreenStates";
+import { ScreenHeader } from "../../components/ui/ScreenHeader";
+import { Text } from "../../components/ui/Text";
+import { useActivityList } from "../../hooks/use-activity";
+import { useFormatters } from "../../hooks/use-preferences";
+import { colors, radius, spacing } from "../../lib/theme";
+
 export default function ActivityScreen() {
-  const { error, items, loading } = useActivity();
+  const activities = useActivityList();
+  const format = useFormatters();
   return (
-    <View style={styles.container}>
-      <Text style={styles.eyebrow}>HISTORY</Text>
-      <Text style={styles.title}>Activity</Text>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      {loading ? (
-        <ActivityIndicator color={colors.brand} />
-      ) : (
-        <FlatList
-          contentContainerStyle={styles.list}
-          data={items}
-          keyExtractor={(item) => item.id}
-          ListEmptyComponent={<Text style={styles.muted}>No activity recorded yet.</Text>}
-          renderItem={({ item }) => (
-            <View style={styles.card}>
-              <Text style={styles.itemTitle}>{item.title}</Text>
-              <Text style={styles.muted}>
-                {item.description ?? `${item.type} · ${item.entity}`}
-              </Text>
-              <Text style={styles.date}>{new Date(item.createdAt).toLocaleString()}</Text>
+    <SafeAreaView edges={["top", "bottom"]} style={styles.safe}>
+      <ScreenHeader title="Activity" fallbackHref="/(app)/more" />
+      <PagedList
+        query={activities}
+        keyExtractor={(item) => item.id}
+        renderItem={(item) => (
+          <Card style={styles.card}>
+            <View style={styles.icon}>
+              <ActivityIcon size={16} color={colors.primary} />
             </View>
-          )}
-        />
-      )}
-    </View>
+            <View style={styles.body}>
+              <Text variant="subheading">{item.title}</Text>
+              {item.description ? <Text variant="bodySmall">{item.description}</Text> : null}
+              <Text variant="caption">{format.dateTime(item.createdAt)}</Text>
+            </View>
+          </Card>
+        )}
+        empty={
+          <EmptyState
+            icon={History}
+            title="No activity yet"
+            message="Changes to your assets, claims, documents, and account appear here."
+          />
+        }
+      />
+    </SafeAreaView>
   );
 }
+
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.canvas,
-    flex: 1,
-    padding: spacing.lg,
+  safe: { backgroundColor: colors.canvas, flex: 1 },
+  card: { flexDirection: "row", gap: spacing.md },
+  icon: {
+    alignItems: "center",
+    backgroundColor: colors.primarySoft,
+    borderRadius: radius.sm,
+    height: 32,
+    justifyContent: "center",
+    width: 32,
   },
-  eyebrow: {
-    color: colors.brand,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 2,
-  },
-  title: {
-    color: colors.ink,
-    fontSize: 30,
-    fontWeight: "800",
-    marginTop: spacing.xs,
-  },
-  list: {
-    gap: spacing.sm,
-    paddingTop: spacing.lg,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: spacing.md,
-  },
-  itemTitle: {
-    color: colors.ink,
-    fontWeight: "700",
-  },
-  muted: {
-    color: colors.muted,
-    fontSize: 13,
-    lineHeight: 20,
-    marginTop: spacing.xs,
-  },
-  date: {
-    color: colors.muted,
-    fontSize: 11,
-    marginTop: spacing.sm,
-  },
-  error: {
-    color: colors.danger,
-    marginTop: spacing.md,
-  },
+  body: { flex: 1, gap: 2 },
 });

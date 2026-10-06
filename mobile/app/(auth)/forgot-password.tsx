@@ -1,126 +1,78 @@
 import { Link } from "expo-router";
+import { Mail } from "lucide-react-native";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { normalizeEmail } from "../../lib/auth-validation";
-import { colors, spacing } from "../../lib/theme";
+import { StyleSheet } from "react-native";
+import { AuthShell } from "../../components/auth/AuthShell";
+import { Button } from "../../components/ui/Button";
+import { InlineMessage } from "../../components/ui/ScreenStates";
+import { TextField } from "../../components/ui/TextField";
+import { validatePasswordResetRequest } from "../../lib/auth-validation";
+import { colors } from "../../lib/theme";
 import { useAuth } from "../../providers/auth-provider";
 
 export default function ForgotPasswordScreen() {
   const { requestPasswordReset } = useAuth();
   const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  async function submit() {
-    setError("");
-    setMessage("");
-    const normalizedEmail = normalizeEmail(email);
 
-    if (!normalizedEmail) {
-      setError("Enter your email address.");
+  async function submit() {
+    const validationError = validatePasswordResetRequest(email);
+    if (validationError) {
+      setError(validationError);
       return;
     }
-
+    setError("");
     setSubmitting(true);
     try {
-      await requestPasswordReset(normalizedEmail);
-      setMessage("If an account exists for that email, a reset link has been sent.");
-    } catch {
-      setError("We could not send the reset email. Check the address and try again.");
+      await requestPasswordReset(email);
+      setSent(true);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not send the reset email.");
     } finally {
       setSubmitting(false);
     }
   }
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.eyebrow}>ACCOUNT RECOVERY</Text>
-      <Text style={styles.title}>Reset your password.</Text>
-      <Text style={styles.copy}>
-        Enter your account email and we will send instructions to create a new password.
-      </Text>
-      <TextInput
+    <AuthShell
+      title="Reset your password"
+      subtitle="We'll email you a link to choose a new password. Open it on any device, then sign in here."
+      footer={
+        <Link href="/(auth)/login" style={styles.link}>
+          Back to sign in
+        </Link>
+      }
+    >
+      <InlineMessage message={error} />
+      <InlineMessage
+        tone="success"
+        message={sent ? `If an account exists for ${email.trim()}, a reset link is on its way.` : null}
+      />
+      <TextField
+        label="Email"
+        icon={Mail}
         autoCapitalize="none"
         autoComplete="email"
         keyboardType="email-address"
-        onChangeText={setEmail}
-        placeholder="Email address"
-        placeholderTextColor={colors.muted}
-        style={styles.input}
+        textContentType="emailAddress"
+        returnKeyType="send"
+        onSubmitEditing={() => void submit()}
+        placeholder="you@example.com"
         value={email}
+        onChangeText={setEmail}
       />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      {message ? <Text style={styles.message}>{message}</Text> : null}
-      <Pressable disabled={submitting} onPress={submit} style={styles.button}>
-        <Text style={styles.buttonText}>{submitting ? "Sending..." : "Send reset link"}</Text>
-      </Pressable>
-      <Link href="/(auth)/login" style={styles.link}>
-        Back to sign in
-      </Link>
-    </View>
+      <Button
+        title={sent ? "Send again" : "Send reset link"}
+        loading={submitting}
+        fullWidth
+        onPress={() => void submit()}
+      />
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    padding: spacing.xl,
-    backgroundColor: colors.canvas,
-  },
-  eyebrow: {
-    color: colors.brand,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 2,
-  },
-  title: {
-    color: colors.ink,
-    fontSize: 34,
-    fontWeight: "800",
-    lineHeight: 40,
-    marginTop: spacing.md,
-  },
-  copy: {
-    color: colors.muted,
-    fontSize: 16,
-    lineHeight: 24,
-    marginTop: spacing.md,
-  },
-  input: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 12,
-    borderWidth: 1,
-    color: colors.ink,
-    fontSize: 16,
-    marginTop: spacing.lg,
-    padding: spacing.md,
-  },
-  error: {
-    color: colors.danger,
-    marginTop: spacing.sm,
-  },
-  message: {
-    color: colors.brand,
-    marginTop: spacing.sm,
-  },
-  button: {
-    alignItems: "center",
-    backgroundColor: colors.brand,
-    borderRadius: 12,
-    marginTop: spacing.lg,
-    padding: spacing.md,
-  },
-  buttonText: {
-    color: colors.surface,
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  link: {
-    color: colors.brand,
-    fontSize: 15,
-    fontWeight: "700",
-    marginTop: spacing.lg,
-    textAlign: "center",
-  },
+  link: { color: colors.primary, fontFamily: "Inter_600SemiBold", fontSize: 14 },
 });

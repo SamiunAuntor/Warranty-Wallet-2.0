@@ -1,176 +1,144 @@
-import * as DocumentPicker from "expo-document-picker";
-import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import {
-  validateDocumentUpload,
-  type DocumentUploadDraft,
-} from "../../lib/document-validation";
-import type { DocumentType, NativeFile } from "../../lib/documents-api";
-import { colors, spacing } from "../../lib/theme";
+import { Camera, FileText, Image as ImageIcon } from "lucide-react-native";
+import { useEffect, useMemo, useState } from "react";
+import { StyleSheet, View } from "react-native";
+import { useDocumentActions } from "../../hooks/use-documents";
+import { documentUploadBlocker } from "../../lib/document-validation";
+import { FileSelectionError, pickFile, type FileSource } from "../../lib/files";
+import { assetDocumentTypes, documentTypeLabels } from "../../lib/labels";
+import { spacing } from "../../lib/theme";
+import type { AssetDocumentSummary, DocumentType } from "../../lib/types";
+import { useToast } from "../../providers/toast-provider";
+import { Button } from "../ui/Button";
+import { Chips } from "../ui/Chips";
+import { InlineMessage } from "../ui/ScreenStates";
+import { SelectField, type SelectOption } from "../ui/SelectField";
+import { Sheet } from "../ui/Sheet";
+import { Text } from "../ui/Text";
 
-const documentTypes: DocumentType[] = ["INVOICE", "WARRANTY_CARD", "RECEIPT", "OTHER"];
-
-type DocumentUploadFormProps = {
-  onUpload: (draft: DocumentUploadDraft) => Promise<void>;
+type Props = {
+  visible: boolean;
+  onClose: () => void;
+  /** Upload to this asset. When omitted, the user picks one from assetOptions. */
+  productId?: string;
+  assetOptions?: SelectOption[];
+  /** The asset's current documents, used to explain per-asset limits. */
+  existingDocuments?: AssetDocumentSummary[];
+  initialType?: DocumentType;
 };
 
-export function DocumentUploadForm({ onUpload }: DocumentUploadFormProps) {
-  const [productId, setProductId] = useState("");
-  const [type, setType] = useState<DocumentType>("INVOICE");
-  const [file, setFile] = useState<NativeFile | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState("");
+/** A sheet for adding a receipt, invoice, warranty card, or photo to an asset. */
+export function DocumentUploadForm({
+  visible,
+  onClose,
+  productId,
+  assetOptions = [],
+  existingDocuments,
+  initialType = "INVOICE",
+}: Props) {
+  const toast = useToast();
+  const { upload } = useDocumentActions();
+  const [assetId, setAssetId] = useState(productId ?? "");
+  const [type, setType] = useState<DocumentType>(initialType);
+  const [error, setError] = useState<string | null>(null);
 
-  async function pickFile() {
-    const result = await DocumentPicker.getDocumentAsync({
-      copyToCacheDirectory: true,
-      type: ["application/pdf", "image/*"],
-    });
-
-    if (!result.canceled) {
-      const selected = result.assets[0];
-      setFile({
-        uri: selected.uri,
-        name: selected.name,
-        mimeType: selected.mimeType,
-        size: selected.size,
-      });
+  useEffect(() => {
+    if (visible) {
+      setAssetId(productId ?? "");
+      setType(initialType);
+      setError(null);
     }
-  }
+  }, [initialType, productId, visible]);
 
-  async function submit() {
-    const draft = { productId, type, file };
-    const validationError = validateDocumentUpload(draft);
+  const blocker = useMemo(
+    () => (existingDocuments ? documentUploadBlocker(type, existingDocuments) : null),
+    [existingDocuments, type],
+  );
 
-    if (validationError) {
-      setError(validationError);
+  async function choose(source: FileSource) {
+    if (!assetId) {
+      setError("Choose the asset this document belongs to.");
       return;
     }
-
-    setUploading(true);
-    setError("");
-
+    setError(null);
     try {
-      await onUpload(draft);
-      setFile(null);
+      const file = await pickFile(source, { imagesOnly: type === "PRODUCT_IMAGE" });
+      if (!file) return;
+      await upload.mutateAsync({ productId: assetId, type, file });
+      toast.success(`${documentTypeLabels[type]} uploaded.`);
+      onClose();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not upload document.");
-    } finally {
-      setUploading(false);
+      setError(
+        cause instanceof FileSelectionError || cause instanceof Error
+          ? cause.message
+          : "Could not upload the file.",
+      );
     }
   }
 
+  const busy = upload.isPending;
   return (
-    <View style={styles.form}>
-      <Text style={styles.formTitle}>Upload a document</Text>
-      <TextInput
-        onChangeText={setProductId}
-        placeholder="Asset ID"
-        placeholderTextColor={colors.muted}
-        style={styles.input}
-        value={productId}
-      />
-      <View style={styles.typeRow}>
-        {documentTypes.map((item) => {
-          const selected = type === item;
-
-          return (
-            <Pressable
-              key={item}
-              onPress={() => setType(item)}
-              style={[styles.type, selected && styles.typeSelected]}
-            >
-              <Text style={selected ? styles.typeTextSelected : styles.typeText}>
-                {item.replaceAll("_", " ")}
-              </Text>
-            </Pressable>
-          );
-        })}
+    <Sheet visible={visible} onClose={busy ? () => undefined : onClose} title="Add a document">
+      <View style={styles.body}>
+        {!productId ? (
+          <SelectField
+            label="Asset"
+            placeholder="Choose an asset"
+            value={assetId}
+            options={assetOptions}
+            searchable
+            emptyMessage="Add an asset first."
+            onChange={setAssetId}
+          />
+        ) : null}
+        <Text variant="label">Document type</Text>
+        <Chips
+          options={assetDocumentTypes.map((value) => ({ value, label: documentTypeLabels[value] }))}
+          value={type}
+          onChange={setType}
+        />
+        <InlineMessage message={error ?? blocker} />
+        <View style={styles.sources}>
+          <Button
+            title="Camera"
+            icon={Camera}
+            variant="secondary"
+            style={styles.source}
+            disabled={busy || Boolean(blocker)}
+            onPress={() => void choose("camera")}
+          />
+          <Button
+            title="Photos"
+            icon={ImageIcon}
+            variant="secondary"
+            style={styles.source}
+            disabled={busy || Boolean(blocker)}
+            onPress={() => void choose("library")}
+          />
+        </View>
+        {type !== "PRODUCT_IMAGE" ? (
+          <Button
+            title="Browse files (PDF or image)"
+            icon={FileText}
+            variant="outline"
+            fullWidth
+            disabled={busy || Boolean(blocker)}
+            onPress={() => void choose("files")}
+          />
+        ) : null}
+        {busy ? (
+          <Button title="Uploading…" loading fullWidth onPress={() => undefined} />
+        ) : (
+          <Text variant="caption" align="center">
+            PDF, JPG, PNG, or WebP up to 4 MB.
+          </Text>
+        )}
       </View>
-      <Pressable onPress={() => void pickFile()} style={styles.choose}>
-        <Text style={styles.chooseText}>{file ? file.name : "Choose PDF or image"}</Text>
-      </Pressable>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      <Pressable disabled={uploading} onPress={() => void submit()} style={styles.save}>
-        <Text style={styles.saveText}>{uploading ? "Uploading..." : "Upload document"}</Text>
-      </Pressable>
-    </View>
+    </Sheet>
   );
 }
 
 const styles = StyleSheet.create({
-  form: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginTop: spacing.md,
-    padding: spacing.md,
-  },
-  formTitle: {
-    color: colors.ink,
-    fontSize: 17,
-    fontWeight: "700",
-  },
-  input: {
-    borderColor: colors.border,
-    borderRadius: 10,
-    borderWidth: 1,
-    color: colors.ink,
-    marginTop: spacing.sm,
-    padding: spacing.sm,
-  },
-  typeRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.xs,
-    marginTop: spacing.md,
-  },
-  type: {
-    borderColor: colors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  typeSelected: {
-    backgroundColor: colors.brand,
-    borderColor: colors.brand,
-  },
-  typeText: {
-    color: colors.muted,
-    fontSize: 10,
-  },
-  typeTextSelected: {
-    color: colors.surface,
-    fontSize: 10,
-    fontWeight: "700",
-  },
-  choose: {
-    borderColor: colors.brand,
-    borderRadius: 10,
-    borderWidth: 1,
-    marginTop: spacing.md,
-    padding: spacing.sm,
-  },
-  chooseText: {
-    color: colors.brand,
-    fontSize: 13,
-    textAlign: "center",
-  },
-  error: {
-    color: colors.danger,
-    marginTop: spacing.sm,
-  },
-  save: {
-    alignItems: "center",
-    backgroundColor: colors.brand,
-    borderRadius: 10,
-    marginTop: spacing.sm,
-    padding: spacing.sm,
-  },
-  saveText: {
-    color: colors.surface,
-    fontWeight: "700",
-  },
+  body: { gap: spacing.md, paddingBottom: spacing.sm },
+  sources: { flexDirection: "row", gap: spacing.sm },
+  source: { flex: 1 },
 });
